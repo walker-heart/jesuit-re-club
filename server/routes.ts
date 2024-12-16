@@ -62,10 +62,14 @@ export function registerRoutes(app: Express): Server {
 
       req.logIn(user, (err) => {
         if (err) return next(err);
-        return res.json({ 
-          id: user.id,
-          username: user.username,
-          role: user.role || 'user'
+        // Save session explicitly
+        req.session.save(() => {
+          return res.json({ 
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role
+          });
         });
       });
     })(req, res, next);

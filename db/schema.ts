@@ -3,10 +3,12 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  uid: text("uid").unique().notNull(),
   email: text("email").unique().notNull(),
-  role: text("role").notNull().default('user'),
+  username: text("username").unique().notNull(),
+  password: text("password").notNull(),
+  role: text("role", { enum: ['user', 'editor', 'admin'] }).notNull().default('user'),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const events = pgTable("events", {
@@ -60,3 +62,6 @@ export type User = typeof users.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type Resource = typeof resources.$inferSelect;
 export type News = typeof news.$inferSelect;
+
+export type InsertUser = typeof users.$inferInsert;
+export type SelectUser = typeof users.$inferSelect;

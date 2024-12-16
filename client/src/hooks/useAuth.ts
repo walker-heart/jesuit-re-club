@@ -9,8 +9,11 @@ export function useAuth() {
   const { data: user, error } = useQuery<User | null>({
     queryKey: ['/api/auth/session'],
     retry: false,
-    onSettled: () => setIsLoading(false),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    onSuccess: () => setIsLoading(false),
     onError: () => {
+      setIsLoading(false);
       return null;
     }
   });

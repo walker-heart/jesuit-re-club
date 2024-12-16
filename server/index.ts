@@ -3,6 +3,7 @@ import session from "express-session";
 import MemoryStore from "memorystore";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import passport from "passport";
 
 const app = express();
 app.use(express.json());
@@ -15,16 +16,22 @@ app.use(
     cookie: {
       maxAge: 86400000, // 24 hours
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax", // Changed to lax to allow redirect-based auth
+      httpOnly: true,
     },
     store: new MemoryStoreSession({
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
+    name: 'sid', // Set a specific name for the session ID cookie
     resave: false,
     saveUninitialized: false,
     secret: process.env.SESSION_SECRET || "development_secret",
   })
 );
+
+// Initialize passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use((req, res, next) => {
   const start = Date.now();
