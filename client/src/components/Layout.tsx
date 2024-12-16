@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 
@@ -12,6 +12,11 @@ export function Layout({ children, title }: LayoutProps) {
   if (title) {
     document.title = `${title} | Real Estate Club`;
   }
+
+  // Scroll to top when component mounts (route changes)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col font-sans">
