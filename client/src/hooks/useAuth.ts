@@ -1,28 +1,63 @@
-import { useState, useEffect } from 'react';
-import { auth, db, type User, type UserRole } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { useState } from 'react';
+import { type User, type LoginCredentials, type AuthResponse } from '@/lib/types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        const userData = userDoc.data();
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email!,
-          role: (userData?.role || 'user') as UserRole
-        });
-      } else {
-        setUser(null);
+  const { data: user, error } = useQuery<User | null>({
+    queryKey: ['/api/auth/session'],
+    retry: false,
+    onSettled: () => setIsLoading(false),
+  });
+
+  const login = useMutation({
+    mutationFn: async (credentials: LoginCredentials) => {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        throw new Error(await res.text());
       }
-      setLoading(false);
-    });
-  }, []);
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/session'] });
+    },
+  });
 
-  return { user, loading };
+  const logout = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(['/api/auth/session'], null);
+    },
+  });
+
+  return {
+    user,
+    isLoading,
+    isError: !!error,
+    login: login.mutate,
+    logout: logout.mutate,
+    isLoggingIn: login.isPending,
+    isLoggingOut: logout.isPending,
+    loginError: login.error,
+  };
 }
