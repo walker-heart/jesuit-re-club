@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PhotoGallery } from "@/components/PhotoGallery";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, ArrowRight, Calendar, Newspaper, UserPlus } from "lucide-react";
+import { Link } from "wouter";
 
 export function Home() {
   const scrollToContent = () => {
@@ -39,28 +41,37 @@ export function Home() {
       </section>
 
       {/* What We Offer Section */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-16">What We Offer</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="text-center">
-              <h3 className="text-2xl font-bold mb-4">Expert Speakers</h3>
-              <p className="text-gray-600">
-                Learn from industry professionals and gain valuable insights
-              </p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-2xl font-bold mb-4">Networking</h3>
-              <p className="text-gray-600">
-                Connect with peers and build relationships in the real estate world
-              </p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-2xl font-bold mb-4">Hands-on Experience</h3>
-              <p className="text-gray-600">
-                Participate in projects and case studies to apply your knowledge
-              </p>
-            </div>
+      <section className="w-full py-24 lg:py-32 bg-gray-50">
+        <div className="container px-4 md:px-6">
+          <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in">
+            What We Offer
+          </h2>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 items-stretch">
+            {[
+              { title: "Upcoming Event", content: "Guest Speaker: John Doe", date: "May 15, 2024 | 4:00 PM", description: "Join us for an insightful talk on commercial real estate trends with industry expert John Doe.", link: "/events/1", linkText: "Info", icon: Calendar },
+              { title: "Latest News", content: "Club Wins National Competition", date: "April 30, 2024", description: "Our Real Estate Club team took first place in the National Real Estate Challenge. Congratulations to all participants!", link: "/news", linkText: "Read Full Story", icon: Newspaper },
+              { title: "Membership", content: "Join Our Community", description: "Become a member of the Real Estate Club and gain access to exclusive events, networking opportunities, and hands-on experiences in the real estate industry.", link: "/membership", linkText: "Learn More", icon: UserPlus }
+            ].map((item, index) => (
+              <Card key={index} className="flex flex-col transition-all duration-300 hover:shadow-lg animate-fade-in card-hover" style={{animationDelay: `${index * 100}ms`}}>
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold text-[#003c71] flex items-center">
+                    {item.icon && <item.icon className="mr-2 h-6 w-6" />}
+                    {item.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <h3 className="text-xl font-semibold mb-2">{item.content}</h3>
+                  {item.date && <p className="text-sm text-gray-600 mb-2">{item.date}</p>}
+                  <p className="text-gray-600 mb-4">{item.description}</p>
+                  <Button asChild variant="outline" className="w-full hover:bg-[#003c71] hover:text-white transition-colors button-hover">
+                    <Link href={item.link}>
+                      {item.linkText}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
