@@ -14,18 +14,7 @@ export function Membership() {
 
   return (
     <>
-      <section className="w-full py-24 lg:py-32 bg-[#003c71] text-white overflow-hidden">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300 animate-fade-in">
-              Join Our Real Estate Club
-            </h1>
-            <p className="max-w-[600px] text-zinc-200 md:text-xl animate-slide-up">
-              Embark on your real estate journey and unlock a world of opportunities
-            </p>
-          </div>
-        </div>
-      </section>
+      
 
       <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-50">
         <div className="container px-4 md:px-6">
