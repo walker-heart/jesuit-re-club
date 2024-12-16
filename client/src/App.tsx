@@ -4,6 +4,7 @@ import { Home } from "@/pages/Home";
 import { Login } from "@/pages/Login";
 import { About } from "@/pages/About";
 import { Events } from "@/pages/Events";
+import { EventPage } from "@/pages/EventPage";
 import { Resources } from "@/pages/Resources";
 import { News } from "@/pages/News";
 import { Admin } from "@/pages/Admin";
@@ -50,6 +51,11 @@ function App() {
       <Route path="/events">
         <Layout title="Events">
           <Events />
+        </Layout>
+      </Route>
+      <Route path="/events/:slug">
+        <Layout>
+          <EventPage />
         </Layout>
       </Route>
       <Route path="/membership">
