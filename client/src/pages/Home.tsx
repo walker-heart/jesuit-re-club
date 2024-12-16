@@ -52,8 +52,8 @@ export function Home() {
 
       {/* What We Offer Section */}
       <section className="w-full py-24 lg:py-32 bg-gray-50">
-        <div className="container px-4 md:px-6 mx-auto flex justify-center">
-          <div className="grid gap-8 md:grid-cols-2 w-full max-w-[1000px]">
+        <div className="container px-4 md:px-6 mx-auto">
+          <div className="grid gap-6 md:grid-cols-3 w-full max-w-[1200px] mx-auto">
             <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in col-span-full">
               What We Offer
             </h2>
