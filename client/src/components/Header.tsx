@@ -16,8 +16,8 @@ export function Header() {
       const currentScrollY = window.scrollY;
       
       if (isHome) {
-        // On home page, show header only after scrolling past hero section
-        setIsVisible(currentScrollY > window.innerHeight * 0.5);
+        // Show header after minimal scroll
+        setIsVisible(currentScrollY > 50);
       } else {
         // On other pages, always show header
         setIsVisible(true);
