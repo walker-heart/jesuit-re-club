@@ -42,8 +42,8 @@ export function Resources() {
 
   return (
     <div className="w-full py-12 md:py-24 lg:py-32">
-      <div className="container px-4 md:px-6">
-        <div className="grid gap-8 md:grid-cols-2">
+      <div className="container px-4 md:px-6 flex justify-center">
+        <div className="grid gap-8 md:grid-cols-2 w-full max-w-[1000px]">
           {resources.map((resource, i) => (
             <Card key={i} className="p-6 bg-white rounded-lg shadow-lg card-hover animate-fade-in">
               <CardHeader>
