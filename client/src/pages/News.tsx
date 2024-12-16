@@ -31,7 +31,7 @@ export function News() {
   const newsArticles = getNewsArticles();
 
   return (
-    <div className="w-full py-4 md:py-6 lg:py-8">
+    <div className="w-full py-8 md:py-12 lg:py-16">
       <div className="container px-4 md:px-6 mx-auto">
         <h1 className="text-3xl font-bold text-[#003c71] mb-6 animate-fade-in">Latest News</h1>
         <p className="text-gray-600 mb-8 animate-slide-up">
