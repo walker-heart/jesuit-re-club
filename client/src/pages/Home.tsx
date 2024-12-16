@@ -13,7 +13,7 @@ export function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="h-screen bg-[#003F87] text-white relative flex items-center justify-center">
+      <section className="h-screen bg-[#003c71] text-white relative flex items-center justify-center">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
             Welcome to the Real Estate Club
@@ -23,7 +23,7 @@ export function Home() {
           </p>
           <Button 
             size="lg" 
-            className="bg-[#C4B47F] hover:bg-[#B3A26E] text-white mb-12"
+            className="bg-[#b3a369] hover:bg-[#a39359] text-white mb-12"
             asChild
           >
             <a href="/membership">Join Us Today</a>
