@@ -26,15 +26,33 @@ admin.initializeApp({
 
 // Middleware to verify Firebase token
 async function verifyFirebaseToken(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
-
   try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await admin.auth().verifyIdToken(token);
+    
+    // Check if a valid session exists in the database
+    const [session] = await db
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.firebaseUid, decodedToken.uid),
+          gt(sessions.expiresAt, new Date())
+        )
+      );
+
+    if (!session) {
+      return res.status(401).json({ message: 'No valid session found' });
+    }
+
+    // Attach both Firebase user and session to request
     req.user = decodedToken;
+    req.session = session;
     next();
   } catch (error) {
     console.error('Error verifying token:', error);
@@ -105,8 +123,18 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Create or update session
+      // Remove any expired sessions for this user
       await db
+        .delete(sessions)
+        .where(
+          and(
+            eq(sessions.firebaseUid, firebaseUid),
+            lt(sessions.expiresAt, new Date())
+          )
+        );
+
+      // Create new session
+      const [session] = await db
         .insert(sessions)
         .values({
           userId: user.id,
@@ -114,15 +142,9 @@ export function registerRoutes(app: Express): Server {
           token: req.headers.authorization!.split('Bearer ')[1],
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         })
-        .onConflictDoUpdate({
-          target: [sessions.userId],
-          set: {
-            token: req.headers.authorization!.split('Bearer ')[1],
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          },
-        });
+        .returning();
 
-      res.json(user);
+      res.json({ user, session });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ message: "Login failed" });
