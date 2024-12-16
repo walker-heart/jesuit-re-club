@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -24,6 +24,8 @@ export function Events() {
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [pastPage, setPastPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const upcomingRef = useRef<HTMLDivElement>(null);
+  const pastRef = useRef<HTMLDivElement>(null);
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
@@ -169,29 +171,39 @@ export function Events() {
     </Card>
   );
 
-  const Pagination = ({ currentPage, totalPages, setPage, label }: { currentPage: number; totalPages: number; setPage: (page: number) => void; label: string }) => (
-    <div className="flex justify-center items-center space-x-4 mt-8">
-      <Button
-        onClick={() => setPage(Math.max(currentPage - 1, 1))}
-        disabled={currentPage === 1}
-        variant="outline"
-        className="text-[#003c71] button-hover"
-      >
-        <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-      </Button>
-      <span className="text-[#003c71]">
-        {label} {currentPage} of {totalPages}
-      </span>
-      <Button
-        onClick={() => setPage(Math.min(currentPage + 1, totalPages))}
-        disabled={currentPage === totalPages}
-        variant="outline"
-        className="text-[#003c71] button-hover"
-      >
-        Next <ChevronRight className="ml-2 h-4 w-4" />
-      </Button>
-    </div>
-  );
+  const Pagination = ({ currentPage, totalPages, setPage, label, sectionRef }: { currentPage: number; totalPages: number; setPage: (page: number) => void; label: string; sectionRef: React.RefObject<HTMLElement> }) => {
+    const handlePageChange = (newPage: number) => {
+      setPage(newPage);
+      if (sectionRef.current) {
+        const yOffset = sectionRef.current.getBoundingClientRect().top + window.pageYOffset - 100;
+        window.scrollTo({ top: yOffset, behavior: 'smooth' });
+      }
+    };
+
+    return (
+      <div className="flex justify-center items-center space-x-4 mt-8">
+        <Button
+          onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+          disabled={currentPage === 1}
+          variant="outline"
+          className="text-[#003c71] button-hover"
+        >
+          <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+        </Button>
+        <span className="text-[#003c71]">
+          {label} {currentPage} of {totalPages}
+        </span>
+        <Button
+          onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+          disabled={currentPage === totalPages}
+          variant="outline"
+          className="text-[#003c71] button-hover"
+        >
+          Next <ChevronRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="w-full py-12 md:py-24 lg:py-32">
@@ -261,7 +273,7 @@ export function Events() {
         )}
 
         <div className="space-y-12">
-          <section>
+          <section ref={upcomingRef}>
             <h2 className="text-2xl font-bold text-[#003c71] mb-6 animate-fade-in">Upcoming Events</h2>
             <div className="grid gap-8">
               {currentUpcomingEvents.map((event, index) => (
@@ -274,11 +286,12 @@ export function Events() {
                 totalPages={totalUpcomingPages}
                 setPage={setUpcomingPage}
                 label="Page"
+                sectionRef={upcomingRef}
               />
             )}
           </section>
 
-          <section>
+          <section ref={pastRef}>
             <h2 className="text-2xl font-bold text-[#003c71] mb-6 animate-fade-in">Past Events</h2>
             <div className="grid gap-8">
               {currentPastEvents.map((event, index) => (
@@ -291,6 +304,7 @@ export function Events() {
                 totalPages={totalPastPages}
                 setPage={setPastPage}
                 label="Page"
+                sectionRef={pastRef}
               />
             )}
           </section>
