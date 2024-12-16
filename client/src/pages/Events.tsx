@@ -1,13 +1,25 @@
-import { useState, useRef } from 'react';
+import { useState, useRef } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Event {
   id: number;
@@ -27,13 +39,12 @@ export function Events() {
   const upcomingRef = useRef<HTMLDivElement>(null);
   const pastRef = useRef<HTMLDivElement>(null);
   const [newEvent, setNewEvent] = useState({
-    title: '',
-    description: '',
-    date: '',
-    time: '',
-    location: '',
+    title: "",
+    description: "",
+    date: "",
+    time: "",
+    location: "",
   });
-
   const allUpcomingEvents: Event[] = [
     {
       id: 1,
@@ -41,7 +52,8 @@ export function Events() {
       date: "May 15, 2024",
       time: "4:00 PM",
       location: "Jesuit Dallas Auditorium",
-      description: "Join us for an insightful talk on commercial real estate trends with industry expert John Doe.",
+      description:
+        "Join us for an insightful talk on commercial real estate trends with industry expert John Doe.",
     },
     {
       id: 2,
@@ -49,7 +61,8 @@ export function Events() {
       date: "June 1, 2024",
       time: "3:30 PM",
       location: "Room 201",
-      description: "Learn how to analyze real estate markets and identify investment opportunities in this hands-on workshop.",
+      description:
+        "Learn how to analyze real estate markets and identify investment opportunities in this hands-on workshop.",
     },
     {
       id: 5,
@@ -57,7 +70,8 @@ export function Events() {
       date: "June 15, 2024",
       time: "2:00 PM",
       location: "Conference Room A",
-      description: "Learn the fundamentals of property valuation from experienced appraisers.",
+      description:
+        "Learn the fundamentals of property valuation from experienced appraisers.",
     },
     {
       id: 6,
@@ -65,7 +79,8 @@ export function Events() {
       date: "July 1, 2024",
       time: "1:00 PM",
       location: "Innovation Lab",
-      description: "Explore cutting-edge technologies shaping the future of real estate.",
+      description:
+        "Explore cutting-edge technologies shaping the future of real estate.",
     },
   ];
 
@@ -76,7 +91,8 @@ export function Events() {
       date: "April 15, 2024",
       time: "10:00 AM",
       location: "Downtown Dallas",
-      description: "Members explored prime commercial properties in downtown Dallas with industry professionals.",
+      description:
+        "Members explored prime commercial properties in downtown Dallas with industry professionals.",
     },
     {
       id: 4,
@@ -84,7 +100,8 @@ export function Events() {
       date: "March 30, 2024",
       time: "3:00 PM",
       location: "Seminar Room 101",
-      description: "Expert panel discussion on various real estate investment strategies and market opportunities.",
+      description:
+        "Expert panel discussion on various real estate investment strategies and market opportunities.",
     },
     {
       id: 7,
@@ -92,7 +109,8 @@ export function Events() {
       date: "March 1, 2024",
       time: "5:00 PM",
       location: "Student Center",
-      description: "Students connected with Dallas's top real estate professionals in an informal networking session.",
+      description:
+        "Students connected with Dallas's top real estate professionals in an informal networking session.",
     },
     {
       id: 8,
@@ -100,20 +118,29 @@ export function Events() {
       date: "February 15, 2024",
       time: "2:00 PM",
       location: "Green Building Center",
-      description: "Discussion on eco-friendly practices and sustainable development in real estate.",
+      description:
+        "Discussion on eco-friendly practices and sustainable development in real estate.",
     },
   ];
 
   const eventsPerPage = 3;
   const indexOfLastUpcoming = upcomingPage * eventsPerPage;
   const indexOfFirstUpcoming = indexOfLastUpcoming - eventsPerPage;
-  const currentUpcomingEvents = allUpcomingEvents.slice(indexOfFirstUpcoming, indexOfLastUpcoming);
+  const currentUpcomingEvents = allUpcomingEvents.slice(
+    indexOfFirstUpcoming,
+    indexOfLastUpcoming,
+  );
 
   const indexOfLastPast = pastPage * eventsPerPage;
   const indexOfFirstPast = indexOfLastPast - eventsPerPage;
-  const currentPastEvents = allPastEvents.slice(indexOfFirstPast, indexOfLastPast);
+  const currentPastEvents = allPastEvents.slice(
+    indexOfFirstPast,
+    indexOfLastPast,
+  );
 
-  const totalUpcomingPages = Math.ceil(allUpcomingEvents.length / eventsPerPage);
+  const totalUpcomingPages = Math.ceil(
+    allUpcomingEvents.length / eventsPerPage,
+  );
   const totalPastPages = Math.ceil(allPastEvents.length / eventsPerPage);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,28 +152,33 @@ export function Events() {
         description: "Event created successfully",
       });
       setNewEvent({
-        title: '',
-        description: '',
-        date: '',
-        time: '',
-        location: '',
+        title: "",
+        description: "",
+        date: "",
+        time: "",
+        location: "",
       });
       setIsDialogOpen(false);
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to create event",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
   const EventCard = ({ event, index }: { event: Event; index: number }) => (
-    <Card className="animate-fade-in card-hover" style={{animationDelay: `${index * 100}ms`}}>
+    <Card
+      className="animate-fade-in card-hover"
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
       <CardContent className="p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h3 className="text-xl font-bold text-[#003c71] mb-2">{event.title}</h3>
+            <h3 className="text-xl font-bold text-[#003c71] mb-2">
+              {event.title}
+            </h3>
             <div className="flex flex-col sm:flex-row gap-4 text-gray-500 mb-2">
               <div className="flex items-center">
                 <Calendar className="mr-2 h-4 w-4" />
@@ -163,7 +195,10 @@ export function Events() {
             </div>
             <p className="text-gray-600">{event.description}</p>
           </div>
-          <Button asChild className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover shrink-0">
+          <Button
+            asChild
+            className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover shrink-0"
+          >
             <Link href={`/events/${event.id}`}>View Details →</Link>
           </Button>
         </div>
@@ -171,12 +206,27 @@ export function Events() {
     </Card>
   );
 
-  const Pagination = ({ currentPage, totalPages, setPage, label, sectionRef }: { currentPage: number; totalPages: number; setPage: (page: number) => void; label: string; sectionRef: React.RefObject<HTMLElement> }) => {
+  const Pagination = ({
+    currentPage,
+    totalPages,
+    setPage,
+    label,
+    sectionRef,
+  }: {
+    currentPage: number;
+    totalPages: number;
+    setPage: (page: number) => void;
+    label: string;
+    sectionRef: React.RefObject<HTMLElement>;
+  }) => {
     const handlePageChange = (newPage: number) => {
       setPage(newPage);
       if (sectionRef.current) {
-        const yOffset = sectionRef.current.getBoundingClientRect().top + window.pageYOffset - 100;
-        window.scrollTo({ top: yOffset, behavior: 'smooth' });
+        const yOffset =
+          sectionRef.current.getBoundingClientRect().top +
+          window.pageYOffset -
+          100;
+        window.scrollTo({ top: yOffset, behavior: "smooth" });
       }
     };
 
@@ -194,7 +244,9 @@ export function Events() {
           {label} {currentPage} of {totalPages}
         </span>
         <Button
-          onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+          onClick={() =>
+            handlePageChange(Math.min(currentPage + 1, totalPages))
+          }
           disabled={currentPage === totalPages}
           variant="outline"
           className="text-[#003c71] button-hover"
@@ -206,9 +258,9 @@ export function Events() {
   };
 
   return (
-    <div className="w-full py-12 md:py-24 lg:py-32">
+    <div className="w-full py-8 md:py-12 lg:py-16">
       <div className="container px-4 md:px-6">
-        {(user?.role === 'admin' || user?.role === 'editor') && (
+        {(user?.role === "admin" || user?.role === "editor") && (
           <div className="mb-8">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -222,48 +274,74 @@ export function Events() {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Event Title</label>
+                    <label className="block text-sm font-medium mb-1">
+                      Event Title
+                    </label>
                     <Input
                       value={newEvent.title}
-                      onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
+                      onChange={(e) =>
+                        setNewEvent({ ...newEvent, title: e.target.value })
+                      }
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <label className="block text-sm font-medium mb-1">
+                      Description
+                    </label>
                     <Textarea
                       value={newEvent.description}
-                      onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
+                      onChange={(e) =>
+                        setNewEvent({
+                          ...newEvent,
+                          description: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Date</label>
+                    <label className="block text-sm font-medium mb-1">
+                      Date
+                    </label>
                     <Input
                       type="date"
                       value={newEvent.date}
-                      onChange={(e) => setNewEvent({...newEvent, date: e.target.value})}
+                      onChange={(e) =>
+                        setNewEvent({ ...newEvent, date: e.target.value })
+                      }
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Time</label>
+                    <label className="block text-sm font-medium mb-1">
+                      Time
+                    </label>
                     <Input
                       type="time"
                       value={newEvent.time}
-                      onChange={(e) => setNewEvent({...newEvent, time: e.target.value})}
+                      onChange={(e) =>
+                        setNewEvent({ ...newEvent, time: e.target.value })
+                      }
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Location</label>
+                    <label className="block text-sm font-medium mb-1">
+                      Location
+                    </label>
                     <Input
                       value={newEvent.location}
-                      onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
+                      onChange={(e) =>
+                        setNewEvent({ ...newEvent, location: e.target.value })
+                      }
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full bg-[#003c71] text-white hover:bg-[#002c61] button-hover">
+                  <Button
+                    type="submit"
+                    className="w-full bg-[#003c71] text-white hover:bg-[#002c61] button-hover"
+                  >
                     Create Event
                   </Button>
                 </form>
@@ -274,7 +352,9 @@ export function Events() {
 
         <div className="space-y-12">
           <section ref={upcomingRef}>
-            <h2 className="text-2xl font-bold text-[#003c71] mb-6 animate-fade-in">Upcoming Events</h2>
+            <h2 className="text-2xl font-bold text-[#003c71] mb-6 animate-fade-in">
+              Upcoming Events
+            </h2>
             <div className="grid gap-8">
               {currentUpcomingEvents.map((event, index) => (
                 <EventCard key={event.id} event={event} index={index} />
@@ -292,7 +372,9 @@ export function Events() {
           </section>
 
           <section ref={pastRef}>
-            <h2 className="text-2xl font-bold text-[#003c71] mb-6 animate-fade-in">Past Events</h2>
+            <h2 className="text-2xl font-bold text-[#003c71] mb-6 animate-fade-in">
+              Past Events
+            </h2>
             <div className="grid gap-8">
               {currentPastEvents.map((event, index) => (
                 <EventCard key={event.id} event={event} index={index} />
