@@ -4,6 +4,16 @@ import { PhotoGallery } from "@/components/PhotoGallery";
 import { ArrowDown, ArrowRight, Calendar, Newspaper, UserPlus } from "lucide-react";
 import { Link } from "wouter";
 
+interface OfferCardProps {
+  title: string;
+  content: string;
+  date?: string;
+  description: string;
+  link: string;
+  linkText: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
 export function Home() {
   const scrollToContent = () => {
     window.scrollTo({
@@ -28,7 +38,7 @@ export function Home() {
             className="bg-[#b3a369] hover:bg-[#a39359] text-white mb-12"
             asChild
           >
-            <a href="/membership">Join Us Today</a>
+            <Link to="/membership">Join Us Today</Link>
           </Button>
           <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 cursor-pointer animate-bounce">
             <ArrowDown 
@@ -47,15 +57,15 @@ export function Home() {
             What We Offer
           </h2>
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 items-stretch max-w-[1000px] mx-auto">
-            {[
+            {([
               { title: "Upcoming Event", content: "Guest Speaker: John Doe", date: "May 15, 2024 | 4:00 PM", description: "Join us for an insightful talk on commercial real estate trends with industry expert John Doe.", link: "/events/1", linkText: "Info", icon: Calendar },
               { title: "Latest News", content: "Club Wins National Competition", date: "April 30, 2024", description: "Our Real Estate Club team took first place in the National Real Estate Challenge. Congratulations to all participants!", link: "/news", linkText: "Read Full Story", icon: Newspaper },
               { title: "Membership", content: "Join Our Community", description: "Become a member of the Real Estate Club and gain access to exclusive events, networking opportunities, and hands-on experiences in the real estate industry.", link: "/membership", linkText: "Learn More", icon: UserPlus }
-            ].map((item, index) => (
-              <Card key={index} className="flex flex-col transition-all duration-300 hover:shadow-lg animate-fade-in card-hover" style={{animationDelay: `${index * 100}ms`}}>
+            ] as OfferCardProps[]).map((item, index) => (
+              <Card key={index} className="flex flex-col transition-all duration-300 hover:shadow-lg animate-fade-in">
                 <CardHeader>
                   <CardTitle className="text-2xl font-bold text-[#003c71] flex items-center">
-                    {item.icon && <item.icon className="mr-2 h-6 w-6" />}
+                    <item.icon className="mr-2 h-6 w-6" />
                     {item.title}
                   </CardTitle>
                 </CardHeader>
@@ -63,8 +73,8 @@ export function Home() {
                   <h3 className="text-xl font-semibold mb-2">{item.content}</h3>
                   {item.date && <p className="text-sm text-gray-600 mb-2">{item.date}</p>}
                   <p className="text-gray-600 mb-4">{item.description}</p>
-                  <Button asChild variant="outline" className="w-full hover:bg-[#003c71] hover:text-white transition-colors button-hover">
-                    <Link href={item.link}>
+                  <Button variant="outline" className="w-full hover:bg-[#003c71] hover:text-white transition-colors" asChild>
+                    <Link to={item.link}>
                       {item.linkText}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
