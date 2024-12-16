@@ -21,9 +21,9 @@ export function Layout({ children, title }: LayoutProps) {
       <Header />
       <main className="flex-1">
         {title && (
-          <div className="bg-[#003c71] text-white py-8 mt-16">
+          <div className="bg-[#003c71] text-white py-12 md:py-24 lg:py-32">
             <div className="container mx-auto px-4">
-              <h1 className="text-3xl font-bold tracking-tighter animate-fade-in">
+              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl animate-fade-in">
                 {title}
               </h1>
             </div>

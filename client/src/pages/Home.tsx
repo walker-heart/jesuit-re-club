@@ -25,8 +25,8 @@ export function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="min-h-screen bg-[#003c71] text-white relative flex items-center justify-center pt-16">
-        <div className="container mx-auto px-4 text-center py-12">
+      <section className="h-screen bg-[#003c71] text-white relative flex items-center justify-center">
+        <div className="container mx-auto px-4 text-center">
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
             Welcome to the Real Estate Club
           </h1>
@@ -51,10 +51,10 @@ export function Home() {
       </section>
 
       {/* What We Offer Section */}
-      <section className="w-full py-6 lg:py-12 bg-gray-0">
+      <section className="w-full py-24 lg:py-32 bg-gray-50">
         <div className="container px-4 md:px-6 mx-auto">
           <div className="grid gap-6 md:grid-cols-3 w-full max-w-[1200px] mx-auto">
-            <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-6 animate-fade-in col-span-full">
+            <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in col-span-full">
               What We Offer
             </h2>
             {([
@@ -70,13 +70,6 @@ export function Home() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-grow">
-                  <div className="w-full h-40 bg-gray-200 rounded-md mb-4 overflow-hidden">
-                    <img
-                      src="/placeholder.svg?height=160&width=320"
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
                   <h3 className="text-xl font-semibold mb-2">{item.content}</h3>
                   {item.date && <p className="text-sm text-gray-600 mb-2">{item.date}</p>}
                   <p className="text-gray-600 mb-4">{item.description}</p>
@@ -96,8 +89,8 @@ export function Home() {
       
 
       {/* Photo Gallery Section */}
-      <section className="w-full py-24 lg:py-12 bg-gray-50">
-        <div className="container px-4 md:px-6 mx-auto">
+      <section className="w-full py-24 lg:py-32 bg-gray-50">
+        <div className="container px-4 md:px-6">
           <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in">
             Photo Gallery
           </h2>
