@@ -41,8 +41,8 @@ export function Resources() {
   const { user } = useAuth();
 
   return (
-    <div className="w-full py-12 md:py-24 lg:py-32">
-      <div className="container px-4 md:px-6 flex justify-center">
+    <div className="w-full py-8 md:py-12 lg:py-16">
+      <div className="container px-4 md:px-6 mx-auto flex justify-center">
         <div className="grid gap-8 md:grid-cols-2 w-full max-w-[1000px]">
           {resources.map((resource, i) => (
             <Card key={i} className="p-6 bg-white rounded-lg shadow-lg card-hover animate-fade-in">
