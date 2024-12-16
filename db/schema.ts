@@ -3,10 +3,20 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  firebaseUid: text("firebase_uid").unique().notNull(),
   email: text("email").unique().notNull(),
   username: text("username").unique().notNull(),
-  password: text("password").notNull(),
   role: text("role", { enum: ['user', 'editor', 'admin'] }).notNull().default('user'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const sessions = pgTable("sessions", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id),
+  firebaseUid: text("firebase_uid").notNull(),
+  token: text("token").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

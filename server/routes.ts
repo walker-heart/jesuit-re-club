@@ -1,95 +1,184 @@
-import type { Express, Request } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
+import { auth } from "firebase-admin";
 import { db } from "@db";
-import { eq } from "drizzle-orm";
-import { users } from "@db/schema";
-import bcrypt from "bcrypt";
+import { eq, and, or, gt } from "drizzle-orm";
+import { users, sessions } from "@db/schema";
+import admin from "firebase-admin";
 
-// Extend Express.Session type to include userId
-declare module "express-session" {
-  interface Session {
-    userId?: number;
+// Extend Express Request type to include Firebase user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: auth.DecodedIdToken;
+    }
   }
 }
 
-// Configure passport local strategy
-passport.use(
-  new LocalStrategy(async (username, password, done) => {
-    try {
-      const [user] = await db.select().from(users).where(eq(users.username, username));
-      
-      if (!user) {
-        return done(null, false, { message: "Invalid username" });
-      }
-
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return done(null, false, { message: "Invalid password" });
-      }
-
-      return done(null, user);
-    } catch (err) {
-      return done(err);
-    }
-  })
-);
-
-passport.serializeUser((user: any, done) => {
-  done(null, user.id);
+// Initialize Firebase Admin
+admin.initializeApp({
+  credential: admin.credential.cert({
+    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  }),
 });
 
-passport.deserializeUser(async (id: number, done) => {
-  try {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    done(null, user || null);
-  } catch (err) {
-    done(err);
+// Middleware to verify Firebase token
+async function verifyFirebaseToken(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'No token provided' });
   }
-});
+
+  try {
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.user = decodedToken;
+    next();
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    res.status(401).json({ message: 'Invalid token' });
+  }
+}
 
 export function registerRoutes(app: Express): Server {
-  // Initialize passport middleware
-  app.use(passport.initialize());
-  app.use(passport.session());
-
   // Auth routes
-  app.post("/api/auth/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) return next(err);
-      if (!user) return res.status(401).json({ message: info.message });
+  app.post("/api/auth/register", verifyFirebaseToken, async (req, res) => {
+    try {
+      const { email, username } = req.body;
+      const firebaseUid = req.user.uid;
 
-      req.logIn(user, (err) => {
-        if (err) return next(err);
-        // Save session explicitly
-        req.session.save(() => {
-          return res.json({ 
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            role: user.role
-          });
-        });
+      // Check if user already exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(
+          or(
+            eq(users.email, email),
+            eq(users.username, username),
+            eq(users.firebaseUid, firebaseUid)
+          )
+        );
+
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Create new user
+      const [user] = await db
+        .insert(users)
+        .values({
+          email,
+          username,
+          firebaseUid,
+          role: 'user',
+        })
+        .returning();
+
+      // Create session
+      await db.insert(sessions).values({
+        userId: user.id,
+        firebaseUid,
+        token: req.headers.authorization!.split('Bearer ')[1],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       });
-    })(req, res, next);
-  });
 
-  app.post("/api/auth/logout", (req, res) => {
-    req.logout(() => {
-      res.json({ message: "Logged out successfully" });
-    });
-  });
-
-  app.get("/api/auth/session", (req, res) => {
-    if (!req.user) {
-      return res.status(401).json({ message: "Not authenticated" });
+      res.json(user);
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ message: "Registration failed" });
     }
-    res.json({
-      id: (req.user as any).id,
-      username: (req.user as any).username,
-      role: (req.user as any).role || 'user'
-    });
+  });
+
+  app.post("/api/auth/login", verifyFirebaseToken, async (req, res) => {
+    try {
+      const firebaseUid = req.user.uid;
+
+      // Find user
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.firebaseUid, firebaseUid));
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Create or update session
+      await db
+        .insert(sessions)
+        .values({
+          userId: user.id,
+          firebaseUid,
+          token: req.headers.authorization!.split('Bearer ')[1],
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        })
+        .onConflictDoUpdate({
+          target: [sessions.userId],
+          set: {
+            token: req.headers.authorization!.split('Bearer ')[1],
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          },
+        });
+
+      res.json(user);
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", verifyFirebaseToken, async (req, res) => {
+    try {
+      const firebaseUid = req.user.uid;
+
+      // Remove session
+      await db
+        .delete(sessions)
+        .where(eq(sessions.firebaseUid, firebaseUid));
+
+      res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
+  app.get("/api/auth/session", verifyFirebaseToken, async (req, res) => {
+    try {
+      const firebaseUid = req.user.uid;
+
+      // Find valid session
+      const [session] = await db
+        .select()
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.firebaseUid, firebaseUid),
+            gt(sessions.expiresAt, new Date())
+          )
+        );
+
+      if (!session) {
+        return res.status(401).json({ message: "No valid session found" });
+      }
+
+      // Get user data
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, session.userId));
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error('Session verification error:', error);
+      res.status(500).json({ message: "Session verification failed" });
+    }
   });
 
   const httpServer = createServer(app);
