@@ -8,7 +8,7 @@ export function About() {
           <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
             About Us
           </h1>
-          <p className="mt-4 text-lg">
+          <p className="mt-4 text-lg text-gray-300">
             Learn more about the Real Estate Club at Jesuit Dallas
           </p>
         </div>
