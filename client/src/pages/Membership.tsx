@@ -14,7 +14,7 @@ export function Membership() {
 
   return (
     <>
-      <section className="w-full py-8 md:py-12 lg:py-16">
+      <section className="w-full py-4 md:py-6 lg:py-8">
         <div className="container px-4 md:px-6 mx-auto flex justify-center">
           <div className="grid gap-10 w-full max-w-[800px]">
             <Card className="animate-fade-in card-hover">

@@ -258,7 +258,7 @@ export function Events() {
   };
 
   return (
-    <div className="w-full py-8 md:py-12 lg:py-16">
+    <div className="w-full py-4 md:py-6 lg:py-8">
       <div className="container px-4 md:px-6 mx-auto flex flex-col items-center">
         {(user?.role === "admin" || user?.role === "editor") && (
           <div className="mb-8">
