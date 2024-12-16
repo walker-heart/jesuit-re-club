@@ -29,9 +29,7 @@ export function Layout({ children, title }: LayoutProps) {
             </div>
           </div>
         )}
-        <div className={title ? "" : "mt-16"}>
-          {children}
-        </div>
+        {children}
       </main>
       <Footer />
     </div>
