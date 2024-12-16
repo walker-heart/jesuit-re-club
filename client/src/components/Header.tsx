@@ -33,9 +33,9 @@ export function Header() {
     };
   }, [location]);
 
-  const headerClasses = `fixed top-0 left-0 right-0 z-50 bg-[#003F87] text-white transition-all duration-300 ${
-    isVisible ? "translate-y-0 animate-slide-down" : "-translate-y-full"
-  }`;
+  const headerClasses = `fixed top-0 left-0 right-0 z-50 bg-[#003F87] text-white transition-transform duration-500 ease-in-out ${
+    isVisible ? "translate-y-0 opacity-100 shadow-lg backdrop-blur-sm bg-opacity-95" : "-translate-y-full opacity-0"
+  } ${location === "/" ? "transition-all duration-500" : ""}`;
 
   return (
     <header className={headerClasses}>
