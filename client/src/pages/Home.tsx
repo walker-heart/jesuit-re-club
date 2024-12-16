@@ -70,6 +70,13 @@ export function Home() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-grow">
+                  <div className="w-full h-40 bg-gray-200 rounded-md mb-4 overflow-hidden">
+                    <img
+                      src="/placeholder.svg?height=160&width=320"
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   <h3 className="text-xl font-semibold mb-2">{item.content}</h3>
                   {item.date && <p className="text-sm text-gray-600 mb-2">{item.date}</p>}
                   <p className="text-gray-600 mb-4">{item.description}</p>

@@ -27,7 +27,7 @@ export function EventPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12">
+    <div className="min-h-screen bg-gray-100 py-24">
       <div className="container mx-auto px-4">
         <Button asChild variant="outline" className="mb-6 button-hover">
           <Link href="/events">
