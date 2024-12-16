@@ -6,6 +6,7 @@ import { About } from "@/pages/About";
 import { Events } from "@/pages/Events";
 import { EventPage } from "@/pages/EventPage";
 import { Resources } from "@/pages/Resources";
+import { ResourcePage } from "@/pages/ResourcePage";
 import { News } from "@/pages/News";
 import { Admin } from "@/pages/Admin";
 import { Membership } from "@/pages/Membership";
@@ -66,6 +67,11 @@ function App() {
       <Route path="/resources">
         <Layout title="Resources">
           <Resources />
+        </Layout>
+      </Route>
+      <Route path="/resources/:slug">
+        <Layout>
+          <ResourcePage />
         </Layout>
       </Route>
       <Route path="/news">
