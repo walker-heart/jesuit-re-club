@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type User, type LoginCredentials, type AuthResponse } from '@/lib/types';
+import { type User, type LoginCredentials } from '@/lib/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function useAuth() {
@@ -11,11 +11,17 @@ export function useAuth() {
     retry: false,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    refetchInterval: 5 * 60 * 1000, // Refresh session every 5 minutes
+    staleTime: 4.5 * 60 * 1000, // Consider data stale after 4.5 minutes
     onSuccess: () => setIsLoading(false),
-    onError: () => {
+    onError: (error) => {
       setIsLoading(false);
+      // Only clear session data on 401 Unauthorized
+      if (error instanceof Error && error.message.includes('401')) {
+        queryClient.setQueryData(['/api/auth/session'], null);
+      }
       return null;
-    }
+    },
   });
 
   const login = useMutation({
@@ -28,13 +34,18 @@ export function useAuth() {
       });
       
       if (!res.ok) {
-        throw new Error(await res.text());
+        const errorText = await res.text();
+        throw new Error(errorText || 'Login failed');
       }
       
-      return res.json();
+      const data = await res.json();
+      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/session'] });
+    onSuccess: (data) => {
+      queryClient.setQueryData(['/api/auth/session'], data);
+    },
+    onError: () => {
+      queryClient.setQueryData(['/api/auth/session'], null);
     },
   });
 
@@ -46,7 +57,7 @@ export function useAuth() {
       });
       
       if (!res.ok) {
-        throw new Error(await res.text());
+        throw new Error('Logout failed');
       }
       
       return res.json();
@@ -54,11 +65,15 @@ export function useAuth() {
     onSuccess: () => {
       queryClient.setQueryData(['/api/auth/session'], null);
     },
+    onSettled: () => {
+      // Always refetch session after logout attempt
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/session'] });
+    },
   });
 
   return {
     user,
-    isLoading,
+    loading: isLoading,
     isError: !!error,
     login: login.mutate,
     logout: logout.mutate,
