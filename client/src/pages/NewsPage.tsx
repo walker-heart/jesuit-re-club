@@ -32,13 +32,6 @@ export function NewsPage() {
         </Button>
 
         <Card className="overflow-hidden">
-          <div className="w-full h-[300px] bg-gray-200 overflow-hidden">
-            <img
-              src="/placeholder.svg?height=600&width=1200"
-              alt={article.title}
-              className="w-full h-full object-cover"
-            />
-          </div>
           <CardContent className="p-8">
             <h1 className="text-3xl font-bold text-[#003c71] mb-4">{article.title}</h1>
             <div className="flex items-center text-gray-600 mb-6">
