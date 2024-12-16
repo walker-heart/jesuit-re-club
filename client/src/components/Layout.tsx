@@ -19,9 +19,9 @@ export function Layout({ children, title }: LayoutProps) {
   return (
     <div className="flex min-h-screen flex-col font-sans">
       <Header />
-      <main className="flex-1 pt-24">
+      <main className="flex-1">
         {title && (
-          <div className="bg-[#003c71] text-white py-8">
+          <div className="bg-[#003c71] text-white py-8 mt-16">
             <div className="container mx-auto px-4">
               <h1 className="text-3xl font-bold tracking-tighter animate-fade-in">
                 {title}
@@ -29,7 +29,9 @@ export function Layout({ children, title }: LayoutProps) {
             </div>
           </div>
         )}
-        {children}
+        <div className={title ? "" : "mt-16"}>
+          {children}
+        </div>
       </main>
       <Footer />
     </div>
