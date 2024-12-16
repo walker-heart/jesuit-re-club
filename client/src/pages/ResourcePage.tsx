@@ -100,12 +100,13 @@ export function ResourcePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-12">
-        <Button asChild variant="outline" className="mb-6 button-hover">
-          <Link href="/resources">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Resources
-          </Link>
-        </Button>
+        <div className="max-w-3xl mx-auto">
+          <Button asChild variant="outline" className="mb-6 button-hover">
+            <Link href="/resources">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Resources
+            </Link>
+          </Button>
         
         <div className="grid gap-6 max-w-3xl mx-auto">
           <h1 className="text-3xl font-bold text-[#003c71] mb-4">{resource.title}</h1>
