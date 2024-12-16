@@ -50,24 +50,9 @@ export function Header() {
           <Link href="/resources"><a className="hover:text-gray-200">Resources</a></Link>
           <Link href="/news"><a className="hover:text-gray-200">News</a></Link>
           
-          {user ? (
-            <>
-              {(user.role === 'admin' || user.role === 'editor') && (
-                <Link href="/admin">
-                  <Button variant="secondary" className="bg-[#C4B47F] hover:bg-[#B3A26E] text-white">Admin</Button>
-                </Link>
-              )}
-              <Button 
-                variant="secondary"
-                onClick={() => auth.signOut()}
-                className="bg-[#C4B47F] hover:bg-[#B3A26E] text-white"
-              >
-                Logout
-              </Button>
-            </>
-          ) : (
-            <Link href="/login">
-              <Button variant="secondary" className="bg-[#C4B47F] hover:bg-[#B3A26E] text-white">Login</Button>
+          {(user?.role === 'admin' || user?.role === 'editor') && (
+            <Link href="/admin">
+              <Button variant="secondary" className="bg-[#C4B47F] hover:bg-[#B3A26E] text-white">Admin</Button>
             </Link>
           )}
         </div>
