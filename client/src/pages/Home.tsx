@@ -38,14 +38,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Photo Gallery Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-16 text-[#003c71]">Our Gallery</h2>
-          <PhotoGallery />
-        </div>
-      </section>
-
       {/* What We Offer Section */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
@@ -106,6 +98,14 @@ export function Home() {
               <Button variant="link" className="text-[#003c71]">Learn More →</Button>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Photo Gallery Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center mb-16 text-[#003c71]">Our Gallery</h2>
+          <PhotoGallery />
         </div>
       </section>
 

@@ -1,49 +1,61 @@
-import { useState } from 'react';
-import { Card } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+'use client'
+
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { Card } from "@/components/ui/card"
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const photos = [
   {
-    url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab',
+    url: '/placeholder.svg?height=600&width=800',
     alt: 'Real Estate Event 1',
     caption: 'Annual Real Estate Summit'
   },
   {
-    url: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa',
+    url: '/placeholder.svg?height=600&width=800',
     alt: 'Real Estate Event 2',
     caption: 'Downtown Property Tour'
   },
   {
-    url: 'https://images.unsplash.com/photo-1479839672679-a46483c0e7c8',
+    url: '/placeholder.svg?height=600&width=800',
     alt: 'Real Estate Event 3',
     caption: 'Networking Event'
   },
-];
+]
 
-export function PhotoGallery() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+export function PhotoCarousel() {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      nextSlide()
+    }, 5000) // Rotate every 5 seconds
+
+    return () => clearInterval(timer)
+  }, [])
 
   const nextSlide = () => {
-    setIsTransitioning(true);
-    setCurrentIndex((current) => (current + 1) % photos.length);
-    setTimeout(() => setIsTransitioning(false), 500);
-  };
+    setIsTransitioning(true)
+    setCurrentIndex((current) => (current + 1) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 500)
+  }
 
   const prevSlide = () => {
-    setIsTransitioning(true);
-    setCurrentIndex((current) => (current - 1 + photos.length) % photos.length);
-    setTimeout(() => setIsTransitioning(false), 500);
-  };
+    setIsTransitioning(true)
+    setCurrentIndex((current) => (current - 1 + photos.length) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 500)
+  }
 
   return (
     <div className="relative w-full max-w-5xl mx-auto animate-fade-in">
       <Card className="overflow-hidden shadow-2xl">
         <div className="relative aspect-[4/3] w-full">
-          <img
+          <Image
             src={photos[currentIndex].url}
             alt={photos[currentIndex].alt}
-            className={`w-full h-full object-cover transition-opacity duration-500 ${
+            fill
+            className={`object-cover transition-opacity duration-500 ${
               isTransitioning ? 'opacity-0' : 'opacity-100'
             }`}
           />
@@ -79,5 +91,6 @@ export function PhotoGallery() {
         ))}
       </div>
     </div>
-  );
+  )
 }
+
