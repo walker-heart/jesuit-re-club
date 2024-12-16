@@ -22,7 +22,7 @@
   }
 
   .nav-link-hover {
-    @apply transition-colors duration-300 hover:text-[#b3a369];
+    @apply transition-colors duration-300 text-[#003c71] hover:text-[#b3a369];
   }
 }
 

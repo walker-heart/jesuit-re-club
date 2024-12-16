@@ -33,7 +33,7 @@ export function Header() {
     };
   }, [location]);
 
-  const headerClasses = `fixed top-0 left-0 right-0 z-50 bg-[#003c71] text-white transition-transform duration-500 ease-in-out ${
+  const headerClasses = `fixed top-0 left-0 right-0 z-50 bg-[#ffffff] text-[#003c71] transition-transform duration-500 ease-in-out ${
     isVisible ? "translate-y-0 opacity-100 shadow-lg backdrop-blur-sm bg-opacity-95" : "-translate-y-full opacity-0"
   } ${location === "/" ? "transition-all duration-500" : ""}`;
 
@@ -54,7 +54,7 @@ export function Header() {
           
           {(user?.role === 'admin' || user?.role === 'editor') && (
             <Link href="/admin">
-              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-white button-hover">Admin</Button>
+              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-[#003c71] button-hover">Admin</Button>
             </Link>
           )}
         </div>
