@@ -1,6 +1,7 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { useScrollTop } from "@/hooks/useScrollTop";
 
 interface LayoutProps {
   children: ReactNode;
@@ -8,15 +9,12 @@ interface LayoutProps {
 }
 
 export function Layout({ children, title }: LayoutProps) {
+  useScrollTop(); // This will handle scroll behavior on route changes
+
   // Update document title when title prop changes
   if (title) {
     document.title = `${title} | Real Estate Club`;
   }
-
-  // Scroll to top when component mounts (route changes)
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
 
   return (
     <div className="flex min-h-screen flex-col font-sans">
