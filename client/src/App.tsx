@@ -8,6 +8,7 @@ import { EventPage } from "@/pages/EventPage";
 import { Resources } from "@/pages/Resources";
 import { ResourcePage } from "@/pages/ResourcePage";
 import { News } from "@/pages/News";
+import { NewsPage } from "@/pages/NewsPage";
 import { Admin } from "@/pages/Admin";
 import { Membership } from "@/pages/Membership";
 import { useAuth } from "@/hooks/useAuth";
@@ -77,6 +78,11 @@ function App() {
       <Route path="/news">
         <Layout title="News">
           <News />
+        </Layout>
+      </Route>
+      <Route path="/news/:slug">
+        <Layout>
+          <NewsPage />
         </Layout>
       </Route>
       <Route path="/admin">
