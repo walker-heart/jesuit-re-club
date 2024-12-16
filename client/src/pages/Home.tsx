@@ -52,11 +52,11 @@ export function Home() {
 
       {/* What We Offer Section */}
       <section className="w-full py-24 lg:py-32 bg-gray-50">
-        <div className="container px-4 md:px-6 mx-auto">
-          <div className="grid gap-6 md:grid-cols-3 w-full max-w-[1200px] mx-auto">
-            <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in col-span-full">
-              What We Offer
-            </h2>
+        <div className="container px-4 md:px-6">
+          <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in">
+            What We Offer
+          </h2>
+          <div className="grid gap-6 md:grid-cols-3 w-full max-w-5xl mx-auto">
             {([
               { title: "Upcoming Event", content: "Guest Speaker: John Doe", date: "May 15, 2024 | 4:00 PM", description: "Join us for an insightful talk on commercial real estate trends with industry expert John Doe.", link: "/events/1", linkText: "Info", icon: Calendar },
               { title: "Latest News", content: "Club Wins National Competition", date: "April 30, 2024", description: "Our Real Estate Club team took first place in the National Real Estate Challenge. Congratulations to all participants!", link: "/news", linkText: "Read Full Story", icon: Newspaper },
