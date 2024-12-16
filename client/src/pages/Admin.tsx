@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { db, auth, type UserRole } from '@/lib/firebase';
+import { auth, type UserRole, createDocument, readDocuments, updateDocument, deleteDocument } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, query, getDocs, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Table,
@@ -57,13 +56,11 @@ export function Admin() {
 
   const fetchUsers = async () => {
     try {
-      const usersQuery = query(collection(db, 'users'));
-      const snapshot = await getDocs(usersQuery);
-      const usersList = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate().toISOString() || new Date().toISOString()
-      })) as UserData[];
-      setUsers(usersList);
+      const usersList = await readDocuments<UserData>('users');
+      setUsers(usersList.map(user => ({
+        ...user,
+        createdAt: user.createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+      })));
     } catch (error) {
       toast({
         title: "Error",
@@ -84,11 +81,10 @@ export function Admin() {
       );
 
       // Create user document in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
+      await createDocument('users', {
         uid: userCredential.user.uid,
         email: newUser.email,
         role: newUser.role,
-        createdAt: new Date()
       });
 
       setNewUser({
@@ -117,7 +113,7 @@ export function Admin() {
     if (!editingUser) return;
 
     try {
-      await updateDoc(doc(db, 'users', editingUser.uid), {
+      await updateDocument('users', editingUser.uid, {
         role: editingUser.role
       });
       
@@ -140,7 +136,7 @@ export function Admin() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      await deleteDoc(doc(db, 'users', userId));
+      await deleteDocument('users', userId);
       fetchUsers();
       
       toast({

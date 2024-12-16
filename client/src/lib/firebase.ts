@@ -7,7 +7,20 @@ import {
   onAuthStateChanged,
   type User as FirebaseUser 
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  getDocs, 
+  getDoc,
+  addDoc, 
+  updateDoc, 
+  deleteDoc,
+  query,
+  where,
+  type DocumentData,
+  serverTimestamp
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -20,7 +33,7 @@ const firebaseConfig = {
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const firestore = getFirestore(app);
+export const db = getFirestore(app);
 
 // User types
 export type UserRole = 'admin' | 'editor' | 'user';
@@ -33,6 +46,90 @@ export interface User {
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Generic CRUD operations
+export async function createDocument<T extends DocumentData>(
+  collectionName: string,
+  data: T
+): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(db, collectionName), {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error(`Error creating ${collectionName} document:`, error);
+    throw error;
+  }
+}
+
+export async function readDocument<T>(
+  collectionName: string,
+  documentId: string
+): Promise<T | null> {
+  try {
+    const docRef = doc(db, collectionName, documentId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as T;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error reading ${collectionName} document:`, error);
+    throw error;
+  }
+}
+
+export async function readDocuments<T>(
+  collectionName: string,
+  whereClause?: { field: string; operator: "==" | ">" | "<" | ">=" | "<="; value: any }
+): Promise<T[]> {
+  try {
+    let q = collection(db, collectionName);
+    if (whereClause) {
+      q = query(q, where(whereClause.field, whereClause.operator, whereClause.value));
+    }
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
+  } catch (error) {
+    console.error(`Error reading ${collectionName} documents:`, error);
+    throw error;
+  }
+}
+
+export async function updateDocument<T extends DocumentData>(
+  collectionName: string,
+  documentId: string,
+  data: Partial<T>
+): Promise<void> {
+  try {
+    const docRef = doc(db, collectionName, documentId);
+    await updateDoc(docRef, {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error(`Error updating ${collectionName} document:`, error);
+    throw error;
+  }
+}
+
+export async function deleteDocument(
+  collectionName: string,
+  documentId: string
+): Promise<void> {
+  try {
+    const docRef = doc(db, collectionName, documentId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.error(`Error deleting ${collectionName} document:`, error);
+    throw error;
+  }
 }
 
 // Firebase Auth functions with session management
