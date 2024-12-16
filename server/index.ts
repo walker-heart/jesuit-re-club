@@ -6,40 +6,30 @@ import { setupVite, serveStatic, log } from "./vite";
 import passport from "passport";
 
 const app = express();
-
-// Essential middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Session configuration
 const MemoryStoreSession = MemoryStore(session);
-const sessionStore = new MemoryStoreSession({
-  checkPeriod: 86400000, // prune expired entries every 24h
-});
-
-// Trust first proxy in production
-if (process.env.NODE_ENV === "production") {
-  app.set("trust proxy", 1);
-}
-
-// Session middleware
 app.use(
   session({
-    store: sessionStore,
-    name: "sid",
-    secret: process.env.SESSION_SECRET || "development_secret",
+    cookie: {
+      maxAge: 86400000, // 24 hours
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax", // Changed to lax to allow redirect-based auth
+      httpOnly: true,
+    },
+    store: new MemoryStoreSession({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    }),
+    name: 'sid', // Set a specific name for the session ID cookie
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-    },
+    secret: process.env.SESSION_SECRET || "development_secret",
   })
 );
 
-// Initialize passport after session middleware
+// Initialize passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
 
