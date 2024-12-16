@@ -19,7 +19,7 @@ export function Layout({ children, title }: LayoutProps) {
   return (
     <div className="flex min-h-screen flex-col font-sans">
       <Header />
-      <main className="flex-1">
+      <main className="flex-1 pt-24">
         {title && (
           <div className="bg-[#003c71] text-white py-8">
             <div className="container mx-auto px-4">
