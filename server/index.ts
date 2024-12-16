@@ -56,9 +56,24 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
-  const PORT = 5000;
+  // Try to use port 5000 first, fallback to other ports if unavailable
+  const tryPort = async (port: number): Promise<number> => {
+    try {
+      await new Promise((resolve, reject) => {
+        server.listen(port, "0.0.0.0")
+          .once('listening', () => {
+            server.close();
+            resolve(port);
+          })
+          .once('error', reject);
+      });
+      return port;
+    } catch {
+      return port < 5010 ? tryPort(port + 1) : Promise.reject(new Error('No available ports'));
+    }
+  };
+
+  const PORT = await tryPort(5000);
   server.listen(PORT, "0.0.0.0", () => {
     log(`serving on port ${PORT}`);
   });

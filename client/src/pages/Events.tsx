@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { format } from 'date-fns';
 
 interface Event {
   id: number;
@@ -17,7 +16,6 @@ interface Event {
   date: string;
   time: string;
   location: string;
-  imageUrl?: string;
 }
 
 export function Events() {
@@ -34,7 +32,6 @@ export function Events() {
     location: '',
   });
 
-  // Mock data - In a real app, this would come from an API
   const allUpcomingEvents: Event[] = [
     {
       id: 1,
@@ -51,6 +48,22 @@ export function Events() {
       time: "3:30 PM",
       location: "Room 201",
       description: "Learn how to analyze real estate markets and identify investment opportunities in this hands-on workshop.",
+    },
+    {
+      id: 5,
+      title: "Property Valuation Seminar",
+      date: "June 15, 2024",
+      time: "2:00 PM",
+      location: "Conference Room A",
+      description: "Learn the fundamentals of property valuation from experienced appraisers.",
+    },
+    {
+      id: 6,
+      title: "Real Estate Tech Innovation Showcase",
+      date: "July 1, 2024",
+      time: "1:00 PM",
+      location: "Innovation Lab",
+      description: "Explore cutting-edge technologies shaping the future of real estate.",
     },
   ];
 
@@ -70,6 +83,22 @@ export function Events() {
       time: "3:00 PM",
       location: "Seminar Room 101",
       description: "Expert panel discussion on various real estate investment strategies and market opportunities.",
+    },
+    {
+      id: 7,
+      title: "Networking Mixer with Industry Leaders",
+      date: "March 1, 2024",
+      time: "5:00 PM",
+      location: "Student Center",
+      description: "Students connected with Dallas's top real estate professionals in an informal networking session.",
+    },
+    {
+      id: 8,
+      title: "Sustainable Development Symposium",
+      date: "February 15, 2024",
+      time: "2:00 PM",
+      location: "Green Building Center",
+      description: "Discussion on eco-friendly practices and sustainable development in real estate.",
     },
   ];
 
@@ -110,33 +139,37 @@ export function Events() {
     }
   };
 
-  const EventCard = ({ event, index }: { event: Event, index: number }) => (
-    <Card className="p-6 bg-white rounded-lg shadow-lg animate-fade-in hover:shadow-xl transition-shadow card-hover" style={{animationDelay: `${index * 100}ms`}}>
-      <CardHeader>
-        <CardTitle className="text-xl font-bold text-[#003c71] mb-2">{event.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center text-gray-500 mb-2">
-          <Calendar className="mr-2 h-4 w-4" />
-          <span>{event.date}</span>
+  const EventCard = ({ event, index }: { event: Event; index: number }) => (
+    <Card className="animate-fade-in card-hover" style={{animationDelay: `${index * 100}ms`}}>
+      <CardContent className="p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h3 className="text-xl font-bold text-[#003c71] mb-2">{event.title}</h3>
+            <div className="flex flex-col sm:flex-row gap-4 text-gray-500 mb-2">
+              <div className="flex items-center">
+                <Calendar className="mr-2 h-4 w-4" />
+                <span>{event.date}</span>
+              </div>
+              <div className="flex items-center">
+                <Clock className="mr-2 h-4 w-4" />
+                <span>{event.time}</span>
+              </div>
+              <div className="flex items-center">
+                <MapPin className="mr-2 h-4 w-4" />
+                <span>{event.location}</span>
+              </div>
+            </div>
+            <p className="text-gray-600">{event.description}</p>
+          </div>
+          <Button asChild className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover shrink-0">
+            <Link href={`/events/${event.id}`}>View Details →</Link>
+          </Button>
         </div>
-        <div className="flex items-center text-gray-500 mb-2">
-          <Clock className="mr-2 h-4 w-4" />
-          <span>{event.time}</span>
-        </div>
-        <div className="flex items-center text-gray-500 mb-4">
-          <MapPin className="mr-2 h-4 w-4" />
-          <span>{event.location}</span>
-        </div>
-        <p className="text-gray-600 mb-4">{event.description}</p>
-        <Button className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover" asChild>
-          <Link href={`/events/${event.id}`}>View Details →</Link>
-        </Button>
       </CardContent>
     </Card>
   );
 
-  const Pagination = ({ currentPage, totalPages, setPage, label }: { currentPage: number, totalPages: number, setPage: (page: number) => void, label: string }) => (
+  const Pagination = ({ currentPage, totalPages, setPage, label }: { currentPage: number; totalPages: number; setPage: (page: number) => void; label: string }) => (
     <div className="flex justify-center items-center space-x-4 mt-8">
       <Button
         onClick={() => setPage(Math.max(currentPage - 1, 1))}
