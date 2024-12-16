@@ -17,8 +17,8 @@ export function Membership() {
       
 
       <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-50">
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-10 mx-auto max-w-[1000px]">
+        <div className="container px-4 md:px-6 flex justify-center">
+          <div className="grid gap-10 w-full max-w-[800px]">
             <Card className="animate-fade-in card-hover">
               <CardHeader>
                 <CardTitle className="text-2xl font-bold text-[#003c71]">Why Join?</CardTitle>
