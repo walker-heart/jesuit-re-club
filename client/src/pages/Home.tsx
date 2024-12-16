@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { ArrowDown, ArrowRight, Calendar, Newspaper, UserPlus } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 interface OfferCardProps {
   title: string;
@@ -15,6 +16,7 @@ interface OfferCardProps {
 }
 
 export function Home() {
+  const { user } = useAuth();
   const scrollToContent = () => {
     window.scrollTo({
       top: window.innerHeight,
@@ -112,7 +114,11 @@ export function Home() {
             className="bg-[#C4B47F] hover:bg-[#B3A26E] text-white"
             asChild
           >
-            <a href="/membership">Become a Member</a>
+            {user ? (
+              <Link href="/account">Account</Link>
+            ) : (
+              <Link href="/login">Login</Link>
+            )}
           </Button>
         </div>
       </section>

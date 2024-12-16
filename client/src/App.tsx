@@ -2,6 +2,7 @@ import { Switch, Route } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Home } from "@/pages/Home";
 import { Login } from "@/pages/Login";
+import { Account } from "@/pages/Account";
 import { About } from "@/pages/About";
 import { Events } from "@/pages/Events";
 import { EventPage } from "@/pages/EventPage";
@@ -83,6 +84,11 @@ function App() {
       <Route path="/news/:slug">
         <Layout>
           <NewsPage />
+        </Layout>
+      </Route>
+      <Route path="/account">
+        <Layout title="Account">
+          <Account />
         </Layout>
       </Route>
       <Route path="/admin">

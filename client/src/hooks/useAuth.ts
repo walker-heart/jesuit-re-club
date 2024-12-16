@@ -10,6 +10,9 @@ export function useAuth() {
     queryKey: ['/api/auth/session'],
     retry: false,
     onSettled: () => setIsLoading(false),
+    onError: () => {
+      return null;
+    }
   });
 
   const login = useMutation({
