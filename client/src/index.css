@@ -12,6 +12,20 @@
   }
 }
 
+@layer components {
+  .button-hover {
+    @apply transition-all duration-300 transform hover:scale-105;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .nav-link-hover {
+    @apply transition-colors duration-300 hover:text-[#b3a369];
+  }
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -23,6 +37,10 @@
 
   .animate-slide-up {
     animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animate-scale {
+    animation: scale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   @keyframes fadeIn {
@@ -50,6 +68,11 @@
       transform: translateY(-100%);
       opacity: 0;
     }
+  }
+
+  @keyframes scale {
+    from { transform: scale(0.95); }
+    to { transform: scale(1); }
   }
 }
 

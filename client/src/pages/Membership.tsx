@@ -47,7 +47,7 @@ export function Membership() {
         <div>
           <h2 className="text-2xl font-bold mb-6">Member Benefits</h2>
           <div className="space-y-6">
-            <Card>
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle>Networking Opportunities</CardTitle>
               </CardHeader>
@@ -58,7 +58,7 @@ export function Membership() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle>Educational Resources</CardTitle>
               </CardHeader>
@@ -69,7 +69,7 @@ export function Membership() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle>Event Access</CardTitle>
               </CardHeader>
@@ -80,7 +80,7 @@ export function Membership() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle>Hands-on Experience</CardTitle>
               </CardHeader>
@@ -140,7 +140,7 @@ export function Membership() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full bg-[#003c71] hover:bg-[#002c61] text-white">
+                <Button type="submit" className="w-full bg-[#003c71] hover:bg-[#002c61] text-white button-hover">
                   Submit Application
                 </Button>
               </form>

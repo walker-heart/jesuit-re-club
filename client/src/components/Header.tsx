@@ -45,16 +45,16 @@ export function Header() {
         </Link>
 
         <div className="flex gap-6 items-center">
-          <Link href="/"><a className="hover:text-gray-200">Home</a></Link>
-          <Link href="/about"><a className="hover:text-gray-200">About Us</a></Link>
-          <Link href="/events"><a className="hover:text-gray-200">Events</a></Link>
-          <Link href="/membership"><a className="hover:text-gray-200">Membership</a></Link>
-          <Link href="/resources"><a className="hover:text-gray-200">Resources</a></Link>
-          <Link href="/news"><a className="hover:text-gray-200">News</a></Link>
+          <Link href="/" className="nav-link-hover">Home</Link>
+          <Link href="/about" className="nav-link-hover">About Us</Link>
+          <Link href="/events" className="nav-link-hover">Events</Link>
+          <Link href="/membership" className="nav-link-hover">Membership</Link>
+          <Link href="/resources" className="nav-link-hover">Resources</Link>
+          <Link href="/news" className="nav-link-hover">News</Link>
           
           {(user?.role === 'admin' || user?.role === 'editor') && (
             <Link href="/admin">
-              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-white">Admin</Button>
+              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-white button-hover">Admin</Button>
             </Link>
           )}
         </div>

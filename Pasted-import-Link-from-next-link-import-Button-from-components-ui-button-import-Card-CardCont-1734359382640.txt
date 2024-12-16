@@ -1,0 +1,113 @@
+import Link from 'next/link'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PhotoCarousel } from '@/components/PhotoCarousel'
+import { ArrowRight, Calendar, Newspaper, UserPlus, Award, Users, BookOpen, ChevronDown } from 'lucide-react'
+
+export default function Home() {
+  return (
+    <>
+      <section className="relative h-screen flex items-center justify-center bg-[#003c71] text-white overflow-hidden">
+        <div className="container px-4 md:px-6 text-center">
+          <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl animate-fade-in mb-6">
+            Welcome to the Real Estate Club
+          </h1>
+          <p className="mx-auto max-w-[700px] text-xl sm:text-2xl text-zinc-200 animate-slide-up mb-12">
+            Empowering future leaders in the world of real estate
+          </p>
+          <Button asChild className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 animate-scale button-hover">
+            <Link href="/membership">Join Us Today</Link>
+          </Button>
+        </div>
+        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
+          <ChevronDown className="h-12 w-12" />
+          <span className="sr-only">Scroll down</span>
+        </div>
+      </section>
+
+      <section className="w-full py-24 lg:py-32 bg-gray-50">
+        <div className="container px-4 md:px-6">
+          <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in">
+            What We Offer
+          </h2>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 items-stretch">
+            {[
+              { title: "Upcoming Event", content: "Guest Speaker: John Doe", date: "May 15, 2023 | 4:00 PM", description: "Join us for an insightful talk on commercial real estate trends with industry expert John Doe.", link: "/events/1", linkText: "Info", icon: Calendar },
+              { title: "Latest News", content: "Club Wins National Competition", date: "April 30, 2023", description: "Our Real Estate Club team took first place in the National Real Estate Challenge. Congratulations to all participants!", link: "/news", linkText: "Read Full Story", icon: Newspaper },
+              { title: "Membership", content: "Join Our Community", description: "Become a member of the Real Estate Club and gain access to exclusive events, networking opportunities, and hands-on experiences in the real estate industry.", link: "/membership", linkText: "Learn More", icon: UserPlus }
+            ].map((item, index) => (
+              <Card key={index} className="flex flex-col transition-all duration-300 hover:shadow-lg animate-fade-in card-hover" style={{animationDelay: `${index * 100}ms`}}>
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold text-[#003c71] flex items-center">
+                    {item.icon && <item.icon className="mr-2 h-6 w-6" />}
+                    {item.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <h3 className="text-xl font-semibold mb-2">{item.content}</h3>
+                  {item.date && <p className="text-sm text-gray-600 mb-2">{item.date}</p>}
+                  <p className="text-gray-600 mb-4">{item.description}</p>
+                  <Button asChild variant="outline" className="w-full hover:bg-[#003c71] hover:text-white transition-colors button-hover">
+                    <Link href={item.link}>
+                      {item.linkText}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-24 lg:py-32 bg-white">
+        <div className="container px-4 md:px-6">
+          <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in">
+            Why Join Us?
+          </h2>
+          <div className="grid gap-8 md:grid-cols-3">
+            {[
+              { title: "Expert Speakers", description: "Learn from industry professionals and gain valuable insights.", icon: Award },
+              { title: "Networking", description: "Connect with peers and build relationships in the real estate world.", icon: Users },
+              { title: "Hands-on Experience", description: "Participate in projects and case studies to apply your knowledge.", icon: BookOpen },
+            ].map((item, index) => (
+              <div key={index} className="flex flex-col items-center text-center animate-fade-in" style={{animationDelay: `${index * 100}ms`}}>
+                <div className="bg-[#003c71] text-white p-3 rounded-full mb-4">
+                  <item.icon className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold text-[#003c71] mb-2">{item.title}</h3>
+                <p className="text-gray-600">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-24 lg:py-32 bg-gray-50">
+        <div className="container px-4 md:px-6">
+          <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in">
+            Photo Gallery
+          </h2>
+          <PhotoCarousel />
+        </div>
+      </section>
+
+      <section className="w-full py-24 lg:py-32 bg-[#003c71] text-white">
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center space-y-4 text-center">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl animate-fade-in">
+              Ready to Start Your Real Estate Journey?
+            </h2>
+            <p className="mx-auto max-w-[700px] text-xl text-zinc-200 animate-slide-up">
+              Join the Real Estate Club today and take the first step towards a successful career in real estate.
+            </p>
+            <Button asChild className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 mt-8 animate-scale button-hover">
+              <Link href="/membership">Become a Member</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+    </>
+  )
+}
+
