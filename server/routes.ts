@@ -161,9 +161,10 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/events", verifyFirebaseToken, async (_req: Request, res: Response) => {
+  app.get("/api/events", async (req: Request, res: Response) => {
     try {
-      const eventsSnapshot = await db.collection('events').get();
+      const eventsRef = admin.firestore().collection('events');
+      const eventsSnapshot = await eventsRef.get();
       const events = eventsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()

@@ -49,10 +49,7 @@ export function Events() {
       try {
         setIsLoadingEvents(true);
         const response = await fetch('/api/events', {
-          credentials: 'include',
-          headers: {
-            'Authorization': user ? `Bearer ${await user.getIdToken()}` : ''
-          }
+          credentials: 'include'
         });
 
         if (!response.ok) {
