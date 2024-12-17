@@ -74,14 +74,18 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
   };
 
   const handleSave = async () => {
-    // Check all required fields
+    // Check required fields
     const requiredFields = [
       { field: 'firstName', label: 'First Name' },
       { field: 'lastName', label: 'Last Name' },
       { field: 'username', label: 'Username' },
       { field: 'email', label: 'Email' },
-      { field: 'password', label: 'Password' }
     ];
+
+    // Only require password for new user creation
+    if (!user) {
+      requiredFields.push({ field: 'password', label: 'Password' });
+    }
 
     const missingFields = requiredFields
       .filter(({ field }) => !editedUser[field as keyof UserFormData])
@@ -98,15 +102,16 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
 
     setIsSubmitting(true);
     try {
-      if (!user) {
-        // Get the current user's ID token
-        const auth = getAuth();
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-          throw new Error('Not authenticated');
-        }
-        const token = await currentUser.getIdToken();
+      // Get the current user's ID token
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Not authenticated');
+      }
+      const token = await currentUser.getIdToken();
 
+      if (!user) {
+        // Creating new user
         console.log('Sending create user request with data:', {
           firstName: editedUser.firstName,
           lastName: editedUser.lastName,
@@ -131,6 +136,32 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
             password: editedUser.password,
             role: editedUser.role
           })
+        });
+      } else {
+        // Updating existing user
+        const updateData: any = {
+          firstName: editedUser.firstName,
+          lastName: editedUser.lastName,
+          username: editedUser.username,
+          email: editedUser.email,
+          role: editedUser.role
+        };
+
+        // Only include password if it was changed
+        if (editedUser.password) {
+          updateData.password = editedUser.password;
+        }
+
+        console.log('Sending update user request with data:', updateData);
+
+        const response = await fetch(`/api/admin/users/${user.uid}/update`, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updateData)
         });
 
         const responseText = await response.text();
@@ -237,7 +268,9 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="password" className="text-right">Password</Label>
+            <Label htmlFor="password" className="text-right">
+              {user ? 'New Password' : 'Password'}
+            </Label>
             <Input
               id="password"
               name="password"
@@ -245,8 +278,9 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
               value={editedUser.password}
               onChange={handleInputChange}
               className="col-span-3"
-              required
+              required={!user}
               minLength={6}
+              placeholder={user ? "Leave blank to keep current password" : "Enter password"}
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
