@@ -40,8 +40,20 @@ export function Account() {
           <CardContent>
             <div className="space-y-4">
               <div>
+                <h3 className="text-sm font-medium text-gray-500">First Name</h3>
+                <p className="mt-1 text-lg">{user.firstName || 'Not set'}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Last Name</h3>
+                <p className="mt-1 text-lg">{user.lastName || 'Not set'}</p>
+              </div>
+              <div>
                 <h3 className="text-sm font-medium text-gray-500">Username</h3>
                 <p className="mt-1 text-lg">{user.username}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Email</h3>
+                <p className="mt-1 text-lg">{user.email || 'Not set'}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Role</h3>
