@@ -143,20 +143,28 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      const { email, password, username, role } = req.body;
-      console.log('Parsed request data:', { email, username, role });
+      const { email, password, username, role, firstName, lastName } = req.body;
+      console.log('Parsed request data:', { email, username, firstName, lastName, role });
 
       // Validate required fields
-      if (!email || !password || !username || !role) {
-        console.log('Missing fields:', { 
-          hasEmail: !!email, 
-          hasPassword: !!password, 
-          hasUsername: !!username, 
-          hasRole: !!role 
-        });
+      const requiredFields = {
+        firstName,
+        lastName,
+        username,
+        email,
+        password,
+        role
+      };
+
+      const missingFields = Object.entries(requiredFields)
+        .filter(([_, value]) => !value)
+        .map(([field]) => field);
+
+      if (missingFields.length > 0) {
+        console.log('Missing fields:', missingFields);
         return res.status(400).json({ 
           success: false,
-          message: 'Missing required fields' 
+          message: `Missing required fields: ${missingFields.join(', ')}` 
         });
       }
 
@@ -175,16 +183,19 @@ export function registerRoutes(app: Express): Server {
         userRecord = await admin.auth().createUser({
           email,
           password,
-          displayName: username,
+          displayName: `${firstName} ${lastName}`,
         });
         console.log('User created in Firebase Auth:', userRecord.uid);
 
         console.log('Creating user document in Firestore...');
         const userData = {
           email,
+          firstName,
+          lastName,
           username,
           role,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           createdBy: req.user.uid,
         };
         
