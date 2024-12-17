@@ -1,6 +1,5 @@
-import { getAuth } from 'firebase/auth';
-import { getFirestore, collection, getDocs, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from './firebase-config';
+import { collection, getDocs, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { auth, db } from './firebase-config';
 
 export interface FirebaseUser {
   uid: string;
@@ -12,12 +11,26 @@ export interface FirebaseUser {
 
 export const fetchUsers = async (): Promise<FirebaseUser[]> => {
   try {
+    if (!auth.currentUser) {
+      throw new Error('Authentication required to fetch users');
+    }
+
+    // Get admin token
+    const token = await auth.currentUser.getIdToken();
+    
     const usersRef = collection(db, 'users');
     const usersSnapshot = await getDocs(usersRef);
-    return usersSnapshot.docs.map(doc => ({
-      uid: doc.id,
-      ...doc.data()
-    } as FirebaseUser));
+    
+    return usersSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        uid: doc.id,
+        email: data.email || '',
+        displayName: data.displayName || '',
+        role: data.role || 'user',
+        createdAt: data.createdAt || new Date().toISOString()
+      } as FirebaseUser;
+    });
   } catch (error) {
     console.error('Error fetching users:', error);
     throw error;
@@ -36,6 +49,13 @@ export const updateUser = async (uid: string, data: Partial<FirebaseUser>) => {
 
 export const deleteUser = async (uid: string) => {
   try {
+    if (!auth.currentUser) {
+      throw new Error('Authentication required to delete user');
+    }
+
+    // Get admin token
+    const token = await auth.currentUser.getIdToken();
+    
     const userRef = doc(db, 'users', uid);
     await deleteDoc(userRef);
   } catch (error) {

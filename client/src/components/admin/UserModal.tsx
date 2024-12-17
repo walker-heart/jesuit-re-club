@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
-import { auth } from '@/lib/firebase'
+import { getAuth } from 'firebase/auth'
 
 import { type FirebaseUser } from '@/lib/firebase/users';
 
@@ -77,6 +77,7 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
     try {
       if (!user) {
         // Get the current user's ID token
+        const auth = getAuth();
         const currentUser = auth.currentUser;
         if (!currentUser) {
           throw new Error('Not authenticated');
