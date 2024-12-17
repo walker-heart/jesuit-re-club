@@ -7,6 +7,7 @@ export interface FirebaseUser {
   displayName: string;
   role: 'admin' | 'editor' | 'user';
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export const fetchUsers = async (): Promise<FirebaseUser[]> => {

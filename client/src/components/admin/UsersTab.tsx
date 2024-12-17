@@ -114,13 +114,14 @@ export function UsersTab() {
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Created</TableHead>
+              <TableHead>Last Updated</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex items-center justify-center text-sm text-muted-foreground">
                     Loading users...
                   </div>
@@ -128,7 +129,7 @@ export function UsersTab() {
               </TableRow>
             ) : filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex flex-col items-center justify-center text-sm text-muted-foreground">
                     <p>No users found</p>
                     {searchTerm && <p className="mt-1">Try adjusting your search</p>}
@@ -138,10 +139,31 @@ export function UsersTab() {
             ) : (
               filteredUsers.map((user) => (
                 <TableRow key={user.uid}>
-                  <TableCell className="font-medium">{user.displayName}</TableCell>
+                  <TableCell className="font-medium">{user.displayName || 'No name'}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell className="capitalize">{user.role}</TableCell>
-                  <TableCell>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
+                  <TableCell>
+                    {user.createdAt 
+                      ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) 
+                      : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    {user.updatedAt 
+                      ? new Date(user.updatedAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) 
+                      : 'N/A'}
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="outline"
