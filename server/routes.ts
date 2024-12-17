@@ -182,6 +182,33 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+  app.get("/api/events/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const eventDoc = await admin.firestore().collection('events').doc(id).get();
+      
+      if (!eventDoc.exists) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Event not found'
+        });
+      }
+
+      return res.json({
+        success: true,
+        event: {
+          id: eventDoc.id,
+          ...eventDoc.data()
+        }
+      });
+    } catch (error: any) {
+      console.error('Error fetching event:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to fetch event'
+      });
+    }
+  });
   app.post("/api/admin/users", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
       if (req.user?.role !== 'admin') {
