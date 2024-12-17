@@ -4,7 +4,7 @@ import { auth, db } from './firebase-config';
 export interface FirebaseUser {
   uid: string;
   email: string;
-  displayName: string;
+  username: string;
   role: 'admin' | 'editor' | 'user';
   createdAt?: string;
   updatedAt?: string;
@@ -27,9 +27,10 @@ export const fetchUsers = async (): Promise<FirebaseUser[]> => {
       return {
         uid: doc.id,
         email: data.email || '',
-        displayName: data.displayName || '',
+        username: data.username || '',
         role: data.role || 'user',
-        createdAt: data.createdAt || new Date().toISOString()
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null
       } as FirebaseUser;
     });
   } catch (error) {
