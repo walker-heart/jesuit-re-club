@@ -98,9 +98,21 @@ function App() {
           <Account />
         </Layout>
       </Route>
-      <Route path="/role">
-        <Layout title={`${user?.role?.charAt(0).toUpperCase()}${user?.role?.slice(1) || ''} Dashboard`}>
-          {(user?.role === 'admin' || user?.role === 'editor') ? (
+      <Route path="/admin">
+        <Layout title="Admin Dashboard">
+          {user?.role === 'admin' ? (
+            <Admin />
+          ) : (
+            <div className="container mx-auto px-4 py-16 text-center">
+              <h1 className="text-4xl font-bold mb-4 text-red-500">Access Denied</h1>
+              <p>You don't have permission to access this page.</p>
+            </div>
+          )}
+        </Layout>
+      </Route>
+      <Route path="/editor">
+        <Layout title="Editor Dashboard">
+          {user?.role === 'editor' ? (
             <Admin />
           ) : (
             <div className="container mx-auto px-4 py-16 text-center">
