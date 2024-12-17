@@ -113,21 +113,47 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
           role: editedUser.role
         });
 
-        // Create user in Firebase
-        const newUserData = {
-          firstName: editedUser.firstName,
-          lastName: editedUser.lastName,
-          username: editedUser.username,
-          email: editedUser.email,
-          password: editedUser.password,
-          role: editedUser.role
-        };
+        // Call the admin endpoint to create user
+        const response = await fetch('/api/admin/users/create', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            firstName: editedUser.firstName,
+            lastName: editedUser.lastName,
+            username: editedUser.username,
+            email: editedUser.email,
+            password: editedUser.password,
+            role: editedUser.role
+          })
+        });
 
-        const createdUser = await createUser(newUserData);
+        const responseText = await response.text();
+        console.log('Raw response:', responseText);
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log('Parsed response:', data);
+        } catch (error) {
+          console.error('Failed to parse response:', error);
+          throw new Error('Invalid server response');
+        }
+
+        if (!response.ok || !data.success) {
+          throw new Error(data?.message || 'Failed to create user');
+        }
+
+        if (!data.user) {
+          throw new Error('Invalid response format from server');
+        }
 
         toast({
           title: "Success",
-          description: "User created successfully",
+          description: data.message || "User created successfully",
         });
 
         // Update the local state with the new user data
