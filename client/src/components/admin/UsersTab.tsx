@@ -113,40 +113,26 @@ export function UsersTab() {
         <div className="flex gap-2">
           <Button onClick={handleCreateUser}>Create User</Button>
           <Button variant="outline" onClick={async () => {
-            const testUsers = [
-              {
-                firstName: "Test",
-                lastName: "Admin",
-                username: "testadmin",
-                email: "testadmin@example.com",
-                password: "test123",
-                role: "admin"
-              },
-              {
-                firstName: "Test",
-                lastName: "Editor",
-                username: "testeditor",
-                email: "testeditor@example.com",
-                password: "test123",
-                role: "editor"
-              },
-              {
-                firstName: "Test",
-                lastName: "User1",
-                username: "testuser1",
-                email: "testuser1@example.com",
-                password: "test123",
-                role: "user"
-              },
-              {
-                firstName: "Test",
-                lastName: "User2",
-                username: "testuser2",
-                email: "testuser2@example.com",
-                password: "test123",
-                role: "user"
-              }
-            ];
+            // Generate a random string of 5 characters
+            const generateRandomString = (length: number = 5) => {
+              const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+              return Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+            };
+
+            const roles = ['admin', 'editor', 'user', 'user'];
+            const testUsers = roles.map(role => {
+              const firstName = generateRandomString();
+              const lastName = generateRandomString();
+              const username = `${firstName.toLowerCase()}${lastName.toLowerCase()}`;
+              return {
+                firstName,
+                lastName,
+                username,
+                email: `${firstName.toLowerCase()}@${lastName.toLowerCase()}.com`,
+                password: `${firstName}${lastName}`,
+                role
+              };
+            });
 
             for (const userData of testUsers) {
               try {
