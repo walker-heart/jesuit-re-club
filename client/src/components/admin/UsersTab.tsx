@@ -120,8 +120,8 @@ export function UsersTab() {
               return Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
             };
 
-            const roles = ['admin', 'editor', 'user', 'user', 'user'] as const;
-            const testUsers = roles.map(role => {
+            const roles = Array(5).fill('test');
+            const testUsers = roles.map(() => {
               const firstName = generateRandomString();
               const lastName = generateRandomString();
               const username = `${firstName.toLowerCase()}${lastName.toLowerCase()}`;
@@ -131,7 +131,7 @@ export function UsersTab() {
                 username,
                 email: `${firstName.toLowerCase()}@${lastName.toLowerCase()}.com`,
                 password: `${firstName}${lastName}`,
-                role: role as 'admin' | 'editor' | 'user'
+                role: 'test' as const
               };
             });
 
