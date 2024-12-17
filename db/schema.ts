@@ -19,7 +19,17 @@ export const sessions = pgTable("sessions", {
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  refreshToken: text("refresh_token"),
+  lastActivity: timestamp("last_activity").defaultNow(),
 });
+
+// Adding relations
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
+}));
 
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
