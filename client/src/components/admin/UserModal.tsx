@@ -18,6 +18,8 @@ type UserFormData = {
   email: string;
   password: string;
   role: 'admin' | 'editor' | 'user';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 type UserModalProps = {
@@ -82,7 +84,7 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
     ];
 
     const missingFields = requiredFields
-      .filter(({ field }) => !editedUser[field])
+      .filter(({ field }) => !editedUser[field as keyof UserFormData])
       .map(({ label }) => label);
 
     if (missingFields.length > 0) {
