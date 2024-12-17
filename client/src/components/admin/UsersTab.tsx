@@ -142,7 +142,7 @@ export function UsersTab() {
             ) : (
               filteredUsers.map((user) => (
                 <TableRow key={user.uid}>
-                  <TableCell className="font-medium">{user.username || 'No name'}</TableCell>
+                  <TableCell className="font-medium">{user.name || user.username || 'No name'}</TableCell>
                   <TableCell>{user.email || 'N/A'}</TableCell>
                   <TableCell className="capitalize">{user.role || 'user'}</TableCell>
                   <TableCell>
