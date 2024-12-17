@@ -43,17 +43,20 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
     if (user) {
       setEditedUser({
         uid: user.uid,
-        email: user.email || '',
-        password: '',
         firstName: user.firstName || '',
         lastName: user.lastName || '',
+        username: user.username || '',
+        email: user.email || '',
+        password: '',
         role: user.role || 'user'
       });
     } else {
       setEditedUser({
+        firstName: '',
+        lastName: '',
+        username: '',
         email: '',
         password: '',
-        displayName: '',
         role: 'user'
       });
     }

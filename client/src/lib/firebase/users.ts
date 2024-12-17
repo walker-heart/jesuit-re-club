@@ -8,8 +8,8 @@ export interface FirebaseUser {
   username: string;
   email: string;
   role: 'admin' | 'editor' | 'user';
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const fetchUsers = async (): Promise<FirebaseUser[]> => {
