@@ -14,12 +14,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Event {
-  id: number;
+  id: string;
   title: string;
   description: string;
   date: string;
   time: string;
   location: string;
+  speaker: string;
+  agenda: string;
+  createdAt: string;
+  userCreated: string;
 }
 
 export function Events() {
@@ -37,83 +41,65 @@ export function Events() {
     time: "",
     location: "",
   });
-  const allUpcomingEvents: Event[] = [
-    {
-      id: 1,
-      title: "Guest Speaker: John Doe",
-      date: "May 15, 2024",
-      time: "4:00 PM",
-      location: "Jesuit Dallas Auditorium",
-      description:
-        "Join us for an insightful talk on commercial real estate trends with industry expert John Doe.",
-    },
-    {
-      id: 2,
-      title: "Real Estate Market Analysis Workshop",
-      date: "June 1, 2024",
-      time: "3:30 PM",
-      location: "Room 201",
-      description:
-        "Learn how to analyze real estate markets and identify investment opportunities in this hands-on workshop.",
-    },
-    {
-      id: 5,
-      title: "Property Valuation Seminar",
-      date: "June 15, 2024",
-      time: "2:00 PM",
-      location: "Conference Room A",
-      description:
-        "Learn the fundamentals of property valuation from experienced appraisers.",
-    },
-    {
-      id: 6,
-      title: "Real Estate Tech Innovation Showcase",
-      date: "July 1, 2024",
-      time: "1:00 PM",
-      location: "Innovation Lab",
-      description:
-        "Explore cutting-edge technologies shaping the future of real estate.",
-    },
-  ];
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
-  const allPastEvents: Event[] = [
-    {
-      id: 3,
-      title: "Downtown Dallas Property Tour",
-      date: "April 15, 2024",
-      time: "10:00 AM",
-      location: "Downtown Dallas",
-      description:
-        "Members explored prime commercial properties in downtown Dallas with industry professionals.",
-    },
-    {
-      id: 4,
-      title: "Real Estate Investment Strategies Seminar",
-      date: "March 30, 2024",
-      time: "3:00 PM",
-      location: "Seminar Room 101",
-      description:
-        "Expert panel discussion on various real estate investment strategies and market opportunities.",
-    },
-    {
-      id: 7,
-      title: "Networking Mixer with Industry Leaders",
-      date: "March 1, 2024",
-      time: "5:00 PM",
-      location: "Student Center",
-      description:
-        "Students connected with Dallas's top real estate professionals in an informal networking session.",
-    },
-    {
-      id: 8,
-      title: "Sustainable Development Symposium",
-      date: "February 15, 2024",
-      time: "2:00 PM",
-      location: "Green Building Center",
-      description:
-        "Discussion on eco-friendly practices and sustainable development in real estate.",
-    },
-  ];
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setIsLoadingEvents(true);
+        const response = await fetch('/api/events', {
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${await user?.getIdToken()}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch events');
+        }
+
+        const data = await response.json();
+        const events = data.events.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          date: event.date,
+          time: event.time,
+          location: event.location,
+          description: event.speakerDescription,
+          speaker: event.speaker,
+          agenda: event.agenda,
+          createdAt: event.createdAt,
+          userCreated: event.userCreated
+        }));
+
+        setAllEvents(events);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load events",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    };
+
+    fetchEvents();
+  }, [user]);
+
+  // Split events into upcoming and past based on date
+  const currentDate = new Date();
+  const allUpcomingEvents = allEvents.filter(event => {
+    const eventDate = new Date(`${event.date} ${event.time}`);
+    return eventDate >= currentDate;
+  });
+
+  const allPastEvents = allEvents.filter(event => {
+    const eventDate = new Date(`${event.date} ${event.time}`);
+    return eventDate < currentDate;
+  });
 
   const eventsPerPage = 3;
   const indexOfLastUpcoming = upcomingPage * eventsPerPage;
