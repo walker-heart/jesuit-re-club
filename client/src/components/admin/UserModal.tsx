@@ -8,27 +8,28 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
 import { auth } from '@/lib/firebase'
 
-type UserItem = {
-  id: number;
-  username: string;
+import { type FirebaseUser } from '@/lib/firebase/users';
+
+type UserFormData = {
+  uid?: string;
   email: string;
   password: string;
+  displayName: string;
   role: 'admin' | 'editor' | 'user';
 }
 
 type UserModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (user: UserItem) => void;
-  user: UserItem | null;
+  onSave: (user: FirebaseUser) => void;
+  user: FirebaseUser | null;
 }
 
 export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
-  const [editedUser, setEditedUser] = useState<UserItem>({
-    id: 0,
-    username: '',
+  const [editedUser, setEditedUser] = useState<UserFormData>({
     email: '',
     password: '',
+    displayName: '',
     role: 'user'
   });
   const { toast } = useToast();
@@ -36,13 +37,18 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
 
   useEffect(() => {
     if (user) {
-      setEditedUser(user);
+      setEditedUser({
+        uid: user.uid,
+        email: user.email || '',
+        password: '',
+        displayName: user.displayName || '',
+        role: user.role || 'user'
+      });
     } else {
       setEditedUser({
-        id: 0,
-        username: '',
         email: '',
         password: '',
+        displayName: '',
         role: 'user'
       });
     }
@@ -58,7 +64,7 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
   };
 
   const handleSave = async () => {
-    if (!editedUser.email || !editedUser.password || !editedUser.username) {
+    if (!editedUser.email || !editedUser.password || !editedUser.displayName) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -79,7 +85,7 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
 
         console.log('Sending create user request with data:', {
           email: editedUser.email,
-          username: editedUser.username,
+          displayName: editedUser.displayName,
           role: editedUser.role
         });
 
@@ -94,7 +100,7 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
           body: JSON.stringify({
             email: editedUser.email,
             password: editedUser.password,
-            username: editedUser.username,
+            displayName: editedUser.displayName,
             role: editedUser.role
           })
         });
@@ -125,9 +131,12 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
         });
 
         // Update the local state with the new user data
-        const newUser = {
-          ...editedUser,
-          id: data.user.uid
+        const newUser: FirebaseUser = {
+          uid: data.user.uid,
+          email: editedUser.email,
+          displayName: editedUser.displayName,
+          role: editedUser.role,
+          createdAt: new Date().toISOString()
         };
         onSave(newUser);
         onClose();
@@ -152,11 +161,11 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="username" className="text-right">Username</Label>
+            <Label htmlFor="displayName" className="text-right">Display Name</Label>
             <Input
-              id="username"
-              name="username"
-              value={editedUser.username}
+              id="displayName"
+              name="displayName"
+              value={editedUser.displayName}
               onChange={handleInputChange}
               className="col-span-3"
               required
