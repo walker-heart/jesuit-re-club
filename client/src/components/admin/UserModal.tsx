@@ -12,10 +12,11 @@ import { type FirebaseUser } from '@/lib/firebase/users';
 
 type UserFormData = {
   uid?: string;
-  email: string;
-  password: string;
   firstName: string;
   lastName: string;
+  username: string;
+  email: string;
+  password: string;
   role: 'admin' | 'editor' | 'user';
 }
 
@@ -28,10 +29,11 @@ type UserModalProps = {
 
 export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
   const [editedUser, setEditedUser] = useState<UserFormData>({
-    email: '',
-    password: '',
     firstName: '',
     lastName: '',
+    username: '',
+    email: '',
+    password: '',
     role: 'user'
   });
   const { toast } = useToast();
@@ -185,6 +187,17 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
               id="lastName"
               name="lastName"
               value={editedUser.lastName}
+              onChange={handleInputChange}
+              className="col-span-3"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="username" className="text-right">Username</Label>
+            <Input
+              id="username"
+              name="username"
+              value={editedUser.username}
               onChange={handleInputChange}
               className="col-span-3"
               required
