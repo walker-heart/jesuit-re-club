@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { auth } from "firebase-admin";
 import { db } from "@db";
-import { eq, and, or, gt, lt } from "drizzle-orm";
+import { eq, and, or, gt } from "drizzle-orm";
 import { users, sessions } from "@db/schema";
 import admin from "firebase-admin";
 
@@ -35,7 +35,7 @@ async function verifyFirebaseToken(req: Request, res: Response, next: NextFuncti
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await admin.auth().verifyIdToken(token);
     
-    // Check if a valid session exists and update last activity
+    // Check if a valid session exists in the database
     const [session] = await db
       .select()
       .from(sessions)
@@ -47,49 +47,12 @@ async function verifyFirebaseToken(req: Request, res: Response, next: NextFuncti
       );
 
     if (!session) {
-      // If no valid session exists, create a new one
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.firebaseUid, decodedToken.uid));
-
-      if (!user) {
-        return res.status(401).json({ message: 'User not found' });
-      }
-
-      const [newSession] = await db
-        .insert(sessions)
-        .values({
-          userId: user.id,
-          firebaseUid: decodedToken.uid,
-          token: token,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-          lastActivity: new Date(),
-        })
-        .returning();
-
-      req.user = decodedToken;
-      req.session = newSession;
-      return next();
+      return res.status(401).json({ message: 'No valid session found' });
     }
-
-    // Update last activity for existing session
-    await db
-      .update(sessions)
-      .set({ 
-        lastActivity: new Date(),
-        token: token, // Update token in case it's refreshed
-      })
-      .where(eq(sessions.id, session.id));
 
     // Attach both Firebase user and session to request
     req.user = decodedToken;
-    req.session = {
-      ...session,
-      lastActivity: new Date(),
-      token: token,
-    };
-    
+    req.session = session;
     next();
   } catch (error) {
     console.error('Error verifying token:', error);
