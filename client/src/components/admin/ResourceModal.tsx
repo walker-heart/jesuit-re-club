@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
 
+interface Resource {
+  id?: number;
+  title: string;
+  description: string;
+  numberOfTexts: number;
+  textFields: string[];
+  userCreated?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
 type ResourceModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onSave: (resourceData: Omit<Resource, "id">) => Promise<void>;
+  resource: Resource | null;
 };
 
-export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
+export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceModalProps) {
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -41,6 +55,15 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
     setTextFields(newFields);
   };
 
+  useEffect(() => {
+    if (resource) {
+      setTitle(resource.title);
+      setDescription(resource.description);
+      setNumberOfTexts(resource.numberOfTexts.toString());
+      setTextFields(resource.textFields);
+    }
+  }, [resource]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -62,8 +85,8 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
 
       const token = await currentUser.getIdToken();
       
-      const response = await fetch('/api/resources/create', {
-        method: 'POST',
+      const response = await fetch('/api/resources' + (resource ? `/update/${resource.id}` : '/create'), {
+        method: resource ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -73,6 +96,7 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
           description,
           numberOfTexts: parseInt(numberOfTexts),
           textFields: textFields.filter(text => text.trim() !== ''),
+          id: resource?.id
         }),
       });
 
@@ -83,7 +107,7 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
 
       toast({
         title: "Success",
-        description: "Resource created successfully",
+        description: resource ? "Resource updated successfully" : "Resource created successfully",
       });
 
       setTitle("");
@@ -107,7 +131,7 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Create New Resource</DialogTitle>
+          <DialogTitle>{resource ? "Edit Resource" : "Create New Resource"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -166,7 +190,7 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Resource"}
+              {isSubmitting ? (resource ? "Saving..." : "Creating...") : (resource ? "Save Changes" : "Create Resource")}
             </Button>
           </div>
         </form>
