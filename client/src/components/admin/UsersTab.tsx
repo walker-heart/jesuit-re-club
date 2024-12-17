@@ -64,6 +64,11 @@ export function UsersTab() {
           ...user,
           createdAt: editingUser.createdAt, // Keep original creation time
         };
+        
+        // Close modal first
+        setIsModalOpen(false);
+        
+        // Then update user
         await updateUser(user.uid, updatedUser);
         
         // Update local state
@@ -72,21 +77,25 @@ export function UsersTab() {
           updatedAt: new Date().toISOString()
         } : u));
         
+        // Show success message
         toast({
           title: "Success",
           description: "User updated successfully"
         });
-        setIsModalOpen(false);
       } else {
-        // Create new user
+        // For new user creation
         const { uid, ...userData } = user;
+        
+        // Close modal first
+        setIsModalOpen(false);
+        
+        // Then create user
         const newUser = await createUser(userData);
         
-        // Refresh the users list to get the latest data including the new user
+        // Refresh the users list
         await loadUsers();
         
-        // Close modal and show success notification
-        setIsModalOpen(false);
+        // Show success message
         toast({
           title: "Success",
           description: "User created successfully"
