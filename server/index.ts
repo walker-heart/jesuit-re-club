@@ -1,107 +1,96 @@
-import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
-import MemoryStore from "memorystore";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import passport from "passport";
+import express from "express";
+import type { Request, Response, NextFunction } from "express";
+import { registerRoutes } from "./routes.js";
+import { setupVite } from "./vite.js";
+import { createServer } from "http";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
+
+// Parse JSON bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session configuration
-const MemoryStoreSession = MemoryStore(session);
-app.use(
-  session({
-    cookie: {
-      maxAge: 86400000, // 24 hours
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", // Changed to lax to allow redirect-based auth
-      httpOnly: true,
-    },
-    store: new MemoryStoreSession({
-      checkPeriod: 86400000, // prune expired entries every 24h
-    }),
-    name: 'sid', // Set a specific name for the session ID cookie
-    resave: false,
-    saveUninitialized: false,
-    secret: process.env.SESSION_SECRET || "development_secret",
-  })
-);
-
-// Initialize passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
-
+// Add security and CORS headers
 app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+    'Content-Type': 'application/json',
   });
-
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   next();
 });
 
-(async () => {
-  const server = registerRoutes(app);
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, {
+    headers: req.headers,
+    body: req.body,
   });
+  next();
+});
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+// Create HTTP server
+const server = createServer(app);
+
+// API routes should be registered before any static/SPA handling
+registerRoutes(app);
+
+// API error handling middleware
+app.use('/api', (err: any, req: Request, res: Response, _next: NextFunction) => {
+  console.error('API error:', err);
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({
+      success: false,
+      message: err.message || 'Internal Server Error',
+      error: err.code || 'unknown_error'
+    });
   }
+});
 
-  // Try to use port 5000 first, fallback to other ports if unavailable
-  const tryPort = async (port: number): Promise<number> => {
-    try {
-      await new Promise((resolve, reject) => {
-        server.listen(port, "0.0.0.0")
-          .once('listening', () => {
-            server.close();
-            resolve(port);
-          })
-          .once('error', reject);
-      });
-      return port;
-    } catch {
-      return port < 5010 ? tryPort(port + 1) : Promise.reject(new Error('No available ports'));
-    }
-  };
-
-  const PORT = await tryPort(5000);
-  server.listen(PORT, "0.0.0.0", () => {
-    log(`serving on port ${PORT}`);
+// Setup Vite or static file serving
+const isDev = process.env.NODE_ENV !== 'production';
+if (isDev && process.env.NODE_ENV !== 'test') {
+  console.log('Starting server in development mode...');
+  setupVite(app, server).catch(error => {
+    console.error('Error setting up Vite:', error);
+    process.exit(1);
   });
-})();
+} else {
+  console.log('Starting server in', process.env.NODE_ENV, 'mode...');
+  if (process.env.NODE_ENV === 'production') {
+    const clientBuildPath = join(__dirname, '../client/dist');
+    app.use(express.static(clientBuildPath));
+    
+    // SPA fallback for non-API routes
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) {
+        next();
+      } else {
+        res.sendFile(join(clientBuildPath, 'index.html'));
+      }
+    });
+  }
+}
+
+// Start server
+const PORT = Number(process.env.PORT) || 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log('API routes initialized');
+  console.log('Environment:', process.env.NODE_ENV || 'development');
+});
