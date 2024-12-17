@@ -77,7 +77,7 @@ export function EventPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-24">
         <Button asChild variant="outline" className="mb-6">
           <Link href="/events">
             <ArrowLeft className="mr-2 h-4 w-4" />

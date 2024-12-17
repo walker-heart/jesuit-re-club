@@ -234,30 +234,32 @@ export function Events() {
 
   return (
     <div className="w-full py-8 md:py-12 lg:py-16">
-      <div className="container px-4 md:px-6 mx-auto flex flex-col items-center">
-        {(user?.role === "admin" || user?.role === "editor" || false) && (
-          <div className="mb-8">
-            <EventModal 
-              isOpen={isDialogOpen}
-              onClose={() => setIsDialogOpen(false)}
-              onEventCreated={(event) => {
-                // Refresh the events list after creation
-                toast({
-                  title: "Success",
-                  description: "Event created successfully"
-                });
-                // TODO: Update events list
-                setIsDialogOpen(false);
-              }}
-            />
-            <Button 
-              onClick={() => setIsDialogOpen(true)}
-              className="bg-[#003c71] text-white hover:bg-[#002c61] button-hover"
-            >
-              Create New Event
-            </Button>
-          </div>
-        )}
+      <div className="container px-4 md:px-6 mx-auto">
+        <div className="w-full flex justify-end mb-8">
+          {(user?.role === "admin" || user?.role === "editor" || false) && (
+            <>
+              <EventModal 
+                isOpen={isDialogOpen}
+                onClose={() => setIsDialogOpen(false)}
+                onEventCreated={(event) => {
+                  // Refresh the events list after creation
+                  toast({
+                    title: "Success",
+                    description: "Event created successfully"
+                  });
+                  // TODO: Update events list
+                  setIsDialogOpen(false);
+                }}
+              />
+              <Button 
+                onClick={() => setIsDialogOpen(true)}
+                className="bg-[#003c71] text-white hover:bg-[#002c61]"
+              >
+                Create New Event
+              </Button>
+            </>
+          )}
+        </div>
 
         <div className="space-y-12">
           <section ref={upcomingRef}>
