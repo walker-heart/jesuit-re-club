@@ -19,9 +19,9 @@ import { Register } from '@/pages/Register';
 import { PrivateRoute } from '@/components/PrivateRoute';
 
 function App() {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card>
@@ -98,15 +98,18 @@ function App() {
           <Account />
         </Layout>
       </Route>
-      <PrivateRoute
-        path="/admin"
-        component={() => (
-          <Layout title="Admin">
+      <Route path="/admin">
+        <Layout title="Admin Dashboard">
+          {user?.role === 'admin' || user?.role === 'editor' ? (
             <Admin />
-          </Layout>
-        )}
-        roles={['admin', 'editor']}
-      />
+          ) : (
+            <div className="container mx-auto px-4 py-16 text-center">
+              <h1 className="text-4xl font-bold mb-4 text-red-500">Access Denied</h1>
+              <p>You don't have permission to access this page.</p>
+            </div>
+          )}
+        </Layout>
+      </Route>
       <Route>
         <Layout title="Page Not Found">
           <div className="container mx-auto px-4 py-16 text-center">
