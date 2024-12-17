@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { UserModal } from '@/components/admin/UserModal'
-import { fetchUsers, updateUser, deleteUser, createUser, type FirebaseUser } from '@/lib/firebase/users'
+import { fetchUsers, updateUser, deleteUser, type FirebaseUser } from '@/lib/firebase/users'
 import { useToast } from '@/hooks/use-toast'
-import { auth } from '@/lib/firebase/firebase-config'
+import { getAuth } from 'firebase/auth'
 
 export function UsersTab() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -59,50 +59,38 @@ export function UsersTab() {
   const handleSaveUser = async (user: FirebaseUser) => {
     try {
       if (editingUser) {
-        // Update existing user
+        // Update existing user, preserving the original creation time
         const updatedUser = {
           ...user,
-          role: user.role || editingUser.role, // Preserve role if not changed
-          createdAt: editingUser.createdAt // Keep original creation time
+          createdAt: editingUser.createdAt, // Keep original creation time
         };
+        await updateUser(user.uid, updatedUser);
         
-        const result = await updateUser(user.uid, updatedUser);
+        // Update local state
+        setUsers(users.map(u => u.uid === user.uid ? {
+          ...updatedUser,
+          updatedAt: new Date().toISOString()
+        } : u));
         
-        // Only update state if the update was successful
-        if (result) {
-          setUsers(users.map(u => u.uid === user.uid ? {
-            ...updatedUser,
-            updatedAt: new Date().toISOString()
-          } : u));
-          
-          toast({
-            title: "Success",
-            description: "User updated successfully"
-          });
-          setIsModalOpen(false);
-        }
+        toast({
+          title: "Success",
+          description: "User updated successfully"
+        });
+        setIsModalOpen(false);
       } else {
         // Create new user
-        const { uid, createdAt, updatedAt, ...userData } = user;
-        const now = new Date().toISOString();
+        const { uid, ...userData } = user;
+        const newUser = await createUser(userData);
         
-        const newUserData = {
-          ...userData,
-          role: userData.role || 'user',
-          createdAt: now,
-          updatedAt: now
-        };
+        // Update local state with the new user
+        setUsers(prevUsers => [...prevUsers, newUser]);
         
-        const newUser = await createUser(newUserData);
-        
-        if (newUser) {
-          setUsers(prevUsers => [...prevUsers, newUser]);
-          toast({
-            title: "Success",
-            description: "User created successfully"
-          });
-          setIsModalOpen(false);
-        }
+        toast({
+          title: "Success",
+          description: "User created successfully"
+        });
+        setIsModalOpen(false);
+        return newUser;
       }
     } catch (error: any) {
       console.error('Error saving user:', error);
@@ -111,7 +99,7 @@ export function UsersTab() {
         description: error.message || "Failed to save user",
         variant: "destructive"
       });
-      // Don't rethrow the error as it's already handled
+      throw error;
     }
   }
 
@@ -146,57 +134,51 @@ export function UsersTab() {
         <div className="flex gap-2">
           <Button onClick={handleCreateUser}>Create User</Button>
           <Button variant="outline" onClick={async () => {
+            // Generate a random string of 5 characters
             const generateRandomString = (length: number = 5) => {
               const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
               return Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
             };
 
-            try {
-              const testUsers = Array(5).fill(null).map(() => {
-                const firstName = generateRandomString();
-                const lastName = generateRandomString();
-                const username = `${firstName.toLowerCase()}${lastName.toLowerCase()}`;
-                const name = `${firstName} ${lastName}`;
-                return {
-                  firstName,
-                  lastName,
-                  username,
-                  name,
-                  email: `${username}@test.com`,
-                  password: `${firstName}${lastName}123!`,
-                  role: 'test' as const,
+            const roles = Array(5).fill('test');
+            const testUsers = roles.map(() => {
+              const firstName = generateRandomString();
+              const lastName = generateRandomString();
+              const username = `${firstName.toLowerCase()}${lastName.toLowerCase()}`;
+              return {
+                firstName,
+                lastName,
+                username,
+                email: `${firstName.toLowerCase()}@${lastName.toLowerCase()}.com`,
+                password: `${firstName}${lastName}`,
+                role: 'test' as const
+              };
+            });
+
+            for (const userData of testUsers) {
+              try {
+                await handleSaveUser({
+                  ...userData,
+                  uid: '', // This will be generated by Firebase
+                  name: `${userData.firstName} ${userData.lastName}`,
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString()
-                };
-              });
-
-              for (const userData of testUsers) {
-                try {
-                  await createUser(userData);
-                  toast({
-                    title: "Success",
-                    description: `Created test user: ${userData.username}`
-                  });
-                } catch (error: any) {
-                  console.error('Error creating test user:', error);
-                  toast({
-                    title: "Error",
-                    description: `Failed to create ${userData.username}: ${error.message}`,
-                    variant: "destructive"
-                  });
-                }
+                });
+                toast({
+                  title: "Success",
+                  description: `Created test user: ${userData.username}`
+                });
+              } catch (error: any) {
+                toast({
+                  title: "Error",
+                  description: `Failed to create ${userData.username}: ${error.message}`,
+                  variant: "destructive"
+                });
               }
-              
-              // Reload the users list after creating test users
-              await loadUsers();
-            } catch (error: any) {
-              console.error('Error in test user creation:', error);
-              toast({
-                title: "Error",
-                description: "Failed to create test users: " + error.message,
-                variant: "destructive"
-              });
             }
+            
+            // Reload the users list
+            loadUsers();
           }}>
             Create Test Users
           </Button>

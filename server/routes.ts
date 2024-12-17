@@ -288,7 +288,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Validate role
-      if (!['admin', 'editor', 'user', 'test'].includes(role)) {
+      if (!['admin', 'editor', 'user'].includes(role)) {
         return res.status(400).json({ 
           success: false,
           message: 'Invalid role' 
