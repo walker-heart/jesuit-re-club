@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/lib/firebase";
 
 interface Resource {
   id?: number;
@@ -23,7 +22,7 @@ interface Resource {
 type ResourceModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (resourceData: Omit<Resource, "id">) => Promise<void>;
+  onSave: (resourceData: Resource | Omit<Resource, "id">) => Promise<void>;
   resource: Resource | null;
 };
 
@@ -61,6 +60,12 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
       setDescription(resource.description);
       setNumberOfTexts(resource.numberOfTexts.toString());
       setTextFields(resource.textFields);
+    } else {
+      // Reset form when creating new resource
+      setTitle("");
+      setDescription("");
+      setNumberOfTexts("1");
+      setTextFields([""]);
     }
   }, [resource]);
 
@@ -78,48 +83,22 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
 
     setIsSubmitting(true);
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('You must be logged in to create a resource');
-      }
+      const resourceData = {
+        ...(resource?.id ? { id: resource.id } : {}),
+        title,
+        description,
+        numberOfTexts: parseInt(numberOfTexts),
+        textFields: textFields.filter(text => text.trim() !== ''),
+      };
 
-      const token = await currentUser.getIdToken();
+      await onSave(resourceData);
       
-      const response = await fetch('/api/resources' + (resource ? `/update/${resource.id}` : '/create'), {
-        method: resource ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title,
-          description,
-          numberOfTexts: parseInt(numberOfTexts),
-          textFields: textFields.filter(text => text.trim() !== ''),
-          id: resource?.id
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to create resource');
-      }
-
-      toast({
-        title: "Success",
-        description: resource ? "Resource updated successfully" : "Resource created successfully",
-      });
-
-      setTitle("");
-      setDescription("");
-      setNumberOfTexts("1");
-      setTextFields([""]);
-      onClose();
+      // Form will be reset by the useEffect when resource changes or modal closes
     } catch (error: any) {
-      console.error('Error creating resource:', error);
+      console.error('Error saving resource:', error);
       toast({
         title: "Error",
-        description: error.message || 'Failed to create resource',
+        description: error.message || 'Failed to save resource',
         variant: "destructive",
       });
     } finally {

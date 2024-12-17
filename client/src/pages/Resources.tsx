@@ -29,7 +29,7 @@ async function fetchResources(): Promise<Resource[]> {
 }
 
 async function createResource(
-  resourceData: Omit<Resource, "id">,
+  resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy">,
 ): Promise<Resource> {
   const response = await fetch("/api/resources", {
     method: "POST",
@@ -41,6 +41,22 @@ async function createResource(
 
   if (!response.ok) {
     throw new Error("Failed to create resource");
+  }
+
+  return response.json();
+}
+
+async function updateResource(resourceData: Resource): Promise<Resource> {
+  const response = await fetch(`/api/resources/${resourceData.id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(resourceData),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update resource");
   }
 
   return response.json();
@@ -87,6 +103,26 @@ export function Resources() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: updateResource,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"] });
+      toast({
+        title: "Success",
+        description: "Resource updated successfully",
+      });
+      setIsModalOpen(false);
+      setEditingResource(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: deleteResource,
     onSuccess: () => {
@@ -105,8 +141,20 @@ export function Resources() {
     },
   });
 
-  const handleCreateResource = async (resourceData: Omit<Resource, "id">) => {
-    await createMutation.mutateAsync(resourceData);
+  const handleCreateResource = async (resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy">) => {
+    try {
+      await createMutation.mutateAsync(resourceData);
+    } catch (error) {
+      console.error("Error creating resource:", error);
+    }
+  };
+
+  const handleUpdateResource = async (resourceData: Resource) => {
+    try {
+      await updateMutation.mutateAsync(resourceData);
+    } catch (error) {
+      console.error("Error updating resource:", error);
+    }
   };
 
   const handleDeleteResource = async (id: number) => {
@@ -117,7 +165,11 @@ export function Resources() {
     ) {
       return;
     }
-    await deleteMutation.mutateAsync(id);
+    try {
+      await deleteMutation.mutateAsync(id);
+    } catch (error) {
+      console.error("Error deleting resource:", error);
+    }
   };
 
   return (
@@ -214,7 +266,7 @@ export function Resources() {
               setIsModalOpen(false);
               setEditingResource(null);
             }}
-            onSave={handleCreateResource}
+            onSave={editingResource ? handleUpdateResource : handleCreateResource}
             resource={editingResource}
           />
         </div>
