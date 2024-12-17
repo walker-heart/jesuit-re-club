@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar, BookOpen, Newspaper } from 'lucide-react'
 import { EditModal } from './EditModal'
-import { fetchEvents } from '@/lib/firebase/events'
+import { fetchEvents, deleteEvent } from '@/lib/firebase/events'
 import { useToast } from "@/hooks/use-toast"
 
 type EventItem = {
@@ -133,11 +133,37 @@ export function PostsTab() {
     
     try {
       if (type === 'event') {
+        // Confirm deletion
+        if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+          return;
+        }
+
         await deleteEvent(id as string);
         setPosts(prevPosts => ({
           ...prevPosts,
           events: prevPosts.events.filter(event => event.id !== id)
         }));
+        
+        // Refresh the events list after deletion
+        const updatedEvents = await fetchEvents();
+        const sortedEvents = updatedEvents.sort((a, b) => {
+          const dateA = new Date(`${a.date} ${a.time}`);
+          const dateB = new Date(`${b.date} ${b.time}`);
+          const now = new Date();
+          const aIsUpcoming = dateA >= now;
+          const bIsUpcoming = dateB >= now;
+          
+          if (aIsUpcoming === bIsUpcoming) {
+            return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+          }
+          return aIsUpcoming ? -1 : 1;
+        });
+
+        setPosts(prevPosts => ({
+          ...prevPosts,
+          events: sortedEvents
+        }));
+
         toast({
           title: "Success",
           description: "Event deleted successfully"
