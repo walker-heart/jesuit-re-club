@@ -106,7 +106,7 @@ export function Resources() {
                 <p className="text-gray-600">{resource.description}</p>
                 <Button 
                   asChild
-                  className="w-full justify-center bg-[#E5E4E2] hover:bg-[#D3D3D3] text-[#003c71] border-none"
+                  className="w-full justify-center bg-[#b3a369] hover:bg-[#b3a369]/90 text-[#003c71] border-none"
                 >
                   <Link href={`/resources/${resource.id}`}>Learn More</Link>
                 </Button>
