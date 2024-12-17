@@ -72,23 +72,10 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
   };
 
   const handleSave = async () => {
-    // Check all required fields
-    const requiredFields = [
-      { field: 'firstName', label: 'First Name' },
-      { field: 'lastName', label: 'Last Name' },
-      { field: 'username', label: 'Username' },
-      { field: 'email', label: 'Email' },
-      { field: 'password', label: 'Password' }
-    ];
-
-    const missingFields = requiredFields
-      .filter(({ field }) => !editedUser[field])
-      .map(({ label }) => label);
-
-    if (missingFields.length > 0) {
+    if (!editedUser.email || !editedUser.password || !editedUser.firstName || !editedUser.lastName || !editedUser.username) {
       toast({
         title: "Validation Error",
-        description: `Please fill in the following required fields: ${missingFields.join(', ')}`,
+        description: "Please fill in all required fields",
         variant: "destructive"
       });
       return;
@@ -106,10 +93,9 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
         const token = await currentUser.getIdToken();
 
         console.log('Sending create user request with data:', {
+          email: editedUser.email,
           firstName: editedUser.firstName,
           lastName: editedUser.lastName,
-          username: editedUser.username,
-          email: editedUser.email,
           role: editedUser.role
         });
 
@@ -122,11 +108,10 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            firstName: editedUser.firstName,
-            lastName: editedUser.lastName,
-            username: editedUser.username,
             email: editedUser.email,
             password: editedUser.password,
+            firstName: editedUser.firstName,
+            lastName: editedUser.lastName,
             role: editedUser.role
           })
         });
