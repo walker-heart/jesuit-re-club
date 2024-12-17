@@ -15,6 +15,8 @@ import { Membership } from "@/pages/Membership";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { Register } from '@/pages/Register';
+import { PrivateRoute } from '@/components/PrivateRoute';
 
 function App() {
   const { user, loading } = useAuth();
@@ -44,6 +46,11 @@ function App() {
       <Route path="/login">
         <Layout title="Login">
           <Login />
+        </Layout>
+      </Route>
+      <Route path="/register">
+        <Layout title="Register">
+          <Register />
         </Layout>
       </Route>
       <Route path="/about">

@@ -1,30 +1,33 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { createServer, type Server } from "http";
-import { auth } from "firebase-admin";
-import { db } from "@db";
-import { eq, and, or, gt } from "drizzle-orm";
-import { users, sessions } from "@db/schema";
 import admin from "firebase-admin";
+import { createServer, type Server } from "http";
 
-// Extend Express Request type to include Firebase user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: auth.DecodedIdToken;
-    }
+// Initialize Firebase Admin with better error handling
+try {
+  if (!process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.VITE_FIREBASE_PROJECT_ID) {
+    throw new Error('Missing Firebase Admin credentials - check your environment variables');
   }
+
+  // Only initialize if not already initialized
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+    });
+    console.log('Firebase Admin initialized successfully');
+  }
+} catch (error) {
+  console.error('Firebase Admin initialization error:', error);
+  throw error;
 }
 
-// Initialize Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  }),
-});
+// Get Firestore instance
+const db = admin.firestore();
 
-// Middleware to verify Firebase token
+// Middleware to verify Firebase token and add user data
 async function verifyFirebaseToken(req: Request, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
@@ -34,175 +37,85 @@ async function verifyFirebaseToken(req: Request, res: Response, next: NextFuncti
 
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await admin.auth().verifyIdToken(token);
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+    const userData = userDoc.data();
     
-    // Check if a valid session exists in the database
-    const [session] = await db
-      .select()
-      .from(sessions)
-      .where(
-        and(
-          eq(sessions.firebaseUid, decodedToken.uid),
-          gt(sessions.expiresAt, new Date())
-        )
-      );
-
-    if (!session) {
-      return res.status(401).json({ message: 'No valid session found' });
-    }
-
-    // Attach both Firebase user and session to request
-    req.user = decodedToken;
-    req.session = session;
+    req.user = {
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+      role: userData?.role || 'user',
+      username: userData?.username
+    };
+    
     next();
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error verifying token:', error);
-    res.status(401).json({ message: 'Invalid token' });
+    return res.status(401).json({ message: 'Invalid token' });
   }
 }
 
 export function registerRoutes(app: Express): Server {
+  // Test route
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   // Auth routes
-  app.post("/api/auth/register", verifyFirebaseToken, async (req, res) => {
+  app.post("/api/auth/verify-token", verifyFirebaseToken, (req: Request, res: Response) => {
+    res.json({ user: req.user });
+  });
+
+  // User management routes
+  app.post("/api/auth/user", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
-      const { email, username } = req.body;
-      const firebaseUid = req.user.uid;
-
-      // Check if user already exists
-      const [existingUser] = await db
-        .select()
-        .from(users)
-        .where(
-          or(
-            eq(users.email, email),
-            eq(users.username, username),
-            eq(users.firebaseUid, firebaseUid)
-          )
-        );
-
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
+      const { uid } = req.user!;
+      const userDoc = await db.collection('users').doc(uid).get();
+      
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: 'User not found' });
       }
 
-      // Create new user
-      const [user] = await db
-        .insert(users)
-        .values({
-          email,
-          username,
-          firebaseUid,
-          role: 'user',
-        })
-        .returning();
-
-      // Create session
-      await db.insert(sessions).values({
-        userId: user.id,
-        firebaseUid,
-        token: req.headers.authorization!.split('Bearer ')[1],
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      });
-
-      res.json(user);
-    } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({ message: "Registration failed" });
+      res.json({ user: userDoc.data() });
+    } catch (error: any) {
+      console.error('Error fetching user:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 
-  app.post("/api/auth/login", verifyFirebaseToken, async (req, res) => {
+  app.post("/api/admin/users", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
-      const firebaseUid = req.user.uid;
-
-      // Find user
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.firebaseUid, firebaseUid));
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Unauthorized' });
       }
 
-      // Remove any expired sessions for this user
-      await db
-        .delete(sessions)
-        .where(
-          and(
-            eq(sessions.firebaseUid, firebaseUid),
-            lt(sessions.expiresAt, new Date())
-          )
-        );
+      const usersSnapshot = await db.collection('users').get();
+      const users = usersSnapshot.docs.map(doc => ({
+        uid: doc.id,
+        ...doc.data()
+      }));
 
-      // Create new session
-      const [session] = await db
-        .insert(sessions)
-        .values({
-          userId: user.id,
-          firebaseUid,
-          token: req.headers.authorization!.split('Bearer ')[1],
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        })
-        .returning();
-
-      res.json({ user, session });
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ message: "Login failed" });
+      res.json({ users });
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 
-  app.post("/api/auth/logout", verifyFirebaseToken, async (req, res) => {
-    try {
-      const firebaseUid = req.user.uid;
-
-      // Remove session
-      await db
-        .delete(sessions)
-        .where(eq(sessions.firebaseUid, firebaseUid));
-
-      res.json({ message: "Logged out successfully" });
-    } catch (error) {
-      console.error('Logout error:', error);
-      res.status(500).json({ message: "Logout failed" });
-    }
-  });
-
-  app.get("/api/auth/session", verifyFirebaseToken, async (req, res) => {
-    try {
-      const firebaseUid = req.user.uid;
-
-      // Find valid session
-      const [session] = await db
-        .select()
-        .from(sessions)
-        .where(
-          and(
-            eq(sessions.firebaseUid, firebaseUid),
-            gt(sessions.expiresAt, new Date())
-          )
-        );
-
-      if (!session) {
-        return res.status(401).json({ message: "No valid session found" });
-      }
-
-      // Get user data
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, session.userId));
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json(user);
-    } catch (error) {
-      console.error('Session verification error:', error);
-      res.status(500).json({ message: "Session verification failed" });
-    }
-  });
-
+  // Create HTTP server
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Add custom properties to Express Request
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        uid: string;
+        email: string | null;
+        role: string;
+        username: string;
+      };
+    }
+  }
 }
