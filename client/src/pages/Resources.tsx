@@ -65,10 +65,14 @@ async function updateResource(resourceData: Resource): Promise<Resource> {
 async function deleteResource(id: number): Promise<void> {
   const response = await fetch(`/api/resources/${id}`, {
     method: "DELETE",
+    headers: {
+      'Content-Type': 'application/json',
+    },
   });
 
   if (!response.ok) {
-    throw new Error("Failed to delete resource");
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to delete resource");
   }
 }
 
@@ -165,10 +169,20 @@ export function Resources() {
     ) {
       return;
     }
+    
     try {
       await deleteMutation.mutateAsync(id);
-    } catch (error) {
+      toast({
+        title: "Success",
+        description: "Resource deleted successfully",
+      });
+    } catch (error: any) {
       console.error("Error deleting resource:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete resource",
+        variant: "destructive",
+      });
     }
   };
 
