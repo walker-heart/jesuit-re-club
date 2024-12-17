@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UsersTab } from '@/components/admin/UsersTab'
@@ -10,13 +8,27 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
 
 export function Admin() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("users")
+  const auth = useAuth();
+  const [activeTab, setActiveTab] = useState("users");
 
-  if (!user || user.role !== 'admin') {
+  // Show loading state while auth state is being determined
+  if (auth.isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto">
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Card>
+          <CardContent className="p-6">
+            <p>Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check for authentication and proper role
+  if (!auth.isAuthenticated || !auth.user?.role || !['admin', 'editor'].includes(auth.user.role)) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Card>
           <CardContent className="p-6">
             <Alert variant="destructive">
               <AlertDescription>You must be an admin to access this page</AlertDescription>
@@ -27,22 +39,16 @@ export function Admin() {
     );
   }
 
+  // Render admin dashboard for authenticated users with proper role
   return (
-    <>
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-[#003c71] text-white">
-        <div className="container px-4 md:px-6">
-          <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
-            Admin
-          </h1>
-        </div>
-      </section>
-      <div className="container mx-auto py-10">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="posts">Posts</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
+    <div className="px-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="w-full border-b">
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="posts">Posts</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
+        <div className="mt-6">
           <TabsContent value="users">
             <UsersTab />
           </TabsContent>
@@ -52,8 +58,8 @@ export function Admin() {
           <TabsContent value="activity">
             <ActivityTab />
           </TabsContent>
-        </Tabs>
-      </div>
-    </>
+        </div>
+      </Tabs>
+    </div>
   );
 }
