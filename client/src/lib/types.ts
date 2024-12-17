@@ -1,17 +1,12 @@
 export interface User {
-  uid: string;
-  email: string | null;
+  id: number;
   username: string;
-  role: 'admin' | 'editor' | 'user';
+  role: 'admin' | 'user';
 }
 
 export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface RegisterCredentials extends LoginCredentials {
   username: string;
+  password: string;
 }
 
 export interface AuthResponse {
@@ -21,5 +16,4 @@ export interface AuthResponse {
 
 export interface AuthError {
   message: string;
-  code?: string;
 }

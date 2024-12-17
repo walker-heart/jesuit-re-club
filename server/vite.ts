@@ -49,8 +49,7 @@ export async function setupVite(app: Express, server: Server) {
       middlewareMode: true,
       hmr: { server },
     },
-    appType: "spa",
-    root: path.resolve(__dirname, "../client"),
+    appType: "custom",
   });
 
   app.use(vite.middlewares);
@@ -58,13 +57,17 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     try {
-      if (url.startsWith("/api")) {
-        next();
-        return;
-      }
+      const clientTemplate = path.resolve(
+        __dirname,
+        "..",
+        "client",
+        "index.html",
+      );
 
-      let template = await vite.transformIndexHtml(url, "");
-      res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      // always reload the index.html file from disk incase it changes
+      const template = await fs.promises.readFile(clientTemplate, "utf-8");
+      const page = await vite.transformIndexHtml(url, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

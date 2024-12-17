@@ -1,83 +1,83 @@
 import { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import type { User, LoginCredentials, RegisterCredentials } from '@/lib/types';
-import { auth, loginWithEmail, registerWithEmail, logoutUser, getCurrentUser } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { type User } from '@/lib/types';
+import { 
+  auth,
+  loginWithEmail,
+  registerWithEmail,
+  logoutUser,
+  onAuthStateChange,
+  getCurrentSession
+} from '@/lib/firebase';
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [firebaseLoading, setFirebaseLoading] = useState(true);
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          const userData = await getCurrentUser(firebaseUser);
-          if (userData) {
-            setUser(userData);
-            queryClient.setQueryData(['user'], userData);
-          } else {
-            setUser(null);
-            queryClient.setQueryData(['user'], null);
-          }
-        } else {
-          setUser(null);
-          queryClient.setQueryData(['user'], null);
-        }
-      } catch (error) {
-        console.error('Error getting user data:', error);
-        setUser(null);
+    const unsubscribe = onAuthStateChange((firebaseUser) => {
+      setFirebaseLoading(false);
+      if (firebaseUser) {
+        queryClient.invalidateQueries({ queryKey: ['user'] });
+      } else {
         queryClient.setQueryData(['user'], null);
-      } finally {
-        setIsLoading(false);
       }
     });
 
     return () => unsubscribe();
   }, [queryClient]);
 
-  const login = async ({ email, password }: LoginCredentials) => {
-    try {
-      const userData = await loginWithEmail(email, password);
-      setUser(userData);
-      queryClient.setQueryData(['user'], userData);
-      return userData;
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
-  };
+  const { data: user, error } = useQuery<User | null>({
+    queryKey: ['user'],
+    queryFn: getCurrentSession,
+    enabled: !firebaseLoading && !!auth.currentUser,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    retry: false,
+  });
 
-  const register = async ({ email, password, username }: RegisterCredentials) => {
-    try {
-      const userData = await registerWithEmail(email, password, username);
-      setUser(userData);
-      queryClient.setQueryData(['user'], userData);
-      return userData;
-    } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
+  useEffect(() => {
+    if (!firebaseLoading) {
+      setIsLoading(false);
     }
-  };
+  }, [firebaseLoading]);
 
-  const logout = async () => {
-    try {
-      await logoutUser();
-      setUser(null);
+  const login = useMutation({
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      return loginWithEmail(email, password);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
+  const register = useMutation({
+    mutationFn: async ({ email, password, username }: { email: string; password: string; username: string }) => {
+      return registerWithEmail(email, password, username);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
+  const logout = useMutation({
+    mutationFn: logoutUser,
+    onSuccess: () => {
       queryClient.setQueryData(['user'], null);
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
-    }
-  };
+    },
+  });
 
   return {
     user,
-    loading: isLoading,
-    isAuthenticated: !!user,
-    login,
-    register,
-    logout
+    isLoading: isLoading || firebaseLoading,
+    isError: !!error,
+    login: login.mutate,
+    register: register.mutate,
+    logout: logout.mutate,
+    isLoggingIn: login.isPending,
+    isRegistering: register.isPending,
+    isLoggingOut: logout.isPending,
+    loginError: login.error,
+    registerError: register.error,
   };
 }

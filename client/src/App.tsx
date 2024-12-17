@@ -15,11 +15,9 @@ import { Membership } from "@/pages/Membership";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { Register } from '@/pages/Register';
-import { PrivateRoute } from '@/components/PrivateRoute';
 
 function App() {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -46,11 +44,6 @@ function App() {
       <Route path="/login">
         <Layout title="Login">
           <Login />
-        </Layout>
-      </Route>
-      <Route path="/register">
-        <Layout title="Register">
-          <Register />
         </Layout>
       </Route>
       <Route path="/about">
@@ -100,9 +93,14 @@ function App() {
       </Route>
       <Route path="/admin">
         <Layout title="Admin Dashboard">
-          <PrivateRoute allowedRoles={['admin', 'editor']}>
+          {user?.role === 'admin' || user?.role === 'editor' ? (
             <Admin />
-          </PrivateRoute>
+          ) : (
+            <div className="container mx-auto px-4 py-16 text-center">
+              <h1 className="text-4xl font-bold mb-4 text-red-500">Access Denied</h1>
+              <p>You don't have permission to access this page.</p>
+            </div>
+          )}
         </Layout>
       </Route>
       <Route>
