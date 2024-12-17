@@ -57,18 +57,21 @@ export function UsersTab() {
   }
 
   const handleSaveUser = async (user: FirebaseUser) => {
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      throw new Error('Not authenticated');
-    }
-    const token = await currentUser.getIdToken();
-
     try {
       if (editingUser) {
-        // Update existing user
-        await updateUser(user.uid, user);
-        setUsers(users.map(u => u.uid === user.uid ? user : u));
+        // Update existing user, preserving the original creation time
+        const updatedUser = {
+          ...user,
+          createdAt: editingUser.createdAt, // Keep original creation time
+        };
+        await updateUser(user.uid, updatedUser);
+        
+        // Update local state
+        setUsers(users.map(u => u.uid === user.uid ? {
+          ...updatedUser,
+          updatedAt: new Date().toISOString()
+        } : u));
+        
         toast({
           title: "Success",
           description: "User updated successfully"
@@ -76,26 +79,26 @@ export function UsersTab() {
         setIsModalOpen(false);
       } else {
         // Create new user
-        const response = await fetch('/api/admin/users/create', {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(user)
+        const { uid, ...userData } = user;
+        const newUser = await createUser(userData);
+        
+        // Update local state with the new user
+        setUsers(prevUsers => [...prevUsers, newUser]);
+        
+        toast({
+          title: "Success",
+          description: "User created successfully"
         });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || 'Failed to create user');
-        }
-
-        const data = await response.json();
-        return data.user;
+        setIsModalOpen(false);
+        return newUser;
       }
     } catch (error: any) {
       console.error('Error saving user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save user",
+        variant: "destructive"
+      });
       throw error;
     }
   }

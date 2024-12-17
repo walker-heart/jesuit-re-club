@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
 
 export interface FirebaseUser {
@@ -8,7 +8,7 @@ export interface FirebaseUser {
   name: string;
   username: string;
   email: string;
-  role: 'admin' | 'editor' | 'user';
+  role: 'admin' | 'editor' | 'user' | 'test';
   createdAt: string;
   updatedAt: string;
 }
@@ -19,9 +19,7 @@ export const fetchUsers = async (): Promise<FirebaseUser[]> => {
       throw new Error('Authentication required to fetch users');
     }
 
-    // Get admin token
     const token = await auth.currentUser.getIdToken();
-    
     const usersRef = collection(db, 'users');
     const usersSnapshot = await getDocs(usersRef);
     
@@ -37,8 +35,16 @@ export const fetchUsers = async (): Promise<FirebaseUser[]> => {
         username: data.username || '',
         email: data.email || '',
         role: data.role || 'user',
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : new Date().toISOString()
+        createdAt: data.createdAt?.toDate?.() 
+          ? data.createdAt.toDate().toISOString() 
+          : typeof data.createdAt === 'string' 
+            ? data.createdAt 
+            : new Date().toISOString(),
+        updatedAt: data.updatedAt?.toDate?.() 
+          ? data.updatedAt.toDate().toISOString() 
+          : typeof data.updatedAt === 'string'
+            ? data.updatedAt
+            : new Date().toISOString()
       } as FirebaseUser;
     });
   } catch (error) {
@@ -49,10 +55,53 @@ export const fetchUsers = async (): Promise<FirebaseUser[]> => {
 
 export const updateUser = async (uid: string, data: Partial<FirebaseUser>) => {
   try {
+    if (!uid) throw new Error('User ID is required for update');
     const userRef = doc(db, 'users', uid);
-    await updateDoc(userRef, data);
+    await updateDoc(userRef, {
+      ...data,
+      updatedAt: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Error updating user:', error);
+    throw error;
+  }
+};
+
+export const createUser = async (userData: Omit<FirebaseUser, 'uid'>) => {
+  try {
+    if (!auth.currentUser) {
+      throw new Error('Authentication required to create user');
+    }
+
+    const token = await auth.currentUser.getIdToken();
+    const response = await fetch('/api/admin/users/create', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(userData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to create user');
+    }
+
+    const { user } = await response.json();
+    const userRef = doc(db, 'users', user.uid);
+    
+    // Create the user document in Firestore
+    await setDoc(userRef, {
+      ...userData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    return user;
+  } catch (error) {
+    console.error('Error creating user:', error);
     throw error;
   }
 };
@@ -63,10 +112,7 @@ export const deleteUser = async (uid: string) => {
       throw new Error('Authentication required to delete user');
     }
 
-    // Get admin token
     const token = await auth.currentUser.getIdToken();
-    
-    // Call admin endpoint to delete user from both Auth and Firestore
     const response = await fetch(`/api/admin/users/${uid}/delete`, {
       method: 'DELETE',
       headers: {
