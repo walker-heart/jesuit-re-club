@@ -53,8 +53,10 @@ export function Header() {
           <Link href="/news" className="nav-link-hover">News</Link>
           
           {(user?.role === 'admin' || user?.role === 'editor') && (
-            <Link href="/admin">
-              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-[#003c71] button-hover">Admin</Button>
+            <Link href="/role">
+              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-[#003c71] button-hover">
+                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              </Button>
             </Link>
           )}
         </div>
