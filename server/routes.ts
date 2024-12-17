@@ -200,6 +200,54 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+  // Delete user (admin only)
+  app.delete("/api/admin/users/:uid/delete", verifyFirebaseToken, async (req: Request, res: Response) => {
+    try {
+      // Check admin role
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Unauthorized - Admin access required' 
+        });
+      }
+
+      const { uid } = req.params;
+
+      // Delete user from Firebase Auth
+      try {
+        await admin.auth().deleteUser(uid);
+      } catch (error: any) {
+        console.error('Error deleting user from Firebase Auth:', error);
+        return res.status(400).json({ 
+          success: false,
+          message: error.message || 'Failed to delete user from Firebase Auth'
+        });
+      }
+
+      // Delete user document from Firestore
+      try {
+        await db.collection('users').doc(uid).delete();
+      } catch (error: any) {
+        console.error('Error deleting user from Firestore:', error);
+        // Even if Firestore delete fails, Auth deletion succeeded
+        return res.status(500).json({ 
+          success: false,
+          message: 'User deleted from Auth but failed to delete from Firestore'
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'User successfully deleted from both Auth and Firestore'
+      });
+    } catch (error: any) {
+      console.error('Error in delete user endpoint:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to delete user'
+      });
+    }
+  });
   // Create user (admin only)
   app.post("/api/admin/users/create", verifyFirebaseToken, async (req: Request, res: Response) => {
     console.log('Create user request received:', JSON.stringify(req.body, null, 2));

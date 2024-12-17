@@ -66,8 +66,19 @@ export const deleteUser = async (uid: string) => {
     // Get admin token
     const token = await auth.currentUser.getIdToken();
     
-    const userRef = doc(db, 'users', uid);
-    await deleteDoc(userRef);
+    // Call admin endpoint to delete user from both Auth and Firestore
+    const response = await fetch(`/api/admin/users/${uid}/delete`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to delete user');
+    }
   } catch (error) {
     console.error('Error deleting user:', error);
     throw error;
