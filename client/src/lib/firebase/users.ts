@@ -92,14 +92,17 @@ export const createUser = async (userData: Omit<FirebaseUser, 'uid'>) => {
     const { user } = await response.json();
     const userRef = doc(db, 'users', user.uid);
     
-    // Create the user document in Firestore
-    await setDoc(userRef, {
+    const newUserData = {
       ...userData,
+      uid: user.uid,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    });
+    };
+    
+    // Create the user document in Firestore
+    await setDoc(userRef, newUserData);
 
-    return user;
+    return newUserData;
   } catch (error) {
     console.error('Error creating user:', error);
     throw error;
