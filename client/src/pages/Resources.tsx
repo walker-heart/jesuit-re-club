@@ -94,25 +94,22 @@ export function Resources() {
         )}
 
         {/* Resources Grid */}
-        <div className="grid gap-8 md:grid-cols-2 w-full max-w-[1000px] mx-auto">
+        <div className="grid gap-8 md:grid-cols-2 w-full max-w-[1200px] mx-auto">
           {isLoading ? (
             <p>Loading resources...</p>
           ) : resources.map((resource) => (
-            <Card key={resource.id} className="p-6 bg-white rounded-lg shadow-lg card-hover animate-fade-in">
+            <Card key={resource.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-[#003c71]">{resource.title}</CardTitle>
+                <CardTitle className="text-lg font-bold text-[#003c71]">{resource.title}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-4">{resource.description}</p>
-                <div className="text-sm text-gray-500 mb-4">
-                  <p>Created by: {resource.userCreated}</p>
-                  <p>Created: {new Date(resource.createdAt).toLocaleDateString()}</p>
-                </div>
+              <CardContent className="space-y-4">
+                <p className="text-gray-600">{resource.description}</p>
                 <Button 
                   asChild
-                  className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover"
+                  variant="outline"
+                  className="w-full justify-center bg-[#b3a369]/10 hover:bg-[#b3a369]/20 text-[#003c71]"
                 >
-                  <Link href={`/resources/${resource.id}`}>View Resource →</Link>
+                  <Link href={`/resources/${resource.id}`}>Learn More</Link>
                 </Button>
               </CardContent>
             </Card>
