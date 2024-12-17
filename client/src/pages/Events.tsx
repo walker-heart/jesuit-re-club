@@ -32,8 +32,8 @@ export function Events() {
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [pastPage, setPastPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const upcomingRef = useRef<HTMLDivElement>(null);
-  const pastRef = useRef<HTMLDivElement>(null);
+  const upcomingRef = useRef<HTMLDivElement | null>(null);
+  const pastRef = useRef<HTMLDivElement | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -192,7 +192,7 @@ export function Events() {
     totalPages: number;
     setPage: (page: number) => void;
     label: string;
-    sectionRef: React.RefObject<HTMLDivElement>;
+    sectionRef: React.RefObject<HTMLDivElement | null>;
   }) => {
     const handlePageChange = (newPage: number) => {
       setPage(newPage);
@@ -233,10 +233,10 @@ export function Events() {
   };
 
   return (
-    <div className="w-full py-8 md:py-12 lg:py-16">
-      <div className="container px-4 md:px-6 mx-auto">
-        <div className="w-full flex justify-end mb-8">
-          {(user?.role === "admin" || user?.role === "editor" || false) && (
+    <div className="w-full py-4">
+      <div className="container px-4 mx-auto">
+        <div className="w-full flex justify-end mb-4">
+          {(user?.role === "admin" || user?.role === "editor") && (
             <>
               <EventModal 
                 isOpen={isDialogOpen}
