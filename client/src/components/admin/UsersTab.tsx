@@ -238,8 +238,7 @@ export function UsersTab() {
                           day: '2-digit',
                           hour: '2-digit',
                           minute: '2-digit',
-                          hour12: true,
-                          timeZone: 'UTC'
+                          hour12: true
                         })
                       : 'N/A'}
                   </TableCell>
@@ -251,8 +250,7 @@ export function UsersTab() {
                           day: '2-digit',
                           hour: '2-digit',
                           minute: '2-digit',
-                          hour12: true,
-                          timeZone: 'UTC'
+                          hour12: true
                         })
                       : 'N/A'}
                   </TableCell>

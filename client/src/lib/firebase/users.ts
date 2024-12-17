@@ -95,8 +95,8 @@ export const createUser = async (userData: Omit<FirebaseUser, 'uid'>) => {
     const newUserData = {
       ...userData,
       uid: user.uid,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: new Date().toLocaleString(),
+      updatedAt: new Date().toLocaleString()
     };
     
     // Create the user document in Firestore
