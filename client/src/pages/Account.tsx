@@ -56,12 +56,12 @@ export function Account() {
           </CardContent>
         </Card>
 
-        {/* Role-specific Actions */}
+        {/* Role-specific Dashboard Access */}
         {(user.role === 'admin' || user.role === 'editor') && (
           <Card>
             <CardHeader>
               <CardTitle>Dashboard Access</CardTitle>
-              <CardDescription>Access your role-specific dashboard</CardDescription>
+              <CardDescription>Quick access to your dashboard</CardDescription>
             </CardHeader>
             <CardContent>
               <Button 
@@ -75,7 +75,7 @@ export function Account() {
           </Card>
         )}
 
-        {/* Account Actions */}
+        {/* Logout Section */}
         <Card>
           <CardHeader>
             <CardTitle>Account Actions</CardTitle>
