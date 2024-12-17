@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { UserModal } from '@/components/admin/UserModal'
-import { fetchUsers, updateUser, deleteUser, type FirebaseUser } from '@/lib/firebase/users'
+import { fetchUsers, updateUser, deleteUser, createUser, type FirebaseUser } from '@/lib/firebase/users'
 import { useToast } from '@/hooks/use-toast'
 import { getAuth } from 'firebase/auth'
 
