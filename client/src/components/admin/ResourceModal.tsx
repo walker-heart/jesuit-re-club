@@ -45,16 +45,30 @@ export function ResourceModal({ isOpen, onClose, onSave }: ResourceModalProps) {
 
     setIsSubmitting(true);
     try {
-      await onSave({
+      const resourceData = {
         title,
         description,
         numberOfTexts: parseInt(numberOfTexts),
-        textFields,
-        userCreated: user?.username || "unknown",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        updatedBy: user?.username || "unknown",
+        textFields: textFields.filter(text => text.trim() !== ''),
+      };
+
+      console.log('Submitting resource data:', resourceData);
+      
+      const response = await fetch('/api/resources/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(resourceData),
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText);
+      }
+
+      const result = await response.json();
+      console.log('Resource created successfully:', result);
       
       // Reset form
       setTitle("");
@@ -64,6 +78,7 @@ export function ResourceModal({ isOpen, onClose, onSave }: ResourceModalProps) {
       onClose();
     } catch (error) {
       console.error('Error saving resource:', error);
+      // Here you might want to show an error toast to the user
     } finally {
       setIsSubmitting(false);
     }
