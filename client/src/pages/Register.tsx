@@ -7,14 +7,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-export function Login() {
+export function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login, user } = useAuth();
+  const { register, user } = useAuth();
 
   // Check if user is already logged in
   useEffect(() => {
@@ -32,14 +33,26 @@ export function Login() {
       setError('Password is required');
       return false;
     }
+    if (!username) {
+      setError('Username is required');
+      return false;
+    }
     if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
       setError('Invalid email address');
+      return false;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return false;
+    }
+    if (username.length < 3) {
+      setError('Username must be at least 3 characters');
       return false;
     }
     return true;
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -49,17 +62,17 @@ export function Login() {
 
     setIsSubmitting(true);
     try {
-      await login({ email, password });
+      await register({ email, password, username });
       toast({
         title: "Success",
-        description: "Logged in successfully",
+        description: "Account created successfully",
       });
       setLocation('/');
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('Registration error:', error);
       setError(error.message);
       toast({
-        title: "Login Failed",
+        title: "Registration Failed",
         description: error.message,
         variant: "destructive"
       });
@@ -72,15 +85,32 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-muted">
       <Card className="w-full max-w-md mx-4">
         <CardHeader>
-          <h1 className="text-2xl font-bold text-center">Login</h1>
+          <h1 className="text-2xl font-bold text-center">Create Account</h1>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4">
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setError(null);
+                }}
+                required
+                className={error ? 'border-red-500' : ''}
+                disabled={isSubmitting}
+                autoComplete="username"
+                autoFocus
+                minLength={3}
+              />
+            </div>
             <div className="space-y-2">
               <Input
                 type="email"
@@ -94,7 +124,6 @@ export function Login() {
                 className={error ? 'border-red-500' : ''}
                 disabled={isSubmitting}
                 autoComplete="email"
-                autoFocus
               />
             </div>
             <div className="space-y-2">
@@ -109,7 +138,7 @@ export function Login() {
                 required
                 className={error ? 'border-red-500' : ''}
                 disabled={isSubmitting}
-                autoComplete="current-password"
+                autoComplete="new-password"
                 minLength={6}
               />
             </div>
@@ -118,16 +147,16 @@ export function Login() {
               className="w-full"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Signing in...' : 'Sign in'}
+              {isSubmitting ? 'Creating Account...' : 'Create Account'}
             </Button>
             <div className="text-center text-sm">
-              <span className="text-muted-foreground">Don't have an account? </span>
+              <span className="text-muted-foreground">Already have an account? </span>
               <Button
                 variant="link"
                 className="p-0 h-auto font-normal"
-                onClick={() => setLocation('/register')}
+                onClick={() => setLocation('/login')}
               >
-                Create one
+                Sign in
               </Button>
             </div>
           </form>
@@ -135,4 +164,4 @@ export function Login() {
       </Card>
     </div>
   );
-}
+} 

@@ -1,12 +1,12 @@
 import express, { type Express } from "express";
 import fs from "fs";
-import path, { dirname } from "path";
+import path, { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer, createLogger } from "vite";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 import { type Server } from "http";
-import viteConfig from "../vite.config";
+import viteConfig from "../vite.config.js";
 
 const viteLogger = createLogger();
 
@@ -49,25 +49,35 @@ export async function setupVite(app: Express, server: Server) {
       middlewareMode: true,
       hmr: { server },
     },
-    appType: "custom",
+    appType: "spa",
+    root: join(__dirname, "../client"),
   });
 
-  app.use(vite.middlewares);
+  // Skip Vite middleware for API routes
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    vite.middlewares(req, res, next);
+  });
+
+  // Only handle non-API routes with Vite's SPA handling
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
-    try {
-      const clientTemplate = path.resolve(
-        __dirname,
-        "..",
-        "client",
-        "index.html",
-      );
+    // Skip API routes
+    if (url.startsWith("/api")) {
+      return next();
+    }
 
-      // always reload the index.html file from disk incase it changes
-      const template = await fs.promises.readFile(clientTemplate, "utf-8");
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+    try {
+      // Only serve HTML for non-API routes
+      const template = await vite.transformIndexHtml(url, "");
+      if (!res.headersSent) {
+        res.status(200)
+          .set({ "Content-Type": "text/html" })
+          .end(template);
+      }
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
@@ -76,7 +86,7 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  const distPath = join(__dirname, "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -88,6 +98,6 @@ export function serveStatic(app: Express) {
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(join(distPath, "index.html"));
   });
 }

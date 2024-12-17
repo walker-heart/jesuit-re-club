@@ -1,29 +1,28 @@
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UsersTab } from '@/components/admin/UsersTab';
-import { PostsTab } from '@/components/admin/PostsTab';
-import { ActivityTab } from '@/components/admin/ActivityTab';
+'use client'
+
+import { useState } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { UsersTab } from '@/components/admin/UsersTab'
+import { PostsTab } from '@/components/admin/PostsTab'
+import { ActivityTab } from '@/components/admin/ActivityTab'
+import { useAuth } from '@/hooks/useAuth'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent } from '@/components/ui/card'
 
 export function Admin() {
-  const { user, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("users");
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("users")
 
-  if (isLoading) {
+  if (!user || user.role !== 'admin') {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user || (user.role !== 'admin' && user.role !== 'editor')) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-4xl font-bold text-red-500">Access Denied</h1>
-        <p className="mt-4">You do not have permission to access this page.</p>
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="p-6">
+            <Alert variant="destructive">
+              <AlertDescription>You must be an admin to access this page</AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
       </div>
     );
   }

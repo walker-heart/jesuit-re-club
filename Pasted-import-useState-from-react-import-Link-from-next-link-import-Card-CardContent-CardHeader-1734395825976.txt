@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar, BookOpen, Newspaper } from 'lucide-react'
@@ -59,28 +60,22 @@ export function PostsTab() {
 
   const handleSave = (updatedItem: EventItem | ResourceItem | NewsItem) => {
     if (editingType) {
-      setPosts(prevPosts => {
-        const key = `${editingType}s` as keyof typeof prevPosts;
-        return {
-          ...prevPosts,
-          [key]: prevPosts[key].map((item: any) => 
-            item.id === updatedItem.id ? updatedItem : item
-          )
-        };
-      });
+      setPosts(prevPosts => ({
+        ...prevPosts,
+        [editingType + 's']: prevPosts[editingType + 's'].map(item => 
+          item.id === updatedItem.id ? updatedItem : item
+        )
+      }));
     }
     setEditingItem(null);
     setEditingType(null);
   };
 
   const handleDelete = (id: number, type: 'event' | 'resource' | 'news') => {
-    setPosts(prevPosts => {
-      const key = `${type}s` as keyof typeof prevPosts;
-      return {
-        ...prevPosts,
-        [key]: prevPosts[key].filter((item: any) => item.id !== id)
-      };
-    });
+    setPosts(prevPosts => ({
+      ...prevPosts,
+      [type + 's']: prevPosts[type + 's'].filter(item => item.id !== id)
+    }));
   };
 
   return (
@@ -100,6 +95,9 @@ export function PostsTab() {
                 <p className="text-sm text-gray-600 mb-1">{event.date} | {event.time}</p>
                 <p className="text-sm text-gray-600 mb-2">{event.location}</p>
                 <p className="text-sm text-gray-600 mb-2">Speaker: {event.speaker}</p>
+                <Button asChild variant="outline" size="sm" className="mb-10">
+                  <Link href={`/events/${event.id}`}>Info</Link>
+                </Button>
                 <div className="absolute bottom-4 right-4 space-x-2">
                   <Button variant="outline" size="sm" onClick={() => handleEdit(event, 'event')}>Edit</Button>
                   <Button variant="destructive" size="sm" onClick={() => handleDelete(event.id, 'event')}>Delete</Button>
@@ -123,6 +121,9 @@ export function PostsTab() {
               <Card key={resource.id} className="p-4 relative">
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-4">{resource.description}</p>
+                <Button asChild className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 mb-10">
+                  <Link href={`/resources/${resource.id}`}>Learn More</Link>
+                </Button>
                 <div className="absolute bottom-4 right-4 space-x-2">
                   <Button variant="outline" size="sm" onClick={() => handleEdit(resource, 'resource')}>Edit</Button>
                   <Button variant="destructive" size="sm" onClick={() => handleDelete(resource.id, 'resource')}>Delete</Button>
@@ -147,6 +148,9 @@ export function PostsTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{newsItem.title}</h3>
                 <p className="text-sm text-gray-500 mb-2">{newsItem.date}</p>
                 <p className="text-sm text-gray-600 mb-4">By {newsItem.author}</p>
+                <Button asChild className="bg-[#003c71] text-white hover:bg-[#002855] transition-colors mb-10">
+                  <Link href={`/news/${newsItem.id}`}>Read More</Link>
+                </Button>
                 <div className="absolute bottom-4 right-4 space-x-2">
                   <Button variant="outline" size="sm" onClick={() => handleEdit(newsItem, 'news')}>Edit</Button>
                   <Button variant="destructive" size="sm" onClick={() => handleDelete(newsItem.id, 'news')}>Delete</Button>
@@ -170,3 +174,4 @@ export function PostsTab() {
     </div>
   )
 }
+

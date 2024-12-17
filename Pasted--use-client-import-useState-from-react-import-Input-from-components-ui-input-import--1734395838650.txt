@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { UserModal } from '@/components/admin/UserModal'
+import { UserModal } from './UserModal'
 
 type UserItem = {
   id: number;
@@ -101,3 +101,4 @@ export function UsersTab() {
     </div>
   )
 }
+

@@ -1,30 +1,15 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { createServer, type Server } from "http";
-import { auth } from "firebase-admin";
-import { db } from "@db";
-import { eq, and, or, gt, lt } from "drizzle-orm";
-import { users, sessions } from "@db/schema";
 import admin from "firebase-admin";
+import { createServer, type Server } from "http";
 
-// Extend Express Request type to include Firebase user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: auth.DecodedIdToken;
-      session?: any; // TODO: Type this properly
-    }
+// Initialize Firebase Admin with better error handling
+try {
+  if (!process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.VITE_FIREBASE_PROJECT_ID) {
+    throw new Error('Missing Firebase Admin credentials - check your environment variables');
   }
-}
 
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-  try {
-    if (!process.env.VITE_FIREBASE_PROJECT_ID ||
-        !process.env.FIREBASE_CLIENT_EMAIL ||
-        !process.env.FIREBASE_PRIVATE_KEY) {
-      throw new Error('Missing Firebase admin configuration');
-    }
-
+  // Only initialize if not already initialized
+  if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.VITE_FIREBASE_PROJECT_ID,
@@ -33,256 +18,251 @@ if (!admin.apps.length) {
       }),
     });
     console.log('Firebase Admin initialized successfully');
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
-    throw error;
   }
+} catch (error) {
+  console.error('Firebase Admin initialization error:', error);
+  throw error;
 }
 
-// Middleware to verify Firebase token
+// Get Firestore instance
+const db = admin.firestore();
+
+// Middleware to verify Firebase token and add user data
 async function verifyFirebaseToken(req: Request, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'No token provided' });
+      return res.status(401).json({ 
+        success: false,
+        message: 'No token provided' 
+      });
     }
 
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await admin.auth().verifyIdToken(token);
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+    const userData = userDoc.data();
     
-    // For registration and login endpoints, skip session check
-    if (req.path === '/api/auth/register' || req.path === '/api/auth/login') {
-      req.user = decodedToken;
-      return next();
-    }
-
-    try {
-      // Check for valid session
-      const [session] = await db
-        .select()
-        .from(sessions)
-        .where(
-          and(
-            eq(sessions.firebaseUid, decodedToken.uid),
-            gt(sessions.expiresAt, new Date())
-          )
-        );
-
-      // Clean up expired sessions
-      await db
-        .delete(sessions)
-        .where(
-          and(
-            eq(sessions.firebaseUid, decodedToken.uid),
-            lt(sessions.expiresAt, new Date())
-          )
-        );
-
-      if (!session) {
-        // Create new session if none exists
-        const [newSession] = await db
-          .insert(sessions)
-          .values({
-            firebaseUid: decodedToken.uid,
-            token,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-          })
-          .returning();
-
-        req.user = decodedToken;
-        req.session = newSession;
-        return next();
-      }
-
-      // Existing valid session
-      req.user = decodedToken;
-      req.session = session;
-      next();
-    } catch (dbError) {
-      console.error('Database error:', dbError);
-      return res.status(500).json({ message: 'Error verifying session' });
-    }
+    req.user = {
+      uid: decodedToken.uid,
+      email: decodedToken.email || null,
+      role: userData?.role || 'user',
+      username: userData?.username || decodedToken.email?.split('@')[0] || 'user'
+    };
+    
+    next();
   } catch (error: any) {
     console.error('Error verifying token:', error);
-    if (error.code === 'auth/id-token-expired') {
-      return res.status(401).json({ message: 'Session expired, please login again' });
-    } else if (error.code === 'auth/argument-error') {
-      return res.status(401).json({ message: 'Invalid authentication token' });
-    }
-    res.status(401).json({ message: 'Authentication failed' });
+    return res.status(401).json({ 
+      success: false,
+      message: 'Invalid token',
+      error: error.message 
+    });
   }
 }
 
 export function registerRoutes(app: Express): Server {
-  // Auth routes
-  app.post("/api/auth/register", verifyFirebaseToken, async (req, res) => {
-    try {
-      const { email, username } = req.body;
-      if (!req.user?.uid) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      const firebaseUid = req.user.uid;
-
-      // Check if user already exists
-      const [existingUser] = await db
-        .select()
-        .from(users)
-        .where(
-          or(
-            eq(users.email, email),
-            eq(users.username, username),
-            eq(users.firebaseUid, firebaseUid)
-          )
-        );
-
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
-      }
-
-      // Create new user
-      const [user] = await db
-        .insert(users)
-        .values({
-          email,
-          username,
-          firebaseUid,
-          role: 'user',
-        })
-        .returning();
-
-      // Create session
-      await db.insert(sessions).values({
-        userId: user.id,
-        firebaseUid,
-        token: req.headers.authorization!.split('Bearer ')[1],
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      });
-
-      res.json(user);
-    } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({ message: "Registration failed" });
-    }
+  // Health check endpoint
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  app.post("/api/auth/login", verifyFirebaseToken, async (req, res) => {
+  // Auth routes
+  app.post("/api/auth/verify-token", verifyFirebaseToken, (req: Request, res: Response) => {
+    res.json({ success: true, user: req.user });
+  });
+
+  // User management routes
+  app.post("/api/auth/user", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
-      if (!req.user?.uid) {
-        return res.status(401).json({ message: "Authentication required" });
+      const { uid } = req.user!;
+      const userDoc = await db.collection('users').doc(uid).get();
+      
+      if (!userDoc.exists) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'User not found' 
+        });
       }
-
-      const firebaseUid = req.user.uid;
-
-      // Find user
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.firebaseUid, firebaseUid));
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Remove expired sessions
-      await db
-        .delete(sessions)
-        .where(
-          and(
-            eq(sessions.firebaseUid, firebaseUid),
-            lt(sessions.expiresAt, new Date())
-          )
-        );
-
-      // Create new session
-      const [session] = await db
-        .insert(sessions)
-        .values({
-          userId: user.id,
-          firebaseUid,
-          token: req.headers.authorization!.split('Bearer ')[1],
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        })
-        .returning();
 
       res.json({ 
-        user: {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          role: user.role,
-        },
-        session: {
-          id: session.id,
-          expiresAt: session.expiresAt
-        }
+        success: true,
+        user: userDoc.data() 
       });
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ message: "Login failed" });
+    } catch (error: any) {
+      console.error('Error fetching user:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Internal server error',
+        error: error.message 
+      });
     }
   });
 
-  app.post("/api/auth/logout", verifyFirebaseToken, async (req, res) => {
+  // Admin routes
+  app.post("/api/admin/users", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
-      if (!req.user?.uid) {
-        return res.status(401).json({ message: "Authentication required" });
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Unauthorized - Admin access required' 
+        });
       }
 
-      const firebaseUid = req.user.uid;
+      const usersSnapshot = await db.collection('users').get();
+      const users = usersSnapshot.docs.map(doc => ({
+        uid: doc.id,
+        ...doc.data()
+      }));
 
-      // Remove all sessions
-      await db
-        .delete(sessions)
-        .where(eq(sessions.firebaseUid, firebaseUid));
-
-      res.json({ message: "Logged out successfully" });
-    } catch (error) {
-      console.error('Logout error:', error);
-      res.status(500).json({ message: "Logout failed" });
+      res.json({ 
+        success: true,
+        users 
+      });
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Internal server error',
+        error: error.message 
+      });
     }
   });
 
-  app.get("/api/auth/session", verifyFirebaseToken, async (req, res) => {
+  // Create user (admin only)
+  app.post("/api/admin/users/create", verifyFirebaseToken, async (req: Request, res: Response) => {
+    console.log('Create user request received:', JSON.stringify(req.body, null, 2));
+    
     try {
-      if (!req.user?.uid) {
-        return res.status(401).json({ message: "Authentication required" });
+      // Check admin role
+      if (req.user?.role !== 'admin') {
+        console.log('Unauthorized: User role is', req.user?.role);
+        return res.status(403).json({ 
+          success: false,
+          message: 'Unauthorized - Admin access required' 
+        });
       }
 
-      const firebaseUid = req.user.uid;
+      const { email, password, username, role } = req.body;
+      console.log('Parsed request data:', { email, username, role });
 
-      // Find valid session
-      const [session] = await db
-        .select()
-        .from(sessions)
-        .where(
-          and(
-            eq(sessions.firebaseUid, firebaseUid),
-            gt(sessions.expiresAt, new Date())
-          )
-        );
-
-      if (!session) {
-        return res.status(401).json({ message: "No valid session found" });
+      // Validate required fields
+      if (!email || !password || !username || !role) {
+        console.log('Missing fields:', { 
+          hasEmail: !!email, 
+          hasPassword: !!password, 
+          hasUsername: !!username, 
+          hasRole: !!role 
+        });
+        return res.status(400).json({ 
+          success: false,
+          message: 'Missing required fields' 
+        });
       }
 
-      // Get user data
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, session.userId));
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      // Validate role
+      if (!['admin', 'editor', 'user'].includes(role)) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Invalid role' 
+        });
       }
 
-      res.json(user);
-    } catch (error) {
-      console.error('Session verification error:', error);
-      res.status(500).json({ message: "Session verification failed" });
+      let userRecord;
+      try {
+        console.log('Creating user in Firebase Auth...');
+        // Create user in Firebase Auth
+        userRecord = await admin.auth().createUser({
+          email,
+          password,
+          displayName: username,
+        });
+        console.log('User created in Firebase Auth:', userRecord.uid);
+
+        console.log('Creating user document in Firestore...');
+        const userData = {
+          email,
+          username,
+          role,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdBy: req.user.uid,
+        };
+        
+        // Create user document in Firestore
+        await db.collection('users').doc(userRecord.uid).set(userData);
+        console.log('User document created in Firestore');
+
+        // Return success response
+        return res.status(201)
+          .set({ 'Content-Type': 'application/json' })
+          .json({
+            success: true,
+            message: 'User created successfully',
+            user: {
+              uid: userRecord.uid,
+              ...userData
+            },
+          });
+      } catch (error: any) {
+        console.error('Error creating user:', error);
+        
+        // Clean up Firebase Auth user if Firestore creation failed
+        if (userRecord && error.code !== 'auth/email-already-exists') {
+          try {
+            await admin.auth().deleteUser(userRecord.uid);
+            console.log('Cleaned up Firebase Auth user after Firestore error');
+          } catch (cleanupError) {
+            console.error('Error during cleanup:', cleanupError);
+          }
+        }
+
+        // Return appropriate error message
+        if (error.code === 'auth/email-already-exists') {
+          return res.status(400).json({ 
+            success: false,
+            message: 'Email already exists' 
+          });
+        } else if (error.code === 'auth/invalid-password') {
+          return res.status(400).json({ 
+            success: false,
+            message: 'Password must be at least 6 characters' 
+          });
+        } else if (error.code === 'auth/invalid-email') {
+          return res.status(400).json({ 
+            success: false,
+            message: 'Invalid email format' 
+          });
+        }
+        
+        throw error; // Re-throw for general error handling
+      }
+    } catch (error: any) {
+      console.error('Error in user creation endpoint:', error);
+      return res.status(500)
+        .set({ 'Content-Type': 'application/json' })
+        .json({ 
+          success: false,
+          message: 'Failed to create user', 
+          error: error.message || 'Unknown error'
+        });
     }
   });
 
+  // Create HTTP server
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Add custom properties to Express Request
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        uid: string;
+        email: string | null;
+        role: string;
+        username: string;
+      };
+    }
+  }
 }
