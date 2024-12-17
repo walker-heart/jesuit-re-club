@@ -120,16 +120,7 @@ export function Login() {
             >
               {isSubmitting ? 'Signing in...' : 'Sign in'}
             </Button>
-            <div className="text-center text-sm">
-              <span className="text-muted-foreground">Don't have an account? </span>
-              <Button
-                variant="link"
-                className="p-0 h-auto font-normal"
-                onClick={() => setLocation('/register')}
-              >
-                Create one
-              </Button>
-            </div>
+            
           </form>
         </CardContent>
       </Card>
