@@ -37,10 +37,13 @@ export function UsersTab() {
     }
   }
 
-  const filteredUsers = users.filter(user =>
-    user.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredUsers = users.filter(user => {
+    const username = user.username || '';
+    const email = user.email || '';
+    const searchLower = searchTerm.toLowerCase();
+    return username.toLowerCase().includes(searchLower) || 
+           email.toLowerCase().includes(searchLower);
+  });
 
   const handleCreateUser = () => {
     setEditingUser(null)
@@ -140,28 +143,32 @@ export function UsersTab() {
               filteredUsers.map((user) => (
                 <TableRow key={user.uid}>
                   <TableCell className="font-medium">{user.username || 'No name'}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell className="capitalize">{user.role}</TableCell>
+                  <TableCell>{user.email || 'N/A'}</TableCell>
+                  <TableCell className="capitalize">{user.role || 'user'}</TableCell>
                   <TableCell>
-                    {user.createdAt 
-                      ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                    {user.createdAt && !isNaN(new Date(user.createdAt).getTime())
+                      ? new Date(user.createdAt).toLocaleString('en-US', {
                           year: 'numeric',
                           month: 'short',
-                          day: 'numeric',
+                          day: '2-digit',
                           hour: '2-digit',
-                          minute: '2-digit'
-                        }) 
+                          minute: '2-digit',
+                          hour12: true,
+                          timeZone: 'UTC'
+                        })
                       : 'N/A'}
                   </TableCell>
                   <TableCell>
-                    {user.updatedAt 
-                      ? new Date(user.updatedAt).toLocaleDateString('en-US', {
+                    {user.updatedAt && !isNaN(new Date(user.updatedAt).getTime())
+                      ? new Date(user.updatedAt).toLocaleString('en-US', {
                           year: 'numeric',
                           month: 'short',
-                          day: 'numeric',
+                          day: '2-digit',
                           hour: '2-digit',
-                          minute: '2-digit'
-                        }) 
+                          minute: '2-digit',
+                          hour12: true,
+                          timeZone: 'UTC'
+                        })
                       : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right">

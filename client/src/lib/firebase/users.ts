@@ -27,10 +27,10 @@ export const fetchUsers = async (): Promise<FirebaseUser[]> => {
       return {
         uid: doc.id,
         email: data.email || '',
-        username: data.username || '',
+        username: data.username || data.displayName || 'No name',
         role: data.role || 'user',
-        createdAt: data.createdAt || null,
-        updatedAt: data.updatedAt || null
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : null
       } as FirebaseUser;
     });
   } catch (error) {
