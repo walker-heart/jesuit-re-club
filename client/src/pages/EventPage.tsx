@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Clock, ArrowLeft } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/lib/firebase/firebase-config";
+import { deleteEvent } from "@/lib/firebase/events";
+import { EditModal } from "@/components/admin/EditModal";
 
 interface EventDetails {
   id: string;
@@ -19,40 +22,102 @@ interface EventDetails {
 
 export function EventPage() {
   const { slug } = useParams();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [event, setEvent] = useState<EventDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchEvent = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/events/${slug}`, {
-          credentials: 'include'
-        });
+  // Check if user has permission to edit/delete the event
+  const canModifyEvent = () => {
+    const user = auth.currentUser;
+    if (!user || !event) return false;
+    
+    // Get user's role from localStorage (set during login)
+    const userRole = localStorage.getItem('userRole');
+    
+    // Admins can modify all events
+    if (userRole === 'admin') return true;
+    
+    // Editors can only modify their own events
+    if (userRole === 'editor') {
+      return event.userCreated === (user.displayName || user.email);
+    }
+    
+    return false;
+  };
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch event details');
-        }
+  const handleDelete = async () => {
+    if (!event?.id || !canModifyEvent()) return;
 
-        const data = await response.json();
-        setEvent(data.event);
-      } catch (error) {
-        console.error('Error fetching event:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load event details",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
+    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      if (!event.id) {
+        throw new Error('Event ID is required for deletion');
       }
-    };
+      
+      await deleteEvent(event.id);
+      
+      toast({
+        title: "Success",
+        description: "Event deleted successfully"
+      });
+      
+      // Use setTimeout to ensure the toast is visible before navigation
+      setTimeout(() => {
+        navigate('/events');
+      }, 1500);
+    } catch (error: any) {
+      console.error('Error deleting event:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete event",
+        variant: "destructive"
+      });
+    }
+  };
 
+  // Define fetchEvent outside useEffect so it can be called from other functions
+  const fetchEvent = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/events/${slug}`, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch event details');
+      }
+
+      const data = await response.json();
+      setEvent(data.event);
+    } catch (error) {
+      console.error('Error fetching event:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load event details",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEventUpdated = () => {
+    // Refresh the event data after update
     if (slug) {
       fetchEvent();
     }
-  }, [slug, toast]);
+  };
+
+  useEffect(() => {
+    if (slug) {
+      fetchEvent();
+    }
+  }, [slug]);
 
   if (isLoading) {
     return (
@@ -107,11 +172,35 @@ export function EventPage() {
 
               <p className="text-gray-700">{event.speakerDescription}</p>
 
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold text-[#003c71]">Speaker</h2>
-                <p className="text-gray-700">{event.speaker}</p>
-              </div>
+              <div>
+              <h2 className="text-xl font-bold text-[#003c71]">Speaker</h2>
+              <p className="text-gray-700">{event.speaker}</p>
             </div>
+
+            {/* Event management buttons for admins and editors */}
+            {canModifyEvent() && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Event
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Event
+                </Button>
+              </div>
+            )}
+          </div>
 
             <div className="space-y-6">
               <div>
@@ -133,6 +222,17 @@ export function EventPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {event && (
+        <EditModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={handleEventUpdated}
+          item={event}
+          type="event"
+        />
+      )}
     </div>
   );
 }

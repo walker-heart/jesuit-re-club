@@ -128,8 +128,8 @@ export function PostsTab() {
     setEditingType(null);
   };
 
-  const handleDelete = async (id: string | number, type: 'event' | 'resource' | 'news') => {
-    if (!id) return;
+  const handleDelete = async (id: string | undefined | number, type: 'event' | 'resource' | 'news') => {
+    if (!id || typeof id !== 'string') return;
     
     try {
       if (type === 'event') {

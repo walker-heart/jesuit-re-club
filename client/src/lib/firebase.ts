@@ -93,11 +93,16 @@ export const getCurrentUser = async (firebaseUser: FirebaseUser): Promise<User |
     if (!userDoc.exists()) return null;
 
     const userData = userDoc.data();
+    const userRole = userData.role || 'user';
+    
+    // Store user role in localStorage for role-based permissions
+    localStorage.setItem('userRole', userRole);
+    
     return {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       username: userData.username,
-      role: userData.role || 'user'
+      role: userRole
     };
   } catch (error) {
     console.error('Error getting user data:', error);
