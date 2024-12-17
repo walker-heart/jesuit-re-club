@@ -1,6 +1,8 @@
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Footer() {
+  const { user } = useAuth();
   return (
     <footer className="bg-[#003c71] text-white py-12">
       <div className="container mx-auto px-4">
@@ -51,7 +53,11 @@ export function Footer() {
             <div className="text-sm text-gray-400 md:text-right space-y-1">
               <p>&copy; {new Date().getFullYear()} Real Estate Club at Jesuit Dallas</p>
               <div className="space-x-4">
-                <Link href="/login" className="hover:text-[#b3a369]">Login</Link>
+                {user ? (
+                  <Link href="/account" className="hover:text-[#b3a369]">Account</Link>
+                ) : (
+                  <Link href="/login" className="hover:text-[#b3a369]">Login</Link>
+                )}
                 <Link href="/privacy" className="hover:text-[#b3a369]">Privacy Policy</Link>
                 <Link href="/terms" className="hover:text-[#b3a369]">Terms of Service</Link>
               </div>
