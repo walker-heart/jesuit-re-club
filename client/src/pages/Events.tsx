@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   Calendar,
@@ -7,33 +7,99 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  Edit,
+  Trash2,
 } from "lucide-react";
+import { EditModal } from "@/components/admin/EditModal";
+import { deleteEvent, fetchEvents, type FirebaseEvent } from "@/lib/firebase/events";
+import { auth } from "@/lib/firebase/firebase-config";
 import { Card, CardContent } from "@/components/ui/card";
 import { EventModal } from "@/components/admin/EventModal";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  speaker: string;
-  agenda: string;
-  createdAt: string;
-  userCreated: string;
-}
+// Use the FirebaseEvent type from firebase/events
+type Event = FirebaseEvent & {
+  description?: string; // Optional since we map speakerDescription to this
+};
 
 export function Events() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [pastPage, setPastPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const upcomingRef = useRef<HTMLDivElement | null>(null);
   const pastRef = useRef<HTMLDivElement | null>(null);
+
+  const canModifyEvent = (event: Event) => {
+    if (!auth.currentUser) return false;
+    
+    const userRole = localStorage.getItem('userRole');
+    
+    // Admins can modify all events
+    if (userRole === 'admin') return true;
+    
+    // Editors can only modify their own events
+    if (userRole === 'editor') {
+      return event.userCreated === (auth.currentUser.displayName || auth.currentUser.email);
+    }
+    
+    return false;
+  };
+
+  const handleDelete = async (event: Event) => {
+    if (!event.id || !canModifyEvent(event)) return;
+
+    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteEvent(event.id);
+      
+      toast({
+        title: "Success",
+        description: "Event deleted successfully"
+      });
+      
+      // Refresh the events list
+      const fetchedEvents = await fetchEvents();
+      setAllEvents(fetchedEvents);
+    } catch (error: any) {
+      console.error('Error deleting event:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete event",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEventUpdated = async () => {
+    try {
+      // Refresh the events list after update
+      const fetchedEvents = await fetchEvents();
+      setAllEvents(fetchedEvents);
+      setIsEditModalOpen(false);
+      setEditingEvent(null);
+      
+      toast({
+        title: "Success",
+        description: "Event updated successfully"
+      });
+    } catch (error) {
+      console.error('Error refreshing events:', error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh events",
+        variant: "destructive"
+      });
+    }
+  };
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -57,17 +123,9 @@ export function Events() {
         }
 
         const data = await response.json();
-        const events = data.events.map((event: any) => ({
-          id: event.id,
-          title: event.title,
-          date: event.date,
-          time: event.time,
-          location: event.location,
-          description: event.speakerDescription,
-          speaker: event.speaker,
-          agenda: event.agenda,
-          createdAt: event.createdAt,
-          userCreated: event.userCreated
+        const events = data.events.map((event: FirebaseEvent) => ({
+          ...event,
+          description: event.speakerDescription // Map speakerDescription to description for display
         }));
 
         setAllEvents(events);
@@ -170,12 +228,43 @@ export function Events() {
             </div>
             <p className="text-gray-600">{event.description}</p>
           </div>
-          <Button
-            asChild
-            className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover shrink-0"
-          >
-            <Link href={`/events/${event.id}`}>View Details →</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              asChild
+              className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover shrink-0"
+            >
+              <Link href={`/events/${event.id}`}>View Details →</Link>
+            </Button>
+            {canModifyEvent(event) && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setEditingEvent(event);
+                    setIsEditModalOpen(true);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDelete(event);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -236,7 +325,7 @@ export function Events() {
     <div className="w-full py-4">
       <div className="container px-4 mx-auto">
         <div className="w-full flex justify-end mb-4">
-          {(user?.role === "admin" || user?.role === "editor") && (
+          {(user?.role === 'admin' || user?.role === 'editor') && (
             <>
               <EventModal 
                 isOpen={isDialogOpen}
@@ -303,6 +392,23 @@ export function Events() {
           </section>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {editingEvent && (
+        <EditModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingEvent(null);
+          }}
+          onSave={handleEventUpdated}
+          item={{
+            ...editingEvent,
+            speakerDescription: editingEvent.description || editingEvent.speakerDescription
+          }}
+          type="event"
+        />
+      )}
     </div>
   );
 }
