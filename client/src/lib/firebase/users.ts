@@ -5,6 +5,7 @@ export interface FirebaseUser {
   uid: string;
   firstName: string;
   lastName: string;
+  name: string;
   username: string;
   email: string;
   role: 'admin' | 'editor' | 'user';
@@ -26,10 +27,13 @@ export const fetchUsers = async (): Promise<FirebaseUser[]> => {
     
     return usersSnapshot.docs.map(doc => {
       const data = doc.data();
+      const firstName = data.firstName || '';
+      const lastName = data.lastName || '';
       return {
         uid: doc.id,
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
+        firstName,
+        lastName,
+        name: `${firstName} ${lastName}`.trim(),
         username: data.username || '',
         email: data.email || '',
         role: data.role || 'user',
