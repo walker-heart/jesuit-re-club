@@ -9,15 +9,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { EventModal } from "@/components/admin/EventModal";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -262,91 +254,25 @@ export function Events() {
       <div className="container px-4 md:px-6 mx-auto flex flex-col items-center">
         {(user?.role === "admin" || user?.role === "editor") && (
           <div className="mb-8">
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-[#003c71] text-white hover:bg-[#002c61] button-hover">
-                  Create New Event
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Event</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Event Title
-                    </label>
-                    <Input
-                      value={newEvent.title}
-                      onChange={(e) =>
-                        setNewEvent({ ...newEvent, title: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Description
-                    </label>
-                    <Textarea
-                      value={newEvent.description}
-                      onChange={(e) =>
-                        setNewEvent({
-                          ...newEvent,
-                          description: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Date
-                    </label>
-                    <Input
-                      type="date"
-                      value={newEvent.date}
-                      onChange={(e) =>
-                        setNewEvent({ ...newEvent, date: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Time
-                    </label>
-                    <Input
-                      type="time"
-                      value={newEvent.time}
-                      onChange={(e) =>
-                        setNewEvent({ ...newEvent, time: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Location
-                    </label>
-                    <Input
-                      value={newEvent.location}
-                      onChange={(e) =>
-                        setNewEvent({ ...newEvent, location: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-[#003c71] text-white hover:bg-[#002c61] button-hover"
-                  >
-                    Create Event
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <EventModal 
+              isOpen={isDialogOpen}
+              onClose={() => setIsDialogOpen(false)}
+              onEventCreated={(event) => {
+                // Refresh the events list after creation
+                toast({
+                  title: "Success",
+                  description: "Event created successfully"
+                });
+                // TODO: Update events list
+                setIsDialogOpen(false);
+              }}
+            />
+            <Button 
+              onClick={() => setIsDialogOpen(true)}
+              className="bg-[#003c71] text-white hover:bg-[#002c61] button-hover"
+            >
+              Create New Event
+            </Button>
           </div>
         )}
 
