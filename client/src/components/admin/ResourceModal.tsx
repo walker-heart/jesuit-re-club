@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/lib/firebase";
 
 type ResourceModalProps = {
   isOpen: boolean;
@@ -14,7 +14,6 @@ type ResourceModalProps = {
 };
 
 export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -22,24 +21,30 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
   const [textFields, setTextFields] = useState<string[]>([""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const num = parseInt(numberOfTexts);
-    setTextFields(prev => {
-      const newFields = [...prev];
-      if (num > prev.length) {
-        while (newFields.length < num) {
-          newFields.push("");
-        }
-      } else if (num < prev.length) {
-        newFields.splice(num);
+  const handleTextFieldChange = (index: number, value: string) => {
+    const newFields = [...textFields];
+    newFields[index] = value;
+    setTextFields(newFields);
+  };
+
+  const handleNumTextsChange = (value: string) => {
+    setNumberOfTexts(value);
+    const num = parseInt(value);
+    const newFields = [...textFields];
+    if (num > textFields.length) {
+      while (newFields.length < num) {
+        newFields.push("");
       }
-      return newFields;
-    });
-  }, [numberOfTexts]);
+    } else {
+      newFields.splice(num);
+    }
+    setTextFields(newFields);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !numberOfTexts) {
+    
+    if (!title || !description || !numberOfTexts || textFields.some(field => !field.trim())) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -50,48 +55,44 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
 
     setIsSubmitting(true);
     try {
-      // Get the Firebase token
-      const token = await user?.getIdToken();
-      if (!token) {
-        throw new Error('No token provided');
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('You must be logged in to create a resource');
       }
 
-      const resourceData = {
-        title,
-        description,
-        numberOfTexts: parseInt(numberOfTexts),
-        textFields: textFields.filter(text => text.trim() !== ''),
-      };
-
+      const token = await currentUser.getIdToken();
+      
       const response = await fetch('/api/resources/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(resourceData),
+        body: JSON.stringify({
+          title,
+          description,
+          numberOfTexts: parseInt(numberOfTexts),
+          textFields: textFields.filter(text => text.trim() !== ''),
+        }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create resource');
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to create resource');
       }
 
-      const result = await response.json();
-      
       toast({
         title: "Success",
         description: "Resource created successfully",
       });
 
-      // Reset form
       setTitle("");
       setDescription("");
       setNumberOfTexts("1");
       setTextFields([""]);
       onClose();
     } catch (error: any) {
-      console.error('Error saving resource:', error);
+      console.error('Error creating resource:', error);
       toast({
         title: "Error",
         description: error.message || 'Failed to create resource',
@@ -115,6 +116,7 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter resource title"
               required
             />
           </div>
@@ -125,16 +127,14 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter resource description"
               required
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="numberOfTexts">Number of Texts</Label>
-            <Select
-              value={numberOfTexts}
-              onValueChange={setNumberOfTexts}
-            >
+            <Select value={numberOfTexts} onValueChange={handleNumTextsChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select number of texts" />
               </SelectTrigger>
@@ -154,11 +154,8 @@ export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
               <Textarea
                 id={`text-${index}`}
                 value={text}
-                onChange={(e) => {
-                  const newTextFields = [...textFields];
-                  newTextFields[index] = e.target.value;
-                  setTextFields(newTextFields);
-                }}
+                onChange={(e) => handleTextFieldChange(index, e.target.value)}
+                placeholder={`Enter text ${index + 1}`}
                 required
               />
             </div>
