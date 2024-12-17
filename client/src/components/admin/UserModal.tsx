@@ -14,7 +14,8 @@ type UserFormData = {
   uid?: string;
   email: string;
   password: string;
-  displayName: string;
+  firstName: string;
+  lastName: string;
   role: 'admin' | 'editor' | 'user';
 }
 
@@ -29,7 +30,8 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
   const [editedUser, setEditedUser] = useState<UserFormData>({
     email: '',
     password: '',
-    displayName: '',
+    firstName: '',
+    lastName: '',
     role: 'user'
   });
   const { toast } = useToast();
@@ -41,7 +43,8 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
         uid: user.uid,
         email: user.email || '',
         password: '',
-        displayName: user.displayName || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         role: user.role || 'user'
       });
     } else {
@@ -64,7 +67,7 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
   };
 
   const handleSave = async () => {
-    if (!editedUser.email || !editedUser.password || !editedUser.displayName) {
+    if (!editedUser.email || !editedUser.password || !editedUser.firstName || !editedUser.lastName) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -86,7 +89,8 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
 
         console.log('Sending create user request with data:', {
           email: editedUser.email,
-          displayName: editedUser.displayName,
+          firstName: editedUser.firstName,
+          lastName: editedUser.lastName,
           role: editedUser.role
         });
 
@@ -101,7 +105,8 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
           body: JSON.stringify({
             email: editedUser.email,
             password: editedUser.password,
-            displayName: editedUser.displayName,
+            firstName: editedUser.firstName,
+            lastName: editedUser.lastName,
             role: editedUser.role
           })
         });
@@ -135,9 +140,11 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
         const newUser: FirebaseUser = {
           uid: data.user.uid,
           email: editedUser.email,
-          displayName: editedUser.displayName,
+          firstName: editedUser.firstName,
+          lastName: editedUser.lastName,
           role: editedUser.role,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         };
         onSave(newUser);
         onClose();
@@ -162,11 +169,22 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="displayName" className="text-right">Display Name</Label>
+            <Label htmlFor="firstName" className="text-right">First Name</Label>
             <Input
-              id="displayName"
-              name="displayName"
-              value={editedUser.displayName}
+              id="firstName"
+              name="firstName"
+              value={editedUser.firstName}
+              onChange={handleInputChange}
+              className="col-span-3"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="lastName" className="text-right">Last Name</Label>
+            <Input
+              id="lastName"
+              name="lastName"
+              value={editedUser.lastName}
               onChange={handleInputChange}
               className="col-span-3"
               required

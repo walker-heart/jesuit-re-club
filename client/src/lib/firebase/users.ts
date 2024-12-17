@@ -4,7 +4,9 @@ import { auth, db } from './firebase-config';
 export interface FirebaseUser {
   uid: string;
   email: string;
-  username: string;
+  firstName: string;
+  lastName: string;
+  username?: string;
   role: 'admin' | 'editor' | 'user';
   createdAt?: string;
   updatedAt?: string;
