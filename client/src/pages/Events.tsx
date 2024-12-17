@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +51,7 @@ export function Events() {
         const response = await fetch('/api/events', {
           credentials: 'include',
           headers: {
-            'Authorization': `Bearer ${await user?.getIdToken()}`
+            'Authorization': user ? `Bearer ${await user.getIdToken()}` : ''
           }
         });
 
@@ -195,7 +195,7 @@ export function Events() {
     totalPages: number;
     setPage: (page: number) => void;
     label: string;
-    sectionRef: React.RefObject<HTMLElement>;
+    sectionRef: React.RefObject<HTMLDivElement>;
   }) => {
     const handlePageChange = (newPage: number) => {
       setPage(newPage);
@@ -238,7 +238,7 @@ export function Events() {
   return (
     <div className="w-full py-8 md:py-12 lg:py-16">
       <div className="container px-4 md:px-6 mx-auto flex flex-col items-center">
-        {(user?.role === "admin" || user?.role === "editor") && (
+        {(user?.role === "admin" || user?.role === "editor" || false) && (
           <div className="mb-8">
             <EventModal 
               isOpen={isDialogOpen}
