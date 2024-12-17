@@ -54,9 +54,29 @@ export function PostsTab() {
       try {
         setIsLoading(true);
         const events = await fetchEvents();
+        
+        // Sort events by date, putting upcoming events first
+        const sortedEvents = events.sort((a, b) => {
+          const dateA = new Date(`${a.date} ${a.time}`);
+          const dateB = new Date(`${b.date} ${b.time}`);
+          const now = new Date();
+          
+          // Check if events are upcoming or past
+          const aIsUpcoming = dateA >= now;
+          const bIsUpcoming = dateB >= now;
+          
+          if (aIsUpcoming === bIsUpcoming) {
+            // If both are upcoming or both are past, sort by date (newest first for past events)
+            return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+          }
+          
+          // Put upcoming events first
+          return aIsUpcoming ? -1 : 1;
+        });
+
         setPosts(prevPosts => ({
           ...prevPosts,
-          events
+          events: sortedEvents
         }));
       } catch (error) {
         console.error('Error loading events:', error);
@@ -109,24 +129,25 @@ export function PostsTab() {
   };
 
   const handleDelete = async (id: string | number, type: 'event' | 'resource' | 'news') => {
+    if (!id) return;
+    
     try {
-      // TODO: Implement Firebase delete
-      setPosts(prevPosts => {
-        const key = `${type}s` as keyof Posts;
-        return {
+      if (type === 'event') {
+        await deleteEvent(id as string);
+        setPosts(prevPosts => ({
           ...prevPosts,
-          [key]: prevPosts[key].filter((item: any) => item.id !== id)
-        };
-      });
-      toast({
-        title: "Success",
-        description: "Item deleted successfully"
-      });
-    } catch (error) {
+          events: prevPosts.events.filter(event => event.id !== id)
+        }));
+        toast({
+          title: "Success",
+          description: "Event deleted successfully"
+        });
+      }
+    } catch (error: any) {
       console.error('Error deleting item:', error);
       toast({
         title: "Error",
-        description: "Failed to delete item",
+        description: error.message || "Failed to delete item",
         variant: "destructive"
       });
     }

@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { updateEvent, deleteEvent } from '@/lib/firebase/events'
+import { useToast } from "@/hooks/use-toast"
 
 type EventItem = {
-  id: number;
+  id?: string;
   title: string;
   date: string;
   time: string;
@@ -14,6 +16,8 @@ type EventItem = {
   speaker: string;
   speakerDescription: string;
   agenda: string;
+  createdAt: string;
+  userCreated: string;
 }
 
 type ResourceItem = {
@@ -51,10 +55,30 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
     setEditedItem(prev => prev ? { ...prev, [name]: value } : null);
   };
 
-  const handleSave = () => {
-    if (editedItem) {
-      onSave(editedItem);
-      onClose();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSave = async () => {
+    if (editedItem && type === 'event') {
+      setIsSubmitting(true);
+      try {
+        await updateEvent(editedItem as EventItem);
+        toast({
+          title: "Success",
+          description: "Event updated successfully"
+        });
+        onSave(editedItem);
+        onClose();
+      } catch (error: any) {
+        console.error('Error updating event:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to update event",
+          variant: "destructive"
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
