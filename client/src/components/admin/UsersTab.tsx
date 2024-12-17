@@ -64,23 +64,40 @@ export function UsersTab() {
     }
     const token = await currentUser.getIdToken();
 
-    const response = await fetch('/api/admin/users/create', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(user)
-    });
+    try {
+      if (editingUser) {
+        // Update existing user
+        await updateUser(user.uid, user);
+        setUsers(users.map(u => u.uid === user.uid ? user : u));
+        toast({
+          title: "Success",
+          description: "User updated successfully"
+        });
+        setIsModalOpen(false);
+      } else {
+        // Create new user
+        const response = await fetch('/api/admin/users/create', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(user)
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Failed to create user');
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Failed to create user');
+        }
+
+        const data = await response.json();
+        return data.user;
+      }
+    } catch (error: any) {
+      console.error('Error saving user:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    return data.user;
   }
 
   const handleDeleteUser = async (uid: string) => {
