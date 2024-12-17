@@ -29,13 +29,6 @@ export function Admin() {
 
   return (
     <>
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-[#003c71] text-white">
-        <div className="container px-4 md:px-6">
-          <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
-            Admin
-          </h1>
-        </div>
-      </section>
       <div className="container mx-auto py-10">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
