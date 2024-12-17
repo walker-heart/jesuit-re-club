@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { UserModal } from '@/components/admin/UserModal'
 import { fetchUsers, updateUser, deleteUser, type FirebaseUser } from '@/lib/firebase/users'
 import { useToast } from '@/hooks/use-toast'
+import { getAuth } from 'firebase/auth'
 
 export function UsersTab() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -119,7 +120,7 @@ export function UsersTab() {
               return Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
             };
 
-            const roles = ['admin', 'editor', 'user', 'user'];
+            const roles = ['admin', 'editor', 'user', 'user', 'user'] as const;
             const testUsers = roles.map(role => {
               const firstName = generateRandomString();
               const lastName = generateRandomString();
@@ -130,7 +131,7 @@ export function UsersTab() {
                 username,
                 email: `${firstName.toLowerCase()}@${lastName.toLowerCase()}.com`,
                 password: `${firstName}${lastName}`,
-                role
+                role: role as 'admin' | 'editor' | 'user'
               };
             });
 
