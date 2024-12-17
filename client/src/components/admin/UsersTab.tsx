@@ -82,15 +82,18 @@ export function UsersTab() {
         const { uid, ...userData } = user;
         const newUser = await createUser(userData);
         
-        // Update local state with the new user
+        // Update local state with the new user and close modal
         setUsers(prevUsers => [...prevUsers, newUser]);
+        setIsModalOpen(false);
         
+        // Show success notification
         toast({
           title: "Success",
           description: "User created successfully"
         });
-        setIsModalOpen(false);
-        return newUser;
+        
+        // Refresh the users list to ensure we have the latest data
+        await loadUsers();
       }
     } catch (error: any) {
       console.error('Error saving user:', error);
