@@ -53,9 +53,9 @@ export function Footer() {
             <div className="text-sm text-gray-400 md:text-right space-y-1">
               <p>&copy; {new Date().getFullYear()} Real Estate Club at Jesuit Dallas</p>
               <div className="space-x-4">
-                <Link href={user ? "/account" : "/login"} className="hover:text-[#b3a369]">
+                <a href={user ? "/account" : "/login"} className="hover:text-[#b3a369]">
                   {user ? "Account" : "Login"}
-                </Link>
+                </a>
                 <Link href="/privacy" className="hover:text-[#b3a369]">Privacy Policy</Link>
                 <Link href="/terms" className="hover:text-[#b3a369]">Terms of Service</Link>
               </div>

@@ -94,10 +94,12 @@ function App() {
         </Layout>
       </Route>
       <Route path="/account">
-        <Layout title="Account">
-          {user ? (
+        {user ? (
+          <Layout title="Account">
             <Account />
-          ) : (
+          </Layout>
+        ) : (
+          <Layout title="Access Denied">
             <div className="container mx-auto px-4 py-16 text-center">
               <Card>
                 <CardContent className="pt-6">
@@ -109,8 +111,8 @@ function App() {
                 </CardContent>
               </Card>
             </div>
-          )}
-        </Layout>
+          </Layout>
+        )}
       </Route>
       <Route path="/admin">
         <Layout title="Admin Dashboard">

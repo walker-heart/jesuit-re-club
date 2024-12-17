@@ -22,10 +22,8 @@ export function Account() {
     }
   };
 
-  if (!user) {
-    setLocation('/login');
-    return null;
-  }
+  // Authentication check is now handled by the router in App.tsx
+  if (!user) return null;
 
   return (
     <div className="container mx-auto px-4 py-8">
