@@ -129,6 +129,77 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Update user (admin only)
+  app.put("/api/admin/users/:uid/update", verifyFirebaseToken, async (req: Request, res: Response) => {
+    try {
+      // Check admin role
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Unauthorized - Admin access required' 
+        });
+      }
+
+      const { uid } = req.params;
+      const { firstName, lastName, username, email, role, password } = req.body;
+
+      // Validate role
+      if (role && !['admin', 'editor', 'user'].includes(role)) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Invalid role' 
+        });
+      }
+
+      // Update user in Firebase Auth
+      const updateAuthData: any = {
+        displayName: `${firstName} ${lastName}`
+      };
+      if (email) updateAuthData.email = email;
+      if (password) updateAuthData.password = password;
+
+      try {
+        await admin.auth().updateUser(uid, updateAuthData);
+      } catch (error: any) {
+        console.error('Error updating Firebase Auth:', error);
+        return res.status(400).json({ 
+          success: false,
+          message: error.message 
+        });
+      }
+
+      // Update user document in Firestore
+      const updateData = {
+        firstName,
+        lastName,
+        username,
+        email,
+        role,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: req.user.uid
+      };
+
+      await db.collection('users').doc(uid).update(updateData);
+
+      // Return success response
+      return res.json({
+        success: true,
+        message: 'User updated successfully',
+        user: {
+          uid,
+          ...updateData,
+          updatedAt: new Date().toISOString()
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to update user' 
+      });
+    }
+  });
   // Create user (admin only)
   app.post("/api/admin/users/create", verifyFirebaseToken, async (req: Request, res: Response) => {
     console.log('Create user request received:', JSON.stringify(req.body, null, 2));
