@@ -49,23 +49,14 @@ export function PostsTab() {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  const { user } = useAuth();
-  
   useEffect(() => {
     const loadEvents = async () => {
       try {
         setIsLoading(true);
         const events = await fetchEvents();
         
-        // Filter events based on user role
-        let filteredEvents = events;
-        if (user?.role === 'editor') {
-          // Editors can only see their own events
-          filteredEvents = events.filter(event => event.userCreated === user.username);
-        }
-        
         // Sort events by date, putting upcoming events first
-        const sortedEvents = filteredEvents.sort((a, b) => {
+        const sortedEvents = events.sort((a, b) => {
           const dateA = new Date(`${a.date} ${a.time}`);
           const dateB = new Date(`${b.date} ${b.time}`);
           const now = new Date();
@@ -100,7 +91,7 @@ export function PostsTab() {
     };
 
     loadEvents();
-  }, [user]);
+  }, []);
 
   const handleEdit = (item: EventItem | ResourceItem | NewsItem, type: 'event' | 'resource' | 'news') => {
     setEditingItem(item);
