@@ -100,6 +100,87 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Admin routes
+  // Events routes
+  app.post("/api/events/create", verifyFirebaseToken, async (req: Request, res: Response) => {
+    try {
+      // Check if user has permission to create events (admin or editor)
+      if (!['admin', 'editor'].includes(req.user?.role || '')) {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Unauthorized - Admin or Editor access required' 
+        });
+      }
+
+      const { title, date, time, location, speaker, speakerDescription, agenda } = req.body;
+
+      // Validate required fields
+      const requiredFields = { title, date, time, location, speaker, speakerDescription, agenda };
+      const missingFields = Object.entries(requiredFields)
+        .filter(([_, value]) => !value)
+        .map(([field]) => field);
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({ 
+          success: false,
+          message: `Missing required fields: ${missingFields.join(', ')}` 
+        });
+      }
+
+      // Create event document in Firestore
+      const eventDoc = {
+        title,
+        date,
+        time,
+        location,
+        speaker,
+        speakerDescription,
+        agenda,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        userCreated: req.user?.username || req.user?.email || 'Unknown'
+      };
+
+      // Use Speaker + Date as document ID
+      const docId = `${speaker} ${date} - ${time}`.replace(/[/:\\]/g, '-');
+      await db.collection('events').doc(docId).set(eventDoc);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Event created successfully',
+        event: {
+          id: docId,
+          ...eventDoc,
+          createdAt: new Date().toLocaleString()
+        }
+      });
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to create event'
+      });
+    }
+  });
+
+  app.get("/api/events", verifyFirebaseToken, async (_req: Request, res: Response) => {
+    try {
+      const eventsSnapshot = await db.collection('events').get();
+      const events = eventsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return res.json({
+        success: true,
+        events
+      });
+    } catch (error: any) {
+      console.error('Error fetching events:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to fetch events'
+      });
+    }
+  });
   app.post("/api/admin/users", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
       if (req.user?.role !== 'admin') {
