@@ -19,8 +19,24 @@ import {
   query,
   where,
   type DocumentData,
-  serverTimestamp
+  serverTimestamp,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager
 } from "firebase/firestore";
+
+// Validate required environment variables
+const requiredEnvVars = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_APP_ID'
+];
+
+for (const envVar of requiredEnvVars) {
+  if (!import.meta.env[envVar]) {
+    throw new Error(`Missing required environment variable: ${envVar}`);
+  }
+}
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -30,10 +46,16 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+console.log('Initializing Firebase with configuration');
+
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Initialize Firestore with persistence
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() })
+});
 
 // User types
 export type UserRole = 'admin' | 'editor' | 'user';
@@ -54,11 +76,18 @@ export async function createDocument<T extends DocumentData>(
   data: T
 ): Promise<string> {
   try {
+    // Validate collection name and data
+    if (!collectionName || !data) {
+      throw new Error('Collection name and data are required');
+    }
+
     const docRef = await addDoc(collection(db, collectionName), {
       ...data,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    
+    console.log(`Successfully created document in ${collectionName}:`, docRef.id);
     return docRef.id;
   } catch (error) {
     console.error(`Error creating ${collectionName} document:`, error);
@@ -71,12 +100,19 @@ export async function readDocument<T>(
   documentId: string
 ): Promise<T | null> {
   try {
+    if (!collectionName || !documentId) {
+      throw new Error('Collection name and document ID are required');
+    }
+
     const docRef = doc(db, collectionName, documentId);
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as T;
+      const data = { id: docSnap.id, ...docSnap.data() } as T;
+      console.log(`Successfully read document from ${collectionName}:`, documentId);
+      return data;
     }
+    console.log(`Document not found in ${collectionName}:`, documentId);
     return null;
   } catch (error) {
     console.error(`Error reading ${collectionName} document:`, error);
@@ -89,13 +125,22 @@ export async function readDocuments<T>(
   whereClause?: { field: string; operator: "==" | ">" | "<" | ">=" | "<="; value: any }
 ): Promise<T[]> {
   try {
-    let q = collection(db, collectionName);
+    if (!collectionName) {
+      throw new Error('Collection name is required');
+    }
+
+    const collectionRef = collection(db, collectionName);
+    let queryRef = collectionRef;
+
     if (whereClause) {
-      q = query(q, where(whereClause.field, whereClause.operator, whereClause.value));
+      queryRef = query(collectionRef, where(whereClause.field, whereClause.operator, whereClause.value));
     }
     
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
+    const querySnapshot = await getDocs(queryRef);
+    const documents = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
+    
+    console.log(`Successfully read ${documents.length} documents from ${collectionName}`);
+    return documents;
   } catch (error) {
     console.error(`Error reading ${collectionName} documents:`, error);
     throw error;
@@ -108,11 +153,24 @@ export async function updateDocument<T extends DocumentData>(
   data: Partial<T>
 ): Promise<void> {
   try {
+    if (!collectionName || !documentId || !data) {
+      throw new Error('Collection name, document ID, and update data are required');
+    }
+
+    // Verify document exists before updating
     const docRef = doc(db, collectionName, documentId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      throw new Error(`Document ${documentId} not found in ${collectionName}`);
+    }
+
     await updateDoc(docRef, {
       ...data,
       updatedAt: serverTimestamp(),
     });
+    
+    console.log(`Successfully updated document in ${collectionName}:`, documentId);
   } catch (error) {
     console.error(`Error updating ${collectionName} document:`, error);
     throw error;
@@ -124,8 +182,20 @@ export async function deleteDocument(
   documentId: string
 ): Promise<void> {
   try {
+    if (!collectionName || !documentId) {
+      throw new Error('Collection name and document ID are required');
+    }
+
+    // Verify document exists before deleting
     const docRef = doc(db, collectionName, documentId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      throw new Error(`Document ${documentId} not found in ${collectionName}`);
+    }
+
     await deleteDoc(docRef);
+    console.log(`Successfully deleted document from ${collectionName}:`, documentId);
   } catch (error) {
     console.error(`Error deleting ${collectionName} document:`, error);
     throw error;
