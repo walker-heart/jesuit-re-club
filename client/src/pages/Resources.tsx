@@ -78,20 +78,27 @@ export function Resources() {
   };
 
   return (
-    <div className="w-full py-8 md:py-12 lg:py-16">
-      <div className="container px-4 md:px-6 mx-auto">
+    <div>
+      {/* Header Section */}
+      <div className="w-full bg-[#003c71] text-white py-6">
+        <div className="container mx-auto px-4">
+          <h1 className="text-2xl font-semibold">Resources</h1>
+        </div>
+      </div>
+      
+      <div className="container px-4 mx-auto py-8">
         {/* Latest Resources Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-2">Latest Resources</h1>
+          <h2 className="text-xl font-semibold mb-2">Latest Resources</h2>
           <p className="text-gray-600">Stay informed with the latest educational resources from the Real Estate Club</p>
         </div>
 
-        {/* Header with Create button for admin/editor */}
+        {/* Create Resource Button for admin/editor */}
         {user && (user.role === 'admin' || user.role === 'editor') && (
-          <div className="mb-8 flex justify-end">
+          <div className="flex justify-end mb-8">
             <Button
               onClick={() => setIsModalOpen(true)}
-              className="bg-[#003c71] text-white hover:bg-[#002c51]"
+              className="bg-[#003c71] hover:bg-[#002c51] text-white"
             >
               <Plus className="mr-2 h-4 w-4" />
               Create New Resource
