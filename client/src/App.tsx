@@ -11,12 +11,12 @@ import { ResourcePage } from "@/pages/ResourcePage";
 import { News } from "@/pages/News";
 import { NewsPage } from "@/pages/NewsPage";
 import { Admin } from "@/pages/Admin";
+import { EditorDashboard } from "@/pages/EditorDashboard";
 import { Membership } from "@/pages/Membership";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { Register } from '@/pages/Register';
-// Removed unused import
 
 function App() {
   const { user, loading } = useAuth();
@@ -112,14 +112,7 @@ function App() {
       </Route>
       <Route path="/editor">
         <Layout title="Editor Dashboard">
-          {user?.role === 'editor' ? (
-            <Admin />
-          ) : (
-            <div className="container mx-auto px-4 py-16 text-center">
-              <h1 className="text-4xl font-bold mb-4 text-red-500">Access Denied</h1>
-              <p>You don't have permission to access this page.</p>
-            </div>
-          )}
+          <EditorDashboard />
         </Layout>
       </Route>
       <Route>
