@@ -69,7 +69,7 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
   };
 
   const handleSave = async () => {
-    if (!editedUser.email || !editedUser.password || !editedUser.firstName || !editedUser.lastName) {
+    if (!editedUser.email || !editedUser.password || !editedUser.firstName || !editedUser.lastName || !editedUser.username) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -141,9 +141,10 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
         // Update the local state with the new user data
         const newUser: FirebaseUser = {
           uid: data.user.uid,
-          email: editedUser.email,
           firstName: editedUser.firstName,
           lastName: editedUser.lastName,
+          username: editedUser.username,
+          email: editedUser.email,
           role: editedUser.role,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()

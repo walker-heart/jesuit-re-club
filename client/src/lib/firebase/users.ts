@@ -28,11 +28,13 @@ export const fetchUsers = async (): Promise<FirebaseUser[]> => {
       const data = doc.data();
       return {
         uid: doc.id,
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        username: data.username || '',
         email: data.email || '',
-        username: data.username || data.displayName || 'No name',
         role: data.role || 'user',
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : null
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : new Date().toISOString()
       } as FirebaseUser;
     });
   } catch (error) {
