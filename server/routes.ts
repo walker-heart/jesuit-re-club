@@ -1,27 +1,26 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import admin from "firebase-admin";
 import { createServer, type Server } from "http";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 // Initialize Firebase Admin with better error handling
 try {
-  if (!process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.VITE_FIREBASE_PROJECT_ID) {
-    throw new Error('Missing Firebase Admin credentials - check your environment variables');
-  }
-
-  // Only initialize if not already initialized
   if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.VITE_FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       }),
     });
     console.log('Firebase Admin initialized successfully');
   }
 } catch (error) {
   console.error('Firebase Admin initialization error:', error);
-  throw error;
+  console.error('Missing or invalid Firebase credentials');
+  process.exit(1);
 }
 
 // Get Firestore instance
@@ -95,6 +94,136 @@ export function registerRoutes(app: Express): Server {
         success: false,
         message: 'Internal server error',
         error: error.message 
+      });
+    }
+  });
+
+  // Resources routes
+  app.get("/api/resources", async (_req, res) => {
+    try {
+      const resourcesRef = admin.firestore().collection('resources');
+      const resourcesSnapshot = await resourcesRef.get();
+      const resources = resourcesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return res.json(resources);
+    } catch (error: any) {
+      console.error('Error fetching resources:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to fetch resources'
+      });
+    }
+  });
+
+  app.post("/api/resources/create", verifyFirebaseToken, async (req: Request, res: Response) => {
+    try {
+      // Check if user has permission to create resources (admin or editor)
+      if (!['admin', 'editor'].includes(req.user?.role || '')) {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Unauthorized - Admin or Editor access required' 
+        });
+      }
+
+      const { title, description, numberOfTexts, textFields } = req.body;
+
+      // Validate required fields
+      const requiredFields = { title, description, numberOfTexts, textFields };
+      const missingFields = Object.entries(requiredFields)
+        .filter(([_, value]) => !value)
+        .map(([field]) => field);
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({ 
+          success: false,
+          message: `Missing required fields: ${missingFields.join(', ')}` 
+        });
+      }
+
+      // Create resource document in Firestore
+      const resourceDoc = {
+        title,
+        description,
+        numberOfTexts,
+        textFields,
+        userCreated: req.user?.username || req.user?.email || 'Unknown',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: req.user?.username || req.user?.email || 'Unknown'
+      };
+
+      // Use title + timestamp as document ID for better organization
+      const docId = `${title}-${Date.now()}`.replace(/[/:\\]/g, '-');
+      await db.collection('resources').doc(docId).set(resourceDoc);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Resource created successfully',
+        resource: {
+          id: docId,
+          ...resourceDoc,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      });
+    } catch (error: any) {
+      console.error('Error creating resource:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to create resource'
+      });
+    }
+  });
+
+  app.get("/api/resources", async (_req, res) => {
+    try {
+      const resourcesRef = db.collection('resources');
+      const resourcesSnapshot = await resourcesRef.get();
+      const resources = resourcesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return res.json({
+        success: true,
+        resources
+      });
+    } catch (error: any) {
+      console.error('Error fetching resources:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to fetch resources'
+      });
+    }
+  });
+
+  app.get("/api/resources/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const resourceDoc = await db.collection('resources').doc(id).get();
+      
+      if (!resourceDoc.exists) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Resource not found'
+        });
+      }
+
+      return res.json({
+        success: true,
+        resource: {
+          id: resourceDoc.id,
+          ...resourceDoc.data()
+        }
+      });
+    } catch (error: any) {
+      console.error('Error fetching resource:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to fetch resource'
       });
     }
   });

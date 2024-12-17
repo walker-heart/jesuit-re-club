@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const users = pgTable("users", {
@@ -36,10 +36,12 @@ export const resources = pgTable("resources", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  url: text("url").notNull(),
-  category: text("category").notNull(),
+  numberOfTexts: integer("number_of_texts").notNull(),
+  textFields: text("text_fields").notNull(), // Stored as JSON string
+  userCreated: text("user_created").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: text("updated_by"),
 });
 
 export const news = pgTable("news", {
