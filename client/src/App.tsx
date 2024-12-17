@@ -15,7 +15,7 @@ import { EditorDashboard } from "@/pages/EditorDashboard";
 import { Membership } from "@/pages/Membership";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { Register } from '@/pages/Register';
 
 function App() {
@@ -95,7 +95,21 @@ function App() {
       </Route>
       <Route path="/account">
         <Layout title="Account">
-          <Account />
+          {user ? (
+            <Account />
+          ) : (
+            <div className="container mx-auto px-4 py-16 text-center">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex mb-4 gap-2 justify-center">
+                    <AlertCircle className="h-8 w-8 text-red-500" />
+                    <h1 className="text-2xl font-bold">Access Denied</h1>
+                  </div>
+                  <p className="text-gray-600">Please login to view your account.</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </Layout>
       </Route>
       <Route path="/admin">
