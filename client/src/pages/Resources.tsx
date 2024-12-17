@@ -79,17 +79,15 @@ export function Resources() {
 
   return (
     <div>
-      {/* Header Section */}
       <div className="w-full bg-[#003c71] text-white py-6">
         <div className="container mx-auto px-4">
-          <h1 className="text-2xl font-semibold">Resources</h1>
+          <h1 className="text-2xl">News</h1>
         </div>
       </div>
       
-      <div className="container px-4 mx-auto py-8">
-        {/* Latest Resources Header */}
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Latest Resources</h2>
+          <h2 className="text-xl font-semibold text-[#003c71] mb-2">Latest Resources</h2>
           <p className="text-gray-600">Stay informed with the latest educational resources from the Real Estate Club</p>
         </div>
 
