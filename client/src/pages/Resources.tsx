@@ -44,11 +44,22 @@ async function createResource(resourceData: Omit<Resource, 'id'>): Promise<Resou
   return response.json();
 }
 
+async function deleteResource(id: number): Promise<void> {
+  const response = await fetch(`/api/resources/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete resource');
+  }
+}
+
 export function Resources() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingResource, setEditingResource] = useState<Resource | null>(null);
 
   const { data: resources = [], isLoading } = useQuery({
     queryKey: ['resources'],
@@ -62,6 +73,25 @@ export function Resources() {
       toast({
         title: "Success",
         description: "Resource created successfully",
+      });
+      setIsModalOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteResource,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+      toast({
+        title: "Success",
+        description: "Resource deleted successfully",
       });
     },
     onError: (error: Error) => {
@@ -77,6 +107,13 @@ export function Resources() {
     await createMutation.mutateAsync(resourceData);
   };
 
+  const handleDeleteResource = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
+      return;
+    }
+    await deleteMutation.mutateAsync(id);
+  };
+
   return (
     <div>
       <div className="w-full py-8 md:py-12 lg:py-8">
@@ -90,7 +127,10 @@ export function Resources() {
           {user && (user.role === 'admin' || user.role === 'editor') && (
             <div className="flex justify-end mb-8">
               <Button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  setEditingResource(null);
+                  setIsModalOpen(true);
+                }}
                 className="bg-[#003c71] hover:bg-[#002c51] text-white"
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -110,22 +150,53 @@ export function Resources() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-gray-600">{resource.description}</p>
-                  <Button 
-                    asChild
-                    className="w-full justify-center bg-[#b3a369] hover:bg-[#b3a369]/90 text-[#003c71] border-none"
-                  >
-                    <Link href={`/resources/${resource.id}`}>Learn More</Link>
-                  </Button>
+                  <div className="flex flex-col space-y-2">
+                    <Button 
+                      asChild
+                      className="w-full justify-center bg-[#b3a369] hover:bg-[#b3a369]/90 text-[#003c71] border-none"
+                    >
+                      <Link href={`/resources/${resource.id}`}>Learn More</Link>
+                    </Button>
+                    
+                    {/* Edit and Delete buttons for admin/editor */}
+                    {user && (user.role === 'admin' || user.role === 'editor') && (
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setEditingResource(resource);
+                            setIsModalOpen(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleDeleteResource(resource.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Create Resource Modal */}
+          {/* Resource Modal for Create/Edit */}
           <ResourceModal
             isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
+            onClose={() => {
+              setIsModalOpen(false);
+              setEditingResource(null);
+            }}
             onSave={handleCreateResource}
+            resource={editingResource}
           />
         </div>
       </div>
