@@ -19,7 +19,7 @@ import { Register } from '@/pages/Register';
 import { PrivateRoute } from '@/components/PrivateRoute';
 
 function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
 
   if (loading) {
     return (
@@ -100,14 +100,9 @@ function App() {
       </Route>
       <Route path="/admin">
         <Layout title="Admin Dashboard">
-          {user?.role === 'admin' || user?.role === 'editor' ? (
+          <PrivateRoute allowedRoles={['admin', 'editor']}>
             <Admin />
-          ) : (
-            <div className="container mx-auto px-4 py-16 text-center">
-              <h1 className="text-4xl font-bold mb-4 text-red-500">Access Denied</h1>
-              <p>You don't have permission to access this page.</p>
-            </div>
-          )}
+          </PrivateRoute>
         </Layout>
       </Route>
       <Route>

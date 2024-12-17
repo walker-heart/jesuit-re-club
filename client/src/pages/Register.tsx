@@ -17,12 +17,14 @@ export function Register() {
   const { toast } = useToast();
   const { register } = useAuth();
 
+  const { isAuthenticated } = useAuth();
+
   // Check if user is already logged in
   useEffect(() => {
-    if (isUserLoggedIn()) {
+    if (isAuthenticated) {
       setLocation('/');
     }
-  }, [setLocation]);
+  }, [isAuthenticated, setLocation]);
 
   const validateForm = (): boolean => {
     if (!email) {

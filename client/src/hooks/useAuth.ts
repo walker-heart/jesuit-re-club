@@ -11,13 +11,15 @@ export function useAuth() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setIsLoading(true);
       try {
         if (firebaseUser) {
           const userData = await getCurrentUser(firebaseUser);
           if (userData) {
             setUser(userData);
             queryClient.setQueryData(['user'], userData);
+          } else {
+            setUser(null);
+            queryClient.setQueryData(['user'], null);
           }
         } else {
           setUser(null);
@@ -72,7 +74,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoading,
+    loading: isLoading,
     isAuthenticated: !!user,
     login,
     register,

@@ -16,6 +16,8 @@ export function Login() {
   const { toast } = useToast();
   const { login } = useAuth();
 
+  const { isAuthenticated } = useAuth();
+  
   // Check if user is already logged in
   useEffect(() => {
     if (isAuthenticated) {
