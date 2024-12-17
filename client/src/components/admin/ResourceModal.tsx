@@ -6,15 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 type ResourceModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (resourceData: any) => Promise<void>;
 };
 
-export function ResourceModal({ isOpen, onClose, onSave }: ResourceModalProps) {
+export function ResourceModal({ isOpen, onClose }: ResourceModalProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [numberOfTexts, setNumberOfTexts] = useState<string>("1");
@@ -22,17 +23,14 @@ export function ResourceModal({ isOpen, onClose, onSave }: ResourceModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Update text fields array when number of texts changes
     const num = parseInt(numberOfTexts);
     setTextFields(prev => {
       const newFields = [...prev];
       if (num > prev.length) {
-        // Add new empty fields
         while (newFields.length < num) {
           newFields.push("");
         }
       } else if (num < prev.length) {
-        // Remove extra fields
         newFields.splice(num);
       }
       return newFields;
@@ -41,10 +39,23 @@ export function ResourceModal({ isOpen, onClose, onSave }: ResourceModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !numberOfTexts) return;
+    if (!title || !description || !numberOfTexts) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      // Get the Firebase token
+      const token = await user?.getIdToken();
+      if (!token) {
+        throw new Error('No token provided');
+      }
+
       const resourceData = {
         title,
         description,
@@ -52,33 +63,40 @@ export function ResourceModal({ isOpen, onClose, onSave }: ResourceModalProps) {
         textFields: textFields.filter(text => text.trim() !== ''),
       };
 
-      console.log('Submitting resource data:', resourceData);
-      
       const response = await fetch('/api/resources/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(resourceData),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create resource');
       }
 
       const result = await response.json();
-      console.log('Resource created successfully:', result);
       
+      toast({
+        title: "Success",
+        description: "Resource created successfully",
+      });
+
       // Reset form
       setTitle("");
       setDescription("");
       setNumberOfTexts("1");
       setTextFields([""]);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving resource:', error);
-      // Here you might want to show an error toast to the user
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to create resource',
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }

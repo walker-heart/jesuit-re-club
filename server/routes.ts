@@ -120,11 +120,8 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/resources/create", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
-      console.log('Received resource creation request:', req.body);
-      
       // Check if user has permission to create resources (admin or editor)
       if (!['admin', 'editor'].includes(req.user?.role || '')) {
-        console.log('Unauthorized attempt to create resource. User role:', req.user?.role);
         return res.status(403).json({ 
           success: false,
           message: 'Unauthorized - Admin or Editor access required' 
@@ -132,17 +129,14 @@ export function registerRoutes(app: Express): Server {
       }
 
       const { title, description, numberOfTexts, textFields } = req.body;
-      console.log('Parsed resource data:', { title, description, numberOfTexts, textFields });
 
       // Validate required fields
-      if (!title || !description || !numberOfTexts || !textFields) {
-        const missingFields = [];
-        if (!title) missingFields.push('title');
-        if (!description) missingFields.push('description');
-        if (!numberOfTexts) missingFields.push('numberOfTexts');
-        if (!textFields) missingFields.push('textFields');
-        
-        console.log('Missing required fields:', missingFields);
+      const requiredFields = { title, description, numberOfTexts, textFields };
+      const missingFields = Object.entries(requiredFields)
+        .filter(([_, value]) => !value)
+        .map(([field]) => field);
+
+      if (missingFields.length > 0) {
         return res.status(400).json({ 
           success: false,
           message: `Missing required fields: ${missingFields.join(', ')}` 
@@ -155,39 +149,31 @@ export function registerRoutes(app: Express): Server {
         description,
         numberOfTexts: parseInt(numberOfTexts),
         textFields: Array.isArray(textFields) ? textFields : [textFields],
-        userCreated: req.user?.username || req.user?.email || 'Unknown',
+        userCreated: req.user?.username || 'Unknown',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedBy: req.user?.username || req.user?.email || 'Unknown'
+        updatedBy: req.user?.username || 'Unknown'
       };
 
-      console.log('Creating resource document:', resourceDoc);
+      // Use title + timestamp as document ID for better organization
+      const docId = `${title}-${Date.now()}`.replace(/[/:\\]/g, '-');
+      await db.collection('resources').doc(docId).set(resourceDoc);
 
-      try {
-        // Use title + timestamp as document ID for better organization
-        const docId = `${title}-${Date.now()}`.replace(/[/:\\]/g, '-');
-        await db.collection('resources').doc(docId).set(resourceDoc);
-        console.log('Resource created successfully with ID:', docId);
-
-        return res.status(201).json({
-          success: true,
-          message: 'Resource created successfully',
-          resource: {
-            id: docId,
-            ...resourceDoc,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        });
-      } catch (dbError: any) {
-        console.error('Database operation failed:', dbError);
-        throw new Error(`Database operation failed: ${dbError.message}`);
-      }
+      return res.status(201).json({
+        success: true,
+        message: 'Resource created successfully',
+        resource: {
+          id: docId,
+          ...resourceDoc,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      });
     } catch (error: any) {
       console.error('Error creating resource:', error);
       return res.status(500).json({ 
         success: false,
-        message: 'Failed to create resource: ' + (error.message || 'Unknown error')
+        message: error.message || 'Failed to create resource' 
       });
     }
   });
