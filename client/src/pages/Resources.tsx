@@ -79,59 +79,55 @@ export function Resources() {
 
   return (
     <div>
-      <div className="w-full bg-[#003c71] text-white py-6">
-        <div className="container mx-auto px-4">
-          <h1 className="text-2xl">News</h1>
-        </div>
-      </div>
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-[#003c71] mb-2">Latest Resources</h2>
-          <p className="text-gray-600">Stay informed with the latest educational resources from the Real Estate Club</p>
-        </div>
+      <div className="w-full py-8 md:py-12 lg:py-8">
+        <div className="container px-4 md:px-6 mx-auto">
+          <h1 className="text-3xl font-bold text-[#003c71] mb-6 animate-fade-in">Latest Resources</h1>
+          <p className="text-gray-600 mb-8 animate-slide-up">
+            Stay informed with the latest educational resources from the Real Estate Club
+          </p>
 
-        {/* Create Resource Button for admin/editor */}
-        {user && (user.role === 'admin' || user.role === 'editor') && (
-          <div className="flex justify-end mb-8">
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-[#003c71] hover:bg-[#002c51] text-white"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Resource
-            </Button>
+          {/* Create Resource Button for admin/editor */}
+          {user && (user.role === 'admin' || user.role === 'editor') && (
+            <div className="flex justify-end mb-8">
+              <Button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-[#003c71] hover:bg-[#002c51] text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Resource
+              </Button>
+            </div>
+          )}
+
+          {/* Resources Grid */}
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {isLoading ? (
+              <p>Loading resources...</p>
+            ) : resources.map((resource) => (
+              <Card key={resource.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold text-[#003c71]">{resource.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-600">{resource.description}</p>
+                  <Button 
+                    asChild
+                    className="w-full justify-center bg-[#b3a369] hover:bg-[#b3a369]/90 text-[#003c71] border-none"
+                  >
+                    <Link href={`/resources/${resource.id}`}>Learn More</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        )}
 
-        {/* Resources Grid */}
-        <div className="grid gap-8 md:grid-cols-2 w-full max-w-[1200px] mx-auto">
-          {isLoading ? (
-            <p>Loading resources...</p>
-          ) : resources.map((resource) => (
-            <Card key={resource.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold text-[#003c71]">{resource.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-gray-600">{resource.description}</p>
-                <Button 
-                  asChild
-                  className="w-full justify-center bg-[#b3a369] hover:bg-[#b3a369]/90 text-[#003c71] border-none"
-                >
-                  <Link href={`/resources/${resource.id}`}>Learn More</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {/* Create Resource Modal */}
+          <ResourceModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSave={handleCreateResource}
+          />
         </div>
-
-        {/* Create Resource Modal */}
-        <ResourceModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleCreateResource}
-        />
       </div>
     </div>
   );
