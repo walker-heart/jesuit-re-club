@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { Register } from '@/pages/Register';
-import { PrivateRoute } from '@/components/PrivateRoute';
+// Removed unused import
 
 function App() {
   const { user, loading } = useAuth();
@@ -98,9 +98,9 @@ function App() {
           <Account />
         </Layout>
       </Route>
-      <Route path="/admin">
-        <Layout title="Admin Dashboard">
-          {user?.role === 'admin' || user?.role === 'editor' ? (
+      <Route path="/role">
+        <Layout title={`${user?.role?.charAt(0).toUpperCase()}${user?.role?.slice(1) || ''} Dashboard`}>
+          {(user?.role === 'admin' || user?.role === 'editor') ? (
             <Admin />
           ) : (
             <div className="container mx-auto px-4 py-16 text-center">

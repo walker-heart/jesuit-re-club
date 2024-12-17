@@ -72,6 +72,7 @@ export function useAuth() {
 
   return {
     user,
+    loading: isLoading, // add loading alias for backward compatibility
     isLoading,
     isAuthenticated: !!user,
     login,

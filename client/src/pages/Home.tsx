@@ -115,7 +115,11 @@ export function Home() {
             asChild
           >
             {user ? (
-              <Link href="/account">Account</Link>
+              user.role === 'admin' || user.role === 'editor' ? (
+                <Link href="/role">{user.role.charAt(0).toUpperCase() + user.role.slice(1)} Dashboard</Link>
+              ) : (
+                <Link href="/account">Account</Link>
+              )
             ) : (
               <Link href="/login">Login</Link>
             )}
