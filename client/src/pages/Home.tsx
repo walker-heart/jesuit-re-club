@@ -109,21 +109,7 @@ export function Home() {
           <p className="mb-12 text-xl text-gray-300">
             Join the Real Estate Club today and take the first step towards a successful career in real estate.
           </p>
-          <Button 
-            size="lg" 
-            className="bg-[#C4B47F] hover:bg-[#B3A26E] text-white"
-            asChild
-          >
-            {user ? (
-              user.role === 'admin' || user.role === 'editor' ? (
-                <Link href="/role">{user.role.charAt(0).toUpperCase() + user.role.slice(1)} Dashboard</Link>
-              ) : (
-                <Link href="/account">Account</Link>
-              )
-            ) : (
-              <Link href="/login">Login</Link>
-            )}
-          </Button>
+          
         </div>
       </section>
     </div>
