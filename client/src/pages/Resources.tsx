@@ -80,6 +80,12 @@ export function Resources() {
   return (
     <div className="w-full py-8 md:py-12 lg:py-16">
       <div className="container px-4 md:px-6 mx-auto">
+        {/* Latest Resources Header */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold mb-2">Latest Resources</h1>
+          <p className="text-gray-600">Stay informed with the latest educational resources from the Real Estate Club</p>
+        </div>
+
         {/* Header with Create button for admin/editor */}
         {user && (user.role === 'admin' || user.role === 'editor') && (
           <div className="mb-8 flex justify-end">
