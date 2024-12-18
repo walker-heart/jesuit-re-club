@@ -5,46 +5,35 @@ import { Calendar } from 'lucide-react'
 import { EventModal } from '../admin/EventModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
-import { db } from '@/lib/firebase'
-import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore"
-
-
-type EventItem = {
-  id?: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  speaker: string;
-  speakerDescription: string;
-  agenda: string;
-  createdAt: string;
-  userCreated: string;
-}
+import { auth } from '@/lib/firebase/firebase-config'
+import { fetchEvents, deleteEvent, type FirebaseEvent } from '@/lib/firebase/events'
 
 export function EditorEventsTab() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [events, setEvents] = useState<EventItem[]>([]);
+  const [events, setEvents] = useState<FirebaseEvent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
+  const [editingEvent, setEditingEvent] = useState<FirebaseEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null); // Add error state
+  const [error, setError] = useState<string | null>(null);
 
   const loadEvents = async () => {
     try {
-      if (!user) return;
+      if (!auth.currentUser) {
+        setError("User not authenticated");
+        return;
+      }
       
       setIsLoading(true);
       setError(null); // Clear any previous errors
-      const eventsRef = collection(db, 'events');
-      const q = query(eventsRef, where('userCreated', '==', user.email));
-      const snapshot = await getDocs(q);
       
-      const userEvents = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as EventItem[];
+      const allEvents = await fetchEvents();
+      
+      // Filter events to only show those created by the current user
+      const userEvents = allEvents.filter(event => 
+        event.userCreated === auth.currentUser?.displayName || 
+        event.userCreated === auth.currentUser?.email
+      );
 
       // Sort events by date, putting upcoming events first
       const sortedEvents = userEvents.sort((a, b) => {
@@ -65,7 +54,7 @@ export function EditorEventsTab() {
       setEvents(sortedEvents);
     } catch (error: any) {
       console.error('Error loading events:', error);
-      setError(error.message || "Failed to load events"); // Set error message
+      setError(error.message || "Failed to load events");
       toast({
         title: "Error",
         description: error.message || "Failed to load events",
@@ -77,19 +66,31 @@ export function EditorEventsTab() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (auth.currentUser) {
       loadEvents();
     }
-  }, [user, toast]);
+  }, [auth.currentUser]);
 
   const handleDelete = async (id: string) => {
     try {
       // Find the event and check if the user created it
       const event = events.find(e => e.id === id);
-      if (!event || event.userCreated !== user?.username) {
+      if (!auth.currentUser) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to delete events",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const isCreator = event?.userCreated === auth.currentUser.displayName || 
+                       event?.userCreated === auth.currentUser.email;
+      
+      if (!event || !isCreator) {
         toast({
           title: "Access Denied",
-          description: "You can only delete your own events",
+          description: "You can only delete events you created",
           variant: "destructive"
         });
         return;
@@ -100,11 +101,11 @@ export function EditorEventsTab() {
         return;
       }
 
-      const eventRef = doc(db, 'events', id);
-      await deleteDoc(eventRef);
-
+      await deleteEvent(id);
+      
       // Refresh the events list
-      loadEvents(); // Use the updated loadEvents function
+      await loadEvents();
+
       toast({
         title: "Success",
         description: "Event deleted successfully"
@@ -139,7 +140,7 @@ export function EditorEventsTab() {
               <Card className="p-4">
                 <p className="text-gray-600">Loading events...</p>
               </Card>
-            ) : error ? ( // Display error message if present
+            ) : error ? (
               <Card className="p-4">
                 <p className="text-red-600">Error: {error}</p>
               </Card>
@@ -153,12 +154,18 @@ export function EditorEventsTab() {
                 <p className="text-sm text-gray-600 mb-1">{event.date} | {event.time}</p>
                 <p className="text-sm text-gray-600 mb-2">{event.location}</p>
                 <p className="text-sm text-gray-600 mb-2">Speaker: {event.speaker}</p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {event.userCreated}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => {
-                    setEditingEvent(event);
-                    setIsModalOpen(true);
-                  }}>Edit</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(event.id!)}>Delete</Button>
+                  {(event.userCreated === auth.currentUser?.displayName || 
+                    event.userCreated === auth.currentUser?.email) && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setEditingEvent(event);
+                        setIsModalOpen(true);
+                      }}>Edit</Button>
+                      <Button variant="destructive" size="sm" onClick={() => event.id && handleDelete(event.id)}>Delete</Button>
+                    </>
+                  )}
                 </div>
               </Card>
             ))}

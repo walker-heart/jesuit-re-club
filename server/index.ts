@@ -88,9 +88,37 @@ if (isDev && process.env.NODE_ENV !== 'test') {
 }
 
 // Start server
-const PORT = Number(process.env.PORT) || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log('API routes initialized');
-  console.log('Environment:', process.env.NODE_ENV || 'development');
-});
+const startServer = async () => {
+  const PORT = Number(process.env.PORT) || 5000;
+  try {
+    await new Promise((resolve, reject) => {
+      server.on('error', (error: any) => {
+        if (error.code === 'EADDRINUSE') {
+          console.log(`Port ${PORT} is in use, trying alternative...`);
+          server.close();
+          const altPort = PORT + 1;
+          server.listen(altPort, '0.0.0.0', () => {
+            console.log(`Server running on alternative port ${altPort}`);
+            console.log('API routes initialized');
+            console.log('Environment:', process.env.NODE_ENV || 'development');
+            resolve(true);
+          });
+        } else {
+          reject(error);
+        }
+      });
+
+      server.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log('API routes initialized');
+        console.log('Environment:', process.env.NODE_ENV || 'development');
+        resolve(true);
+      });
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();

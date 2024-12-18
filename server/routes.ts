@@ -98,17 +98,47 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Resources routes
-  app.get("/api/resources", async (_req, res) => {
+  // Resources routes for admin
+  app.get("/api/admin/resources", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
+      console.log('Fetching resources for admin...');
       const resourcesRef = db.collection('resources');
       const resourcesSnapshot = await resourcesRef.get();
-      const resources = resourcesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      
+      const resources = await Promise.all(resourcesSnapshot.docs.map(async doc => {
+        const data = doc.data();
+        console.log('Resource data:', data);
+        
+        // Get creator's display name from Firebase Auth
+        let creatorName = data.userCreated || 'Unknown';
+        if (data.userCreated && data.userCreated.includes('@')) {
+          try {
+            const userRecord = await admin.auth().getUserByEmail(data.userCreated);
+            creatorName = userRecord.displayName || data.userCreated;
+          } catch (error) {
+            console.error('Error fetching user data for resource:', error);
+          }
+        }
+        
+        return {
+          id: doc.id,
+          ...data,
+          userCreated: creatorName
+        };
       }));
       
-      return res.json(resources);
+      // Sort by creation date, newest first
+      resources.sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA;
+      });
+
+      console.log('Returning resources:', resources);
+      return res.json({
+        success: true,
+        resources
+      });
     } catch (error: any) {
       console.error('Error fetching resources:', error);
       return res.status(500).json({ 
