@@ -180,87 +180,76 @@ export function PostsTab() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <Card className="col-span-1">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Calendar className="mr-2" />
-            Events
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {isLoading ? (
-              <Card className="p-4">
-                <p className="text-gray-600">Loading events...</p>
-              </Card>
-            ) : posts.events.length === 0 ? (
-              <Card className="p-4">
-                <p className="text-gray-600">No events found</p>
-              </Card>
-            ) : posts.events.map((event) => (
-              <Card key={event.id} className="p-4 relative">
-                <h3 className="text-lg font-semibold text-[#003c71] mb-2">{event.title}</h3>
-                <p className="text-sm text-gray-600 mb-1">{event.date} | {event.time}</p>
-                <p className="text-sm text-gray-600 mb-2">{event.location}</p>
-                <p className="text-sm text-gray-600 mb-2">Speaker: {event.speaker}</p>
-                <p className="text-sm text-gray-500 mb-2">Created by: {event.userCreated}</p>
-                <div className="absolute bottom-4 right-4 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(event, 'event')}>Edit</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(event.id, 'event')}>Delete</Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Calendar className="mr-2" />
+              Events
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 max-h-[600px] overflow-y-auto">
+              {isLoading ? (
+                <Card className="p-4">
+                  <p className="text-gray-600">Loading events...</p>
+                </Card>
+              ) : posts.events.length === 0 ? (
+                <Card className="p-4">
+                  <p className="text-gray-600">No events found</p>
+                </Card>
+              ) : posts.events.map((event) => (
+                <Card key={event.id} className="p-4 relative">
+                  <h3 className="text-lg font-semibold text-[#003c71] mb-2">{event.title}</h3>
+                  <p className="text-sm text-gray-600 mb-1">{event.date} | {event.time}</p>
+                  <p className="text-sm text-gray-600 mb-2">{event.location}</p>
+                  <p className="text-sm text-gray-600 mb-2">Speaker: {event.speaker}</p>
+                  <p className="text-sm text-gray-500 mb-2">Created by: {event.userCreated}</p>
+                  <div className="absolute bottom-4 right-4 space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(event, 'event')}>Edit</Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(event.id, 'event')}>Delete</Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card className="col-span-1">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <BookOpen className="mr-2" />
-            Resources
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {posts.resources.map((resource) => (
-              <Card key={resource.id} className="p-4 relative">
-                <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
-                <p className="text-sm text-gray-600 mb-4">{resource.description}</p>
-                <div className="absolute bottom-4 right-4 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(resource, 'resource')}>Edit</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(resource.id, 'resource')}>Delete</Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="col-span-1">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Newspaper className="mr-2" />
-            News
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {posts.news.map((newsItem) => (
-              <Card key={newsItem.id} className="p-4 relative">
-                <h3 className="text-lg font-semibold text-[#003c71] mb-2">{newsItem.title}</h3>
-                <p className="text-sm text-gray-500 mb-2">{newsItem.date}</p>
-                <p className="text-sm text-gray-600 mb-4">By {newsItem.author}</p>
-                <div className="absolute bottom-4 right-4 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(newsItem, 'news')}>Edit</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(newsItem.id, 'news')}>Delete</Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <BookOpen className="mr-2" />
+              Resources
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 max-h-[600px] overflow-y-auto">
+              {isLoading ? (
+                <Card className="p-4">
+                  <p className="text-gray-600">Loading resources...</p>
+                </Card>
+              ) : posts.resources.length === 0 ? (
+                <Card className="p-4">
+                  <p className="text-gray-600">No resources found</p>
+                </Card>
+              ) : posts.resources.map((resource) => (
+                <Card key={resource.id} className="p-4 relative">
+                  <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
+                  <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
+                  <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
+                  <div className="absolute bottom-4 right-4 space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(resource, 'resource')}>Edit</Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(resource.id, 'resource')}>Delete</Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <EditModal
         isOpen={!!editingItem}

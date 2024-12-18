@@ -132,11 +132,15 @@ export function ResourcesTab() {
                   <p className="text-sm text-gray-500 mb-2">Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}</p>
                 )}
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => {
-                    setEditingResource(resource);
-                    setIsModalOpen(true);
-                  }}>Edit</Button>
-                  <Button variant="destructive" size="sm" onClick={() => resource.id && handleDelete(resource.id)}>Delete</Button>
+                  {user && (resource.userCreated === user.email || user.role === 'admin') && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setEditingResource(resource);
+                        setIsModalOpen(true);
+                      }}>Edit</Button>
+                      <Button variant="destructive" size="sm" onClick={() => resource.id && handleDelete(resource.id)}>Delete</Button>
+                    </>
+                  )}
                 </div>
               </Card>
             ))}
