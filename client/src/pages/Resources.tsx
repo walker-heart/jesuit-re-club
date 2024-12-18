@@ -7,56 +7,83 @@ import { ResourceModal } from "@/components/admin/ResourceModal";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface Resource {
-  id: number;
+  id: string;
   title: string;
   description: string;
   numberOfTexts: number;
   textFields: string[];
   userCreated: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: any; // Firebase Timestamp
+  updatedAt: any; // Firebase Timestamp
   updatedBy: string;
 }
 
 async function fetchResources(): Promise<Resource[]> {
-  const response = await fetch("/api/resources");
-  if (!response.ok) {
-    throw new Error("Failed to fetch resources");
+  try {
+    const resourcesRef = collection(db, 'resources');
+    const snapshot = await getDocs(resourcesRef);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Resource));
+  } catch (error) {
+    console.error('Error fetching resources:', error);
+    throw new Error('Failed to fetch resources');
   }
-  return response.json();
 }
 
-async function createResource(resourceData: Omit<Resource, "id">): Promise<Resource> {
+async function createResource(resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy">): Promise<Resource> {
   try {
-    const resourceRef = db.collection('resources');
-    const docRef = await resourceRef.add({
+    const resourceRef = collection(db, 'resources');
+    const docRef = await addDoc(resourceRef, {
       ...resourceData,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      userCreated: "admin", // Replace with actual user info from auth
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      updatedBy: "admin" // Replace with actual user info from auth
     });
     
-    const newDoc = await docRef.get();
-    return { id: docRef.id, ...newDoc.data() } as Resource;
+    const newDoc = await getDoc(docRef);
+    if (!newDoc.exists()) {
+      throw new Error('Failed to create resource: Document does not exist after creation');
+    }
+    
+    return {
+      id: docRef.id,
+      ...newDoc.data()
+    } as Resource;
   } catch (error) {
     console.error('Error creating resource:', error);
     throw new Error('Failed to create resource');
   }
 }
 
-async function updateResource(resourceData: Resource): Promise<Resource> {
+async function updateResource(resourceData: Partial<Resource> & { id: string }): Promise<Resource> {
   try {
     const { id, ...updateData } = resourceData;
-    const resourceRef = db.collection('resources').doc(id.toString());
+    const resourceRef = doc(db, 'resources', id);
     
-    await resourceRef.update({
+    const updatePayload = {
       ...updateData,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+      updatedAt: serverTimestamp(),
+      updatedBy: "admin" // Replace with actual user info from auth
+    };
 
-    const updatedDoc = await resourceRef.get();
-    return { id, ...updatedDoc.data() } as Resource;
+    await updateDoc(resourceRef, updatePayload);
+
+    const updatedDoc = await getDoc(resourceRef);
+    if (!updatedDoc.exists()) {
+      throw new Error('Resource not found after update');
+    }
+
+    return {
+      id,
+      ...updatedDoc.data()
+    } as Resource;
   } catch (error) {
     console.error('Error updating resource:', error);
     throw new Error('Failed to update resource');
@@ -65,7 +92,8 @@ async function updateResource(resourceData: Resource): Promise<Resource> {
 
 async function deleteResource(id: string): Promise<void> {
   try {
-    await db.collection('resources').doc(id).delete();
+    const resourceRef = doc(db, 'resources', id);
+    await deleteDoc(resourceRef);
   } catch (error) {
     console.error('Error deleting resource:', error);
     throw new Error('Failed to delete resource');
@@ -149,7 +177,7 @@ export function Resources() {
     }
   };
 
-  const handleUpdateResource = async (resourceData: Resource) => {
+  const handleUpdateResource = async (resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy"> & { id: string }) => {
     try {
       await updateMutation.mutateAsync(resourceData);
     } catch (error) {
@@ -157,7 +185,7 @@ export function Resources() {
     }
   };
 
-  const handleDeleteResource = async (id: number) => {
+  const handleDeleteResource = async (id: string) => {
     if (
       !window.confirm(
         "Are you sure you want to delete this resource? This action cannot be undone.",
@@ -195,7 +223,7 @@ export function Resources() {
           </p>
 
           {/* Create Resource Button for admin/editor */}
-          {user && (user.role === "admin" || user.role === "editor") && (
+          {user && ["admin", "editor"].includes(user.role) && (
             <div className="flex justify-end mb-8">
               <Button
                 onClick={() => {
@@ -239,7 +267,7 @@ export function Resources() {
 
                       {/* Edit and Delete buttons for admin/editor */}
                       {user &&
-                        (user.role === "admin" || user.role === "editor") && (
+                        ["admin", "editor"].includes(user.role) && (
                           <div className="flex gap-2 mt-2">
                             <Button
                               variant="outline"

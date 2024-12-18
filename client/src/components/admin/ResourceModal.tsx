@@ -14,14 +14,15 @@ interface Resource {
   numberOfTexts: number;
   textFields: string[];
   userCreated: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: any; // Firebase Timestamp
+  updatedAt: any; // Firebase Timestamp
+  updatedBy: string;
 }
 
 type ResourceModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated">) => Promise<void>;
+  onSave: (resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy">) => Promise<void>;
   resource: Resource | null;
 };
 
