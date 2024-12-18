@@ -28,51 +28,47 @@ async function fetchResources(): Promise<Resource[]> {
   return response.json();
 }
 
-async function createResource(
-  resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy">,
-): Promise<Resource> {
-  const response = await fetch("/api/resources", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(resourceData),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to create resource");
+async function createResource(resourceData: Omit<Resource, "id">): Promise<Resource> {
+  try {
+    const resourceRef = db.collection('resources');
+    const docRef = await resourceRef.add({
+      ...resourceData,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    const newDoc = await docRef.get();
+    return { id: docRef.id, ...newDoc.data() } as Resource;
+  } catch (error) {
+    console.error('Error creating resource:', error);
+    throw new Error('Failed to create resource');
   }
-
-  return response.json();
 }
 
 async function updateResource(resourceData: Resource): Promise<Resource> {
-  const response = await fetch(`/api/resources/${resourceData.id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(resourceData),
-  });
+  try {
+    const { id, ...updateData } = resourceData;
+    const resourceRef = db.collection('resources').doc(id.toString());
+    
+    await resourceRef.update({
+      ...updateData,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
 
-  if (!response.ok) {
-    throw new Error("Failed to update resource");
+    const updatedDoc = await resourceRef.get();
+    return { id, ...updatedDoc.data() } as Resource;
+  } catch (error) {
+    console.error('Error updating resource:', error);
+    throw new Error('Failed to update resource');
   }
-
-  return response.json();
 }
 
-async function deleteResource(id: number): Promise<void> {
-  const response = await fetch(`/api/resources/${id}`, {
-    method: "DELETE",
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Failed to delete resource");
+async function deleteResource(id: string): Promise<void> {
+  try {
+    await db.collection('resources').doc(id).delete();
+  } catch (error) {
+    console.error('Error deleting resource:', error);
+    throw new Error('Failed to delete resource');
   }
 }
 

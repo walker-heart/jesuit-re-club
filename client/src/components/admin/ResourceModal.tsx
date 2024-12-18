@@ -8,21 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 
 interface Resource {
-  id?: number;
+  id: string;
   title: string;
   description: string;
   numberOfTexts: number;
   textFields: string[];
-  userCreated?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  updatedBy?: string;
+  userCreated: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 type ResourceModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (resourceData: Resource | Omit<Resource, "id">) => Promise<void>;
+  onSave: (resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated">) => Promise<void>;
   resource: Resource | null;
 };
 
@@ -84,14 +83,14 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
     setIsSubmitting(true);
     try {
       const resourceData = {
-        ...(resource?.id ? { id: resource.id } : {}),
         title,
         description,
         numberOfTexts: parseInt(numberOfTexts),
-        textFields: textFields.filter(text => text.trim() !== ''),
+        textFields: textFields.filter(text => text.trim() !== '')
       };
 
       await onSave(resourceData);
+      onClose();
       
       // Form will be reset by the useEffect when resource changes or modal closes
     } catch (error: any) {

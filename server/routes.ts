@@ -101,7 +101,7 @@ export function registerRoutes(app: Express): Server {
   // Resources routes
   app.get("/api/resources", async (_req, res) => {
     try {
-      const resourcesRef = admin.firestore().collection('resources');
+      const resourcesRef = db.collection('resources');
       const resourcesSnapshot = await resourcesRef.get();
       const resources = resourcesSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -118,7 +118,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/resources/create", verifyFirebaseToken, async (req: Request, res: Response) => {
+  app.post("/api/resources", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
       // Check if user has permission to create resources (admin or editor)
       if (!['admin', 'editor'].includes(req.user?.role || '')) {
