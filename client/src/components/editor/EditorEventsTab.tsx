@@ -3,11 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar } from 'lucide-react'
 import { EventModal } from '../admin/EventModal'
-import {  deleteEvent } from '@/lib/firebase/events'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
-import {db} from "@/lib/firebase"
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from '@/lib/firebase'
+import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore"
 
 
 type EventItem = {
@@ -99,7 +98,8 @@ export function EditorEventsTab() {
         return;
       }
 
-      await deleteEvent(id);
+      const eventRef = doc(db, 'events', id);
+      await deleteDoc(eventRef);
 
       // Refresh the events list
       loadEvents(); // Use the updated loadEvents function
