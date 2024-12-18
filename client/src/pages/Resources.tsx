@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase"; // Added import for auth
 
 interface Resource {
   id: string;
@@ -41,10 +42,10 @@ async function createResource(resourceData: Omit<Resource, "id" | "createdAt" | 
     const resourceRef = collection(db, 'resources');
     const docRef = await addDoc(resourceRef, {
       ...resourceData,
-      userCreated: "admin", // Replace with actual user info from auth
+      userCreated: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      updatedBy: "admin" // Replace with actual user info from auth
+      updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
     });
     
     const newDoc = await getDoc(docRef);
@@ -70,7 +71,7 @@ async function updateResource(resourceData: Partial<Resource> & { id: string }):
     const updatePayload = {
       ...updateData,
       updatedAt: serverTimestamp(),
-      updatedBy: "admin" // Replace with actual user info from auth
+      updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
     };
 
     await updateDoc(resourceRef, updatePayload);
