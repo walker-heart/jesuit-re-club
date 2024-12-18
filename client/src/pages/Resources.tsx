@@ -132,13 +132,9 @@ export function Resources() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: updateResource,
+    mutationFn: (resourceData: Partial<Resource> & { id: string }) => updateResource(resourceData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast({
-        title: "Success",
-        description: "Resource updated successfully",
-      });
       setIsModalOpen(false);
       setEditingResource(null);
     },
@@ -177,11 +173,37 @@ export function Resources() {
     }
   };
 
-  const handleUpdateResource = async (resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy"> & { id: string }) => {
+  const handleUpdateResource = async (resourceData: Omit<Resource, "createdAt" | "updatedAt" | "userCreated" | "updatedBy"> & { id: string }) => {
     try {
-      await updateMutation.mutateAsync(resourceData);
-    } catch (error) {
+      if (!resourceData.id) {
+        throw new Error('Resource ID is required for update');
+      }
+
+      const updatePayload = {
+        id: resourceData.id,
+        title: resourceData.title,
+        description: resourceData.description,
+        numberOfTexts: resourceData.numberOfTexts,
+        textFields: resourceData.textFields,
+        updatedBy: user?.username || 'unknown'
+      };
+      
+      await updateMutation.mutateAsync(updatePayload);
+      await queryClient.invalidateQueries({ queryKey: ["resources"] });
+      setEditingResource(null);
+      setIsModalOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Resource updated successfully"
+      });
+    } catch (error: any) {
       console.error("Error updating resource:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update resource",
+        variant: "destructive"
+      });
     }
   };
 
