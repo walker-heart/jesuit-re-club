@@ -42,17 +42,17 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
       if (type === 'event') {
         await updateEvent(editedItem as FirebaseEvent);
       }
-      onSave(editedItem);
-      onClose();
+      await onSave(editedItem);
       toast({
         title: "Success",
-        description: `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully`
+        description: `${type.charAt(0).toUpperCase() + type.slice(1)} ${item ? 'updated' : 'created'} successfully`
       });
+      onClose();
     } catch (error: any) {
-      console.error(`Error updating ${type}:`, error);
+      console.error(`Error ${item ? 'updating' : 'creating'} ${type}:`, error);
       toast({
         title: "Error",
-        description: error.message || `Failed to update ${type}`,
+        description: error.message || `Failed to ${item ? 'update' : 'create'} ${type}`,
         variant: "destructive"
       });
     } finally {

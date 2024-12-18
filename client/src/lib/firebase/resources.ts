@@ -1,17 +1,7 @@
 import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
 
-export interface FirebaseResource {
-  id?: string;
-  title: string;
-  description: string;
-  numberOfTexts: number;
-  textFields: string[];
-  createdAt: string;
-  userCreated: string;
-  updatedAt?: string;
-  updatedBy?: string;
-}
+import type { FirebaseResource } from './types';
 
 export const createResource = async (resourceData: Omit<FirebaseResource, 'id' | 'createdAt' | 'userCreated'>): Promise<FirebaseResource> => {
   try {
@@ -19,11 +9,11 @@ export const createResource = async (resourceData: Omit<FirebaseResource, 'id' |
       throw new Error('Authentication required to create resource');
     }
 
-    const newResource: Omit<FirebaseResource, 'id'> = {
+    const newResource = {
       ...resourceData,
-      createdAt: new Date().toLocaleString(),
+      createdAt: new Date().toISOString(),
       userCreated: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user',
-      updatedAt: new Date().toLocaleString(),
+      updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
     };
 
@@ -32,7 +22,7 @@ export const createResource = async (resourceData: Omit<FirebaseResource, 'id' |
     return {
       id: docRef.id,
       ...newResource
-    };
+    } as FirebaseResource;
   } catch (error) {
     console.error('Error creating resource:', error);
     throw error;
@@ -49,11 +39,10 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<vo
       throw new Error('Resource ID is required for update');
     }
 
-    // Check if user is allowed to update this resource
     const resourceRef = doc(db, 'resources', resourceData.id);
     const updateData = {
       ...resourceData,
-      updatedAt: new Date().toLocaleString(),
+      updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
     };
 

@@ -1,18 +1,6 @@
 import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
-
-export interface FirebaseEvent {
-  id?: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  speaker: string;
-  speakerDescription: string;
-  agenda: string;
-  createdAt: string;
-  userCreated: string;
-}
+import type { FirebaseEvent } from './types';
 
 export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'createdAt' | 'userCreated'>): Promise<FirebaseEvent> => {
   try {
@@ -20,10 +8,11 @@ export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'created
       throw new Error('Authentication required to create event');
     }
 
-    const newEvent: Omit<FirebaseEvent, 'id'> = {
+    const newEvent = {
       ...eventData,
-      createdAt: new Date().toLocaleString(),
+      createdAt: new Date().toISOString(),
       userCreated: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user',
+      updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
     };
 
@@ -32,7 +21,7 @@ export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'created
     return {
       id: docRef.id,
       ...newEvent
-    };
+    } as FirebaseEvent;
   } catch (error) {
     console.error('Error creating event:', error);
     throw error;
@@ -52,7 +41,7 @@ export const updateEvent = async (eventData: FirebaseEvent): Promise<void> => {
     const eventRef = doc(db, 'events', eventData.id);
     const updateData = {
       ...eventData,
-      updatedAt: new Date().toLocaleString(),
+      updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
     };
 
@@ -91,3 +80,5 @@ export const fetchEvents = async (): Promise<FirebaseEvent[]> => {
     throw error;
   }
 };
+
+export type { FirebaseEvent };

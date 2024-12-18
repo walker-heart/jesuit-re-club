@@ -4,61 +4,64 @@ import { Button } from "@/components/ui/button"
 import { Calendar, BookOpen } from 'lucide-react'
 import { EditModal } from './EditModal'
 import { ResourceModal } from './ResourceModal'
-import { fetchEvents, deleteEvent, type FirebaseEvent } from '@/lib/firebase/events'
-import { fetchResources, deleteResource, type FirebaseResource } from '@/lib/firebase/resources'
+import { fetchEvents, deleteEvent, createEvent, updateEvent } from '@/lib/firebase/events'
+import { fetchResources, deleteResource, createResource, updateResource } from '@/lib/firebase/resources'
+import type { FirebaseEvent, FirebaseResource } from '@/lib/firebase/types'
 import { useToast } from "@/hooks/use-toast"
 import { auth } from '@/lib/firebase/firebase-config'
 
 export function PostsTab() {
   const { toast } = useToast();
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<FirebaseEvent | null>(null);
   const [editingResource, setEditingResource] = useState<FirebaseResource | null>(null);
   const [events, setEvents] = useState<FirebaseEvent[]>([]);
   const [resources, setResources] = useState<FirebaseResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      
+      const [eventsData, resourcesData] = await Promise.all([
+        fetchEvents(),
+        fetchResources()
+      ]);
+      
+      // Sort events by date, putting upcoming events first
+      const sortedEvents = eventsData.sort((a, b) => {
+        const dateA = new Date(`${a.date} ${a.time}`);
+        const dateB = new Date(`${b.date} ${b.time}`);
+        const now = new Date();
+        
+        const aIsUpcoming = dateA >= now;
+        const bIsUpcoming = dateB >= now;
+        
+        if (aIsUpcoming === bIsUpcoming) {
+          return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+        }
+        
+        return aIsUpcoming ? -1 : 1;
+      });
+
+      setEvents(sortedEvents);
+      setResources(resourcesData);
+    } catch (error: any) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        
-        const [eventsData, resourcesData] = await Promise.all([
-          fetchEvents(),
-          fetchResources()
-        ]);
-        
-        // Sort events by date, putting upcoming events first
-        const sortedEvents = eventsData.sort((a, b) => {
-          const dateA = new Date(`${a.date} ${a.time}`);
-          const dateB = new Date(`${b.date} ${b.time}`);
-          const now = new Date();
-          
-          const aIsUpcoming = dateA >= now;
-          const bIsUpcoming = dateB >= now;
-          
-          if (aIsUpcoming === bIsUpcoming) {
-            return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
-          }
-          
-          return aIsUpcoming ? -1 : 1;
-        });
-
-        setEvents(sortedEvents);
-        setResources(resourcesData);
-      } catch (error: any) {
-        console.error('Error loading data:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load data",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadData();
-  }, [toast]);
+  }, []);
 
   const handleDeleteEvent = async (id: string) => {
     if (!id) return;
@@ -115,9 +118,22 @@ export function PostsTab() {
       {/* Events Column */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Calendar className="mr-2" />
-            Events
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center">
+                <Calendar className="mr-2" />
+                Events
+              </div>
+              <Button 
+                onClick={() => {
+                  setEditingEvent(null);
+                  setIsEventModalOpen(true);
+                }}
+                className="bg-[#003c71] hover:bg-[#002c51] text-white"
+              >
+                Create Event
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -162,9 +178,22 @@ export function PostsTab() {
       {/* Resources Column */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <BookOpen className="mr-2" />
-            Resources
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center">
+                <BookOpen className="mr-2" />
+                Resources
+              </div>
+              <Button 
+                onClick={() => {
+                  setEditingResource(null);
+                  setIsResourceModalOpen(true);
+                }}
+                className="bg-[#003c71] hover:bg-[#002c51] text-white"
+              >
+                Create Resource
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -206,25 +235,61 @@ export function PostsTab() {
 
       {/* Edit Modal for Events */}
       <EditModal
-        isOpen={!!editingEvent}
-        onClose={() => setEditingEvent(null)}
-        onSave={async (updatedEvent) => {
-          const updatedEvents = events.map(event => 
-            event.id === updatedEvent.id ? updatedEvent as FirebaseEvent : event
-          );
-          setEvents(updatedEvents);
+        isOpen={!!editingEvent || isEventModalOpen}
+        onClose={() => {
           setEditingEvent(null);
+          setIsEventModalOpen(false);
+        }}
+        onSave={async (eventData) => {
+          try {
+            if (!auth.currentUser) {
+              throw new Error('User must be authenticated to save events');
+            }
+
+            if (editingEvent) {
+              await updateEvent({
+                ...eventData as FirebaseEvent,
+                id: editingEvent.id,
+                updatedAt: new Date().toISOString(),
+                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
+              });
+            } else {
+              await createEvent({
+                ...eventData as FirebaseEvent,
+                userCreated: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
+              });
+            }
+
+            await loadData();
+            toast({
+              title: "Success",
+              description: editingEvent ? "Event updated successfully" : "Event created successfully"
+            });
+          } catch (error: any) {
+            console.error('Error saving event:', error);
+            toast({
+              title: "Error",
+              description: error.message || "Failed to save event",
+              variant: "destructive"
+            });
+          } finally {
+            setEditingEvent(null);
+            setIsEventModalOpen(false);
+          }
         }}
         item={editingEvent}
         type="event"
       />
 
       {/* Resource Modal for Resources */}
-      {/* Resource Modal for Resources */}
       <ResourceModal
-        isOpen={!!editingResource}
+        isOpen={!!editingResource || isResourceModalOpen}
         onClose={() => {
           setEditingResource(null);
+          setIsResourceModalOpen(false);
         }}
         resource={editingResource}
         onSave={async (resourceData) => {
@@ -233,11 +298,27 @@ export function PostsTab() {
               throw new Error('User must be authenticated to save resources');
             }
 
-            // Refresh resources after save
+            if (editingResource) {
+              await updateResource({
+                ...resourceData as FirebaseResource,
+                id: editingResource.id,
+                updatedAt: new Date().toISOString(),
+                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
+              });
+            } else {
+              await createResource({
+                ...resourceData as FirebaseResource,
+                userCreated: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
+              });
+            }
+
             await loadData();
             toast({
               title: "Success",
-              description: "Resource updated successfully"
+              description: editingResource ? "Resource updated successfully" : "Resource created successfully"
             });
           } catch (error: any) {
             console.error('Error saving resource:', error);
@@ -248,6 +329,7 @@ export function PostsTab() {
             });
           } finally {
             setEditingResource(null);
+            setIsResourceModalOpen(false);
           }
         }}
       />

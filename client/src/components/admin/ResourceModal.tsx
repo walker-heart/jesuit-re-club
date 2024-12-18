@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase/firebase-config";
-import type { FirebaseResource } from "@/lib/firebase/resources";
+import type { FirebaseResource } from "@/lib/firebase/types";
 
 type ResourceModalProps = {
   isOpen: boolean;
@@ -85,6 +85,10 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
       };
 
       await onSave(resourceData);
+      toast({
+        title: "Success",
+        description: resource ? "Resource updated successfully" : "Resource created successfully"
+      });
       onClose();
       
       // Form will be reset by the useEffect when resource changes or modal closes
