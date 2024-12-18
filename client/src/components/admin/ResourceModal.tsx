@@ -22,7 +22,7 @@ interface Resource {
 type ResourceModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy">) => Promise<void>;
+  onSave: (resourceData: Partial<Resource>) => Promise<void>;
   resource: Resource | null;
 };
 

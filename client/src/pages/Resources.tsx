@@ -132,11 +132,20 @@ export function Resources() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (resourceData: Partial<Resource> & { id: string }) => updateResource(resourceData),
+    mutationFn: async (resourceData: Resource) => {
+      if (!resourceData.id) {
+        throw new Error('Resource ID is required for update');
+      }
+      return updateResource(resourceData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resources"] });
       setIsModalOpen(false);
       setEditingResource(null);
+      toast({
+        title: "Success",
+        description: "Resource updated successfully",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -173,37 +182,28 @@ export function Resources() {
     }
   };
 
-  const handleUpdateResource = async (resourceData: Omit<Resource, "createdAt" | "updatedAt" | "userCreated" | "updatedBy"> & { id: string }) => {
+  const handleUpdateResource = async (resourceData: Partial<Resource>) => {
     try {
-      if (!resourceData.id) {
+      if (!editingResource?.id) {
         throw new Error('Resource ID is required for update');
       }
 
       const updatePayload = {
-        id: resourceData.id,
-        title: resourceData.title,
-        description: resourceData.description,
-        numberOfTexts: resourceData.numberOfTexts,
-        textFields: resourceData.textFields,
+        id: editingResource.id,
+        title: resourceData.title || editingResource.title,
+        description: resourceData.description || editingResource.description,
+        numberOfTexts: resourceData.numberOfTexts || editingResource.numberOfTexts,
+        textFields: resourceData.textFields || editingResource.textFields,
+        userCreated: editingResource.userCreated,
+        createdAt: editingResource.createdAt,
+        updatedAt: serverTimestamp(),
         updatedBy: user?.username || 'unknown'
       };
-      
-      await updateMutation.mutateAsync(updatePayload);
-      await queryClient.invalidateQueries({ queryKey: ["resources"] });
-      setEditingResource(null);
-      setIsModalOpen(false);
-      
-      toast({
-        title: "Success",
-        description: "Resource updated successfully"
-      });
+
+      await updateMutation.mutateAsync(updatePayload as Resource);
     } catch (error: any) {
       console.error("Error updating resource:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update resource",
-        variant: "destructive"
-      });
+      throw error;
     }
   };
 
