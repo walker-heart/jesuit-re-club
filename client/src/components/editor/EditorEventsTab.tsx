@@ -33,10 +33,12 @@ export function EditorEventsTab() {
 
   const loadEvents = async () => {
     try {
+      if (!user) return;
+      
       setIsLoading(true);
       setError(null); // Clear any previous errors
       const eventsRef = collection(db, 'events');
-      const q = query(eventsRef, where('userCreated', '==', user?.username));
+      const q = query(eventsRef, where('userCreated', '==', user.email));
       const snapshot = await getDocs(q);
       
       const userEvents = snapshot.docs.map(doc => ({
@@ -170,8 +172,7 @@ export function EditorEventsTab() {
           setIsModalOpen(false);
           setEditingEvent(null);
         }}
-        eventData={editingEvent}
-        onSave={async (eventData) => {
+        onEventCreated={() => {
           // Refresh events after save
           loadEvents();
           setIsModalOpen(false);

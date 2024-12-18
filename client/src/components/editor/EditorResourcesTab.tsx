@@ -31,10 +31,12 @@ export function EditorResourcesTab() {
 
   const loadResources = async () => {
     try {
+      if (!user) return;
+      
       setIsLoading(true);
       setError(null); // Clear any previous errors
       const resourcesRef = collection(db, 'resources');
-      const q = query(resourcesRef, where('userCreated', '==', user?.username));
+      const q = query(resourcesRef, where('userCreated', '==', user.email));
       const snapshot = await getDocs(q);
       
       const userResources = snapshot.docs.map(doc => ({

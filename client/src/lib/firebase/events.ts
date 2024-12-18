@@ -23,7 +23,8 @@ export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'created
     const newEvent: Omit<FirebaseEvent, 'id'> = {
       ...eventData,
       createdAt: new Date().toLocaleString(),
-      userCreated: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
+      userCreated: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user',
+      updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
     };
 
     const docRef = await addDoc(collection(db, 'events'), newEvent);
