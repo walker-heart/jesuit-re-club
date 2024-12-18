@@ -28,14 +28,10 @@ type ResourceModalProps = {
 
 export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceModalProps) {
   const { toast } = useToast();
-  const [title, setTitle] = useState(resource?.title || "");
-  const [description, setDescription] = useState(resource?.description || "");
-  const [numberOfTexts, setNumberOfTexts] = useState<string>(
-    resource?.numberOfTexts?.toString() || "1"
-  );
-  const [textFields, setTextFields] = useState<string[]>(
-    resource?.textFields || [""]
-  );
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [numberOfTexts, setNumberOfTexts] = useState<string>("1");
+  const [textFields, setTextFields] = useState<string[]>([""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleTextFieldChange = (index: number, value: string) => {
@@ -58,7 +54,6 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
     setTextFields(newFields);
   };
 
-  // Reset form when modal opens/closes or resource changes
   useEffect(() => {
     if (resource) {
       setTitle(resource.title);
@@ -66,49 +61,21 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
       setNumberOfTexts(resource.numberOfTexts.toString());
       setTextFields(resource.textFields);
     } else {
+      // Reset form when creating new resource
       setTitle("");
       setDescription("");
       setNumberOfTexts("1");
       setTextFields([""]);
     }
-  }, [resource, isOpen]);
+  }, [resource]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
-    if (!title.trim()) {
+    if (!title || !description || !numberOfTexts || textFields.some(field => !field.trim())) {
       toast({
         title: "Error",
-        description: "Title is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!description.trim()) {
-      toast({
-        title: "Error",
-        description: "Description is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!numberOfTexts || parseInt(numberOfTexts) < 1) {
-      toast({
-        title: "Error",
-        description: "Number of texts must be at least 1",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const trimmedFields = textFields.map(field => field.trim());
-    if (trimmedFields.some(field => !field)) {
-      toast({
-        title: "Error",
-        description: "All text fields must be filled",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
@@ -116,34 +83,17 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
 
     setIsSubmitting(true);
     try {
-      let resourceData;
-      
-      if (resource) {
-        // Update existing resource
-        resourceData = {
-          id: resource.id,
-          title: title.trim(),
-          description: description.trim(),
-          numberOfTexts: parseInt(numberOfTexts),
-          textFields: trimmedFields,
-          updatedAt: new Date().toISOString(),
-        };
-      } else {
-        // Create new resource
-        resourceData = {
-          title: title.trim(),
-          description: description.trim(),
-          numberOfTexts: parseInt(numberOfTexts),
-          textFields: trimmedFields,
-        };
-      }
+      const resourceData = {
+        ...(resource?.id ? { id: resource.id } : {}),
+        title,
+        description,
+        numberOfTexts: parseInt(numberOfTexts),
+        textFields: textFields.filter(text => text.trim() !== ''),
+      };
 
       await onSave(resourceData);
-      toast({
-        title: "Success",
-        description: resource ? "Resource updated successfully" : "Resource created successfully",
-      });
-      onClose();
+      
+      // Form will be reset by the useEffect when resource changes or modal closes
     } catch (error: any) {
       console.error('Error saving resource:', error);
       toast({

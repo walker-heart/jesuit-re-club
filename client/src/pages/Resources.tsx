@@ -7,7 +7,6 @@ import { ResourceModal } from "@/components/admin/ResourceModal";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAuthToken } from "@/lib/firebase/firebase";
 
 interface Resource {
   id: number;
@@ -22,113 +21,58 @@ interface Resource {
 }
 
 async function fetchResources(): Promise<Resource[]> {
-  try {
-    const token = await getAuthToken();
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch("/api/resources", { headers });
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Authentication required");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch resources");
-    }
-    const data = await response.json();
-    return data.resources || [];
-  } catch (error: any) {
-    console.error("Fetch resources error:", error);
-    throw new Error(error.message || "Failed to fetch resources");
+  const response = await fetch("/api/resources");
+  if (!response.ok) {
+    throw new Error("Failed to fetch resources");
   }
+  return response.json();
 }
 
 async function createResource(
   resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy">,
 ): Promise<Resource> {
-  try {
-    const token = await getAuthToken();
-    if (!token) {
-      throw new Error("Authentication required");
-    }
+  const response = await fetch("/api/resources", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(resourceData),
+  });
 
-    const response = await fetch("/api/resources", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify(resourceData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || "Failed to create resource");
-    }
-
-    const data = await response.json();
-    return data.resource;
-  } catch (error: any) {
-    console.error("Create resource error:", error);
-    throw new Error(error.message || "Failed to create resource");
+  if (!response.ok) {
+    throw new Error("Failed to create resource");
   }
+
+  return response.json();
 }
 
 async function updateResource(resourceData: Resource): Promise<Resource> {
-  try {
-    const token = await getAuthToken();
-    if (!token) {
-      throw new Error("Authentication required");
-    }
+  const response = await fetch(`/api/resources/${resourceData.id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(resourceData),
+  });
 
-    const response = await fetch(`/api/resources/${resourceData.id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify(resourceData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || "Failed to update resource");
-    }
-
-    const data = await response.json();
-    return data.resource;
-  } catch (error: any) {
-    console.error("Update resource error:", error);
-    throw new Error(error.message || "Failed to update resource");
+  if (!response.ok) {
+    throw new Error("Failed to update resource");
   }
+
+  return response.json();
 }
 
 async function deleteResource(id: number): Promise<void> {
-  try {
-    const token = await getAuthToken();
-    if (!token) {
-      throw new Error("Authentication required");
-    }
+  const response = await fetch(`/api/resources/${id}`, {
+    method: "DELETE",
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
 
-    const response = await fetch(`/api/resources/${id}`, {
-      method: "DELETE",
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || "Failed to delete resource");
-    }
-  } catch (error: any) {
-    console.error("Delete resource error:", error);
-    throw new Error(error.message || "Failed to delete resource");
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to delete resource");
   }
 }
 

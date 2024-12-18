@@ -99,10 +99,9 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Resources routes
-  // Resources routes
   app.get("/api/resources", async (_req, res) => {
     try {
-      const resourcesRef = db.collection('resources');
+      const resourcesRef = admin.firestore().collection('resources');
       const resourcesSnapshot = await resourcesRef.get();
       const resources = resourcesSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -115,139 +114,6 @@ export function registerRoutes(app: Express): Server {
       return res.status(500).json({ 
         success: false,
         message: error.message || 'Failed to fetch resources'
-      });
-    }
-  });
-
-  app.post("/api/resources", verifyFirebaseToken, async (req: Request, res: Response) => {
-    try {
-      if (!['admin', 'editor'].includes(req.user?.role || '')) {
-        return res.status(403).json({ 
-          success: false,
-          message: 'Unauthorized - Admin or Editor access required' 
-        });
-      }
-
-      const { title, description, numberOfTexts, textFields } = req.body;
-
-      if (!title || !description || !numberOfTexts || !textFields) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing required fields'
-        });
-      }
-
-      const resourceDoc = {
-        title,
-        description,
-        numberOfTexts: parseInt(numberOfTexts),
-        textFields: Array.isArray(textFields) ? textFields : [textFields],
-        userCreated: req.user?.username || 'Unknown',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedBy: req.user?.username || 'Unknown'
-      };
-
-      const docRef = await db.collection('resources').add(resourceDoc);
-      const newResource = await docRef.get();
-
-      return res.status(201).json({
-        success: true,
-        resource: {
-          id: docRef.id,
-          ...newResource.data()
-        }
-      });
-    } catch (error: any) {
-      console.error('Error creating resource:', error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || 'Failed to create resource'
-      });
-    }
-  });
-
-  app.put("/api/resources/:id", verifyFirebaseToken, async (req: Request, res: Response) => {
-    try {
-      if (!['admin', 'editor'].includes(req.user?.role || '')) {
-        return res.status(403).json({ 
-          success: false,
-          message: 'Unauthorized - Admin or Editor access required' 
-        });
-      }
-
-      const { id } = req.params;
-      const { title, description, numberOfTexts, textFields } = req.body;
-
-      const resourceRef = db.collection('resources').doc(id);
-      const resource = await resourceRef.get();
-
-      if (!resource.exists) {
-        return res.status(404).json({
-          success: false,
-          message: 'Resource not found'
-        });
-      }
-
-      const updateData = {
-        title,
-        description,
-        numberOfTexts: parseInt(numberOfTexts),
-        textFields: Array.isArray(textFields) ? textFields : [textFields],
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedBy: req.user?.username || 'Unknown'
-      };
-
-      await resourceRef.update(updateData);
-      const updatedResource = await resourceRef.get();
-
-      return res.json({
-        success: true,
-        resource: {
-          id: updatedResource.id,
-          ...updatedResource.data()
-        }
-      });
-    } catch (error: any) {
-      console.error('Error updating resource:', error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || 'Failed to update resource'
-      });
-    }
-  });
-
-  app.delete("/api/resources/:id", verifyFirebaseToken, async (req: Request, res: Response) => {
-    try {
-      if (!['admin', 'editor'].includes(req.user?.role || '')) {
-        return res.status(403).json({ 
-          success: false,
-          message: 'Unauthorized - Admin or Editor access required' 
-        });
-      }
-
-      const { id } = req.params;
-      const resourceRef = db.collection('resources').doc(id);
-      const resource = await resourceRef.get();
-
-      if (!resource.exists) {
-        return res.status(404).json({
-          success: false,
-          message: 'Resource not found'
-        });
-      }
-
-      await resourceRef.delete();
-
-      return res.json({
-        success: true,
-        message: 'Resource deleted successfully'
-      });
-    } catch (error: any) {
-      console.error('Error deleting resource:', error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || 'Failed to delete resource'
       });
     }
   });
