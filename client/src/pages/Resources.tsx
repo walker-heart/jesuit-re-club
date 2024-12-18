@@ -283,7 +283,7 @@ export function Resources() {
                         className="w-full justify-center bg-[#b3a369] hover:bg-[#b3a369]/90 text-[#003c71] border-none"
                       >
                         <Link href={`/resources/${resource.id}`}>
-                          Learn More
+                          View Resource
                         </Link>
                       </Button>
 
