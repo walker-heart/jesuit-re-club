@@ -4,45 +4,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { updateEvent, deleteEvent } from '@/lib/firebase/events'
+import { updateEvent } from '@/lib/firebase/events'
 import { useToast } from "@/hooks/use-toast"
-
-type EventItem = {
-  id?: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  speaker: string;
-  speakerDescription: string;
-  agenda: string;
-  createdAt: string;
-  userCreated: string;
-}
-
-type ResourceItem = {
-  id: number;
-  title: string;
-  description: string;
-}
-
-type NewsItem = {
-  id: number;
-  title: string;
-  date: string;
-  author: string;
-}
+import type { FirebaseEvent } from '@/lib/firebase/events'
+import type { FirebaseResource } from '@/lib/firebase/resources'
 
 type EditModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: EventItem | ResourceItem | NewsItem) => void;
-  item: EventItem | ResourceItem | NewsItem | null;
-  type: 'event' | 'resource' | 'news';
+  onSave: (item: FirebaseEvent | FirebaseResource) => void;
+  item: FirebaseEvent | FirebaseResource | null;
+  type: 'event' | 'resource';
 }
 
 export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProps) {
-  const [editedItem, setEditedItem] = useState<EventItem | ResourceItem | NewsItem | null>(null);
+  const [editedItem, setEditedItem] = useState<FirebaseEvent | FirebaseResource | null>(null);
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -55,30 +33,29 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
     setEditedItem(prev => prev ? { ...prev, [name]: value } : null);
   };
 
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const handleSave = async () => {
-    if (editedItem && type === 'event') {
-      setIsSubmitting(true);
-      try {
-        await updateEvent(editedItem as EventItem);
+    if (!editedItem) return;
+    
+    setIsSubmitting(true);
+    try {
+      if (type === 'event') {
+        await updateEvent(editedItem as FirebaseEvent);
         toast({
           title: "Success",
           description: "Event updated successfully"
         });
-        onSave(editedItem);
-        onClose();
-      } catch (error: any) {
-        console.error('Error updating event:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to update event",
-          variant: "destructive"
-        });
-      } finally {
-        setIsSubmitting(false);
       }
+      onSave(editedItem);
+      onClose();
+    } catch (error: any) {
+      console.error(`Error updating ${type}:`, error);
+      toast({
+        title: "Error",
+        description: error.message || `Failed to update ${type}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -95,31 +72,75 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
             <>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="title" className="text-right">Title</Label>
-                <Input id="title" name="title" value={(editedItem as EventItem).title} onChange={handleInputChange} className="col-span-3" />
+                <Input 
+                  id="title" 
+                  name="title" 
+                  value={(editedItem as FirebaseEvent).title} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">Date</Label>
-                <Input id="date" name="date" type="date" value={(editedItem as EventItem).date} onChange={handleInputChange} className="col-span-3" />
+                <Input 
+                  id="date" 
+                  name="date" 
+                  type="date" 
+                  value={(editedItem as FirebaseEvent).date} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="time" className="text-right">Time</Label>
-                <Input id="time" name="time" type="time" value={(editedItem as EventItem).time} onChange={handleInputChange} className="col-span-3" />
+                <Input 
+                  id="time" 
+                  name="time" 
+                  type="time" 
+                  value={(editedItem as FirebaseEvent).time} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="location" className="text-right">Location</Label>
-                <Input id="location" name="location" value={(editedItem as EventItem).location} onChange={handleInputChange} className="col-span-3" />
+                <Input 
+                  id="location" 
+                  name="location" 
+                  value={(editedItem as FirebaseEvent).location} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="speaker" className="text-right">Speaker</Label>
-                <Input id="speaker" name="speaker" value={(editedItem as EventItem).speaker} onChange={handleInputChange} className="col-span-3" />
+                <Input 
+                  id="speaker" 
+                  name="speaker" 
+                  value={(editedItem as FirebaseEvent).speaker} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="speakerDescription" className="text-right">Speaker Description</Label>
-                <Textarea id="speakerDescription" name="speakerDescription" value={(editedItem as EventItem).speakerDescription} onChange={handleInputChange} className="col-span-3" />
+                <Textarea 
+                  id="speakerDescription" 
+                  name="speakerDescription" 
+                  value={(editedItem as FirebaseEvent).speakerDescription} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="agenda" className="text-right">Agenda</Label>
-                <Textarea id="agenda" name="agenda" value={(editedItem as EventItem).agenda} onChange={handleInputChange} className="col-span-3" />
+                <Textarea 
+                  id="agenda" 
+                  name="agenda" 
+                  value={(editedItem as FirebaseEvent).agenda} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
             </>
           )}
@@ -127,34 +148,32 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
             <>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="title" className="text-right">Title</Label>
-                <Input id="title" name="title" value={(editedItem as ResourceItem).title} onChange={handleInputChange} className="col-span-3" />
+                <Input 
+                  id="title" 
+                  name="title" 
+                  value={(editedItem as FirebaseResource).title} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="description" className="text-right">Description</Label>
-                <Textarea id="description" name="description" value={(editedItem as ResourceItem).description} onChange={handleInputChange} className="col-span-3" />
-              </div>
-            </>
-          )}
-          {type === 'news' && (
-            <>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="title" className="text-right">Title</Label>
-                <Input id="title" name="title" value={(editedItem as NewsItem).title} onChange={handleInputChange} className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="date" className="text-right">Date</Label>
-                <Input id="date" name="date" type="date" value={(editedItem as NewsItem).date} onChange={handleInputChange} className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="author" className="text-right">Author</Label>
-                <Input id="author" name="author" value={(editedItem as NewsItem).author} onChange={handleInputChange} className="col-span-3" />
+                <Textarea 
+                  id="description" 
+                  name="description" 
+                  value={(editedItem as FirebaseResource).description} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
             </>
           )}
         </div>
         <DialogFooter>
-          <Button onClick={onClose} variant="outline">Cancel</Button>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button onClick={onClose} variant="outline" disabled={isSubmitting}>Cancel</Button>
+          <Button onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

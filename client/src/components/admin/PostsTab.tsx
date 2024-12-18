@@ -1,62 +1,34 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, BookOpen, Newspaper } from 'lucide-react'
+import { Calendar, BookOpen } from 'lucide-react'
 import { EditModal } from './EditModal'
-import { fetchEvents, deleteEvent } from '@/lib/firebase/events'
+import { fetchEvents, deleteEvent, type FirebaseEvent } from '@/lib/firebase/events'
+import { fetchResources, deleteResource, type FirebaseResource } from '@/lib/firebase/resources'
 import { useToast } from "@/hooks/use-toast"
-
-type EventItem = {
-  id?: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  speaker: string;
-  speakerDescription: string;
-  agenda: string;
-  createdAt: string;
-  userCreated: string;
-}
-
-type ResourceItem = {
-  id: number;
-  title: string;
-  description: string;
-}
-
-type NewsItem = {
-  id: number;
-  title: string;
-  date: string;
-  author: string;
-}
-
-type Posts = {
-  events: EventItem[];
-  resources: ResourceItem[];
-  news: NewsItem[];
-}
 
 export function PostsTab() {
   const { toast } = useToast();
-  const [editingItem, setEditingItem] = useState<EventItem | ResourceItem | NewsItem | null>(null);
-  const [editingType, setEditingType] = useState<'event' | 'resource' | 'news' | null>(null);
-  const [posts, setPosts] = useState<Posts>({
-    events: [],
-    resources: [],
-    news: []
-  });
+  const [editingItem, setEditingItem] = useState<FirebaseEvent | FirebaseResource | null>(null);
+  const [editingType, setEditingType] = useState<'event' | 'resource' | null>(null);
+  const [events, setEvents] = useState<FirebaseEvent[]>([]);
+  const [resources, setResources] = useState<FirebaseResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadEvents = async () => {
+    const loadData = async () => {
       try {
         setIsLoading(true);
-        const events = await fetchEvents();
+        setError(null);
+        
+        const [eventsData, resourcesData] = await Promise.all([
+          fetchEvents(),
+          fetchResources()
+        ]);
         
         // Sort events by date, putting upcoming events first
-        const sortedEvents = events.sort((a, b) => {
+        const sortedEvents = eventsData.sort((a, b) => {
           const dateA = new Date(`${a.date} ${a.time}`);
           const dateB = new Date(`${b.date} ${b.time}`);
           const now = new Date();
@@ -66,7 +38,7 @@ export function PostsTab() {
           const bIsUpcoming = dateB >= now;
           
           if (aIsUpcoming === bIsUpcoming) {
-            // If both are upcoming or both are past, sort by date (newest first for past events)
+            // If both are upcoming or both are past, sort by date
             return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
           }
           
@@ -74,15 +46,14 @@ export function PostsTab() {
           return aIsUpcoming ? -1 : 1;
         });
 
-        setPosts(prevPosts => ({
-          ...prevPosts,
-          events: sortedEvents
-        }));
-      } catch (error) {
-        console.error('Error loading events:', error);
+        setEvents(sortedEvents);
+        setResources(resourcesData);
+      } catch (error: any) {
+        console.error('Error loading data:', error);
+        setError(error.message || 'Failed to load data');
         toast({
           title: "Error",
-          description: "Failed to load events",
+          description: error.message || "Failed to load data",
           variant: "destructive"
         });
       } finally {
@@ -90,61 +61,25 @@ export function PostsTab() {
       }
     };
 
-    loadEvents();
-  }, []);
+    loadData();
+  }, [toast]);
 
-  const handleEdit = (item: EventItem | ResourceItem | NewsItem, type: 'event' | 'resource' | 'news') => {
+  const handleEdit = (item: FirebaseEvent | FirebaseResource, type: 'event' | 'resource') => {
     setEditingItem(item);
     setEditingType(type);
   };
 
-  const handleSave = async (updatedItem: EventItem | ResourceItem | NewsItem) => {
-    if (editingType) {
-      try {
-        // TODO: Implement Firebase update
-        setPosts(prevPosts => {
-          const key = `${editingType}s` as keyof Posts;
-          return {
-            ...prevPosts,
-            [key]: prevPosts[key].map((item: any) => 
-              item.id === updatedItem.id ? updatedItem : item
-            )
-          };
-        });
-        toast({
-          title: "Success",
-          description: "Event updated successfully"
-        });
-      } catch (error) {
-        console.error('Error updating event:', error);
-        toast({
-          title: "Error",
-          description: "Failed to update event",
-          variant: "destructive"
-        });
-      }
-    }
-    setEditingItem(null);
-    setEditingType(null);
-  };
-
-  const handleDelete = async (id: string | undefined | number, type: 'event' | 'resource' | 'news') => {
-    if (!id || typeof id !== 'string') return;
+  const handleDelete = async (id: string | undefined, type: 'event' | 'resource') => {
+    if (!id) return;
     
     try {
-      if (type === 'event') {
-        // Confirm deletion
-        if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-          return;
-        }
+      // Confirm deletion
+      if (!window.confirm(`Are you sure you want to delete this ${type}? This action cannot be undone.`)) {
+        return;
+      }
 
-        await deleteEvent(id as string);
-        setPosts(prevPosts => ({
-          ...prevPosts,
-          events: prevPosts.events.filter(event => event.id !== id)
-        }));
-        
-        // Refresh the events list after deletion
+      if (type === 'event') {
+        await deleteEvent(id);
         const updatedEvents = await fetchEvents();
         const sortedEvents = updatedEvents.sort((a, b) => {
           const dateA = new Date(`${a.date} ${a.time}`);
@@ -159,14 +94,18 @@ export function PostsTab() {
           return aIsUpcoming ? -1 : 1;
         });
 
-        setPosts(prevPosts => ({
-          ...prevPosts,
-          events: sortedEvents
-        }));
-
+        setEvents(sortedEvents);
         toast({
           title: "Success",
           description: "Event deleted successfully"
+        });
+      } else if (type === 'resource') {
+        await deleteResource(id);
+        const updatedResources = await fetchResources();
+        setResources(updatedResources);
+        toast({
+          title: "Success",
+          description: "Resource deleted successfully"
         });
       }
     } catch (error: any) {
@@ -180,76 +119,81 @@ export function PostsTab() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Calendar className="mr-2" />
-              Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-[600px] overflow-y-auto">
-              {isLoading ? (
-                <Card className="p-4">
-                  <p className="text-gray-600">Loading events...</p>
-                </Card>
-              ) : posts.events.length === 0 ? (
-                <Card className="p-4">
-                  <p className="text-gray-600">No events found</p>
-                </Card>
-              ) : posts.events.map((event) => (
-                <Card key={event.id} className="p-4 relative">
-                  <h3 className="text-lg font-semibold text-[#003c71] mb-2">{event.title}</h3>
-                  <p className="text-sm text-gray-600 mb-1">{event.date} | {event.time}</p>
-                  <p className="text-sm text-gray-600 mb-2">{event.location}</p>
-                  <p className="text-sm text-gray-600 mb-2">Speaker: {event.speaker}</p>
-                  <p className="text-sm text-gray-500 mb-2">Created by: {event.userCreated}</p>
-                  <div className="absolute bottom-4 right-4 space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(event, 'event')}>Edit</Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(event.id, 'event')}>Delete</Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Calendar className="mr-2" />
+            Events
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 max-h-[600px] overflow-y-auto">
+            {isLoading ? (
+              <Card className="p-4">
+                <p className="text-gray-600">Loading events...</p>
+              </Card>
+            ) : events.length === 0 ? (
+              <Card className="p-4">
+                <p className="text-gray-600">No events found</p>
+              </Card>
+            ) : events.map((event) => (
+              <Card key={event.id} className="p-4 relative">
+                <h3 className="text-lg font-semibold text-[#003c71] mb-2">{event.title}</h3>
+                <p className="text-sm text-gray-600 mb-1">{event.date} | {event.time}</p>
+                <p className="text-sm text-gray-600 mb-2">{event.location}</p>
+                <p className="text-sm text-gray-600 mb-2">Speaker: {event.speaker}</p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {event.userCreated}</p>
+                <div className="absolute bottom-4 right-4 space-x-2">
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(event, 'event')}>Edit</Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(event.id, 'event')}>Delete</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-      <div>
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BookOpen className="mr-2" />
-              Resources
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-[600px] overflow-y-auto">
-              {isLoading ? (
-                <Card className="p-4">
-                  <p className="text-gray-600">Loading resources...</p>
-                </Card>
-              ) : posts.resources.length === 0 ? (
-                <Card className="p-4">
-                  <p className="text-gray-600">No resources found</p>
-                </Card>
-              ) : posts.resources.map((resource) => (
-                <Card key={resource.id} className="p-4 relative">
-                  <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
-                  <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
-                  <div className="absolute bottom-4 right-4 space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(resource, 'resource')}>Edit</Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(resource.id, 'resource')}>Delete</Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <BookOpen className="mr-2" />
+            Resources
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 max-h-[600px] overflow-y-auto">
+            {isLoading ? (
+              <Card className="p-4">
+                <p className="text-gray-600">Loading resources...</p>
+              </Card>
+            ) : resources.length === 0 ? (
+              <Card className="p-4">
+                <p className="text-gray-600">No resources found</p>
+              </Card>
+            ) : resources.map((resource) => (
+              <Card key={resource.id} className="p-4 relative">
+                <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
+                <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
+                <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
+                <p className="text-sm text-gray-500 mb-2">
+                  Created at: {new Date(resource.createdAt).toLocaleString()}
+                </p>
+                {resource.updatedAt && (
+                  <p className="text-sm text-gray-500 mb-2">
+                    Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}
+                  </p>
+                )}
+                <div className="absolute bottom-4 right-4 space-x-2">
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(resource, 'resource')}>Edit</Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(resource.id, 'resource')}>Delete</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <EditModal
         isOpen={!!editingItem}
@@ -257,10 +201,24 @@ export function PostsTab() {
           setEditingItem(null);
           setEditingType(null);
         }}
-        onSave={handleSave}
+        onSave={async (updatedItem) => {
+          if (editingType === 'event') {
+            const updatedEvents = events.map(event => 
+              event.id === updatedItem.id ? updatedItem as FirebaseEvent : event
+            );
+            setEvents(updatedEvents);
+          } else if (editingType === 'resource') {
+            const updatedResources = resources.map(resource => 
+              resource.id === updatedItem.id ? updatedItem as FirebaseResource : resource
+            );
+            setResources(updatedResources);
+          }
+          setEditingItem(null);
+          setEditingType(null);
+        }}
         item={editingItem}
         type={editingType || 'event'}
       />
     </div>
-  )
+  );
 }
