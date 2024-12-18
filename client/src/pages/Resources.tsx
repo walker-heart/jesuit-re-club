@@ -22,6 +22,18 @@ interface Resource {
   updatedBy: string;
 }
 
+interface User {
+  id: string;
+  username: string;
+  role: string;
+}
+
+type UserRole = 'admin' | 'editor' | 'user';
+
+function isValidRole(role: string): role is UserRole {
+  return ['admin', 'editor', 'user'].includes(role);
+}
+
 async function fetchResources(): Promise<Resource[]> {
   try {
     const resourcesRef = collection(db, 'resources');
@@ -67,10 +79,15 @@ async function updateResource(resourceData: Partial<Resource> & { id: string }):
     const { id, ...updateData } = resourceData;
     const resourceRef = doc(db, 'resources', id);
     
+    // Only update fields that are provided
     const updatePayload = {
-      ...updateData,
-      updatedAt: serverTimestamp(),
-      updatedBy: "admin" // Replace with actual user info from auth
+      ...Object.entries(updateData).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, any>),
+      updatedAt: serverTimestamp()
     };
 
     await updateDoc(resourceRef, updatePayload);
@@ -132,12 +149,7 @@ export function Resources() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (resourceData: Resource) => {
-      if (!resourceData.id) {
-        throw new Error('Resource ID is required for update');
-      }
-      return updateResource(resourceData);
-    },
+    mutationFn: (resourceData: Partial<Resource> & { id: string }) => updateResource(resourceData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resources"] });
       setIsModalOpen(false);
@@ -188,26 +200,53 @@ export function Resources() {
         throw new Error('Resource ID is required for update');
       }
 
-      const updatePayload = {
+      // Check if user has permission to update
+      if (!user || !isValidRole(user.role)) {
+        throw new Error('Invalid user role');
+      }
+
+      if (user.role !== 'admin' && (user.role !== 'editor' || editingResource.userCreated !== user.username)) {
+        throw new Error('You do not have permission to update this resource');
+      }
+
+      const updatePayload: Partial<Resource> & { id: string } = {
         id: editingResource.id,
-        title: resourceData.title || editingResource.title,
-        description: resourceData.description || editingResource.description,
-        numberOfTexts: resourceData.numberOfTexts || editingResource.numberOfTexts,
-        textFields: resourceData.textFields || editingResource.textFields,
-        userCreated: editingResource.userCreated,
-        createdAt: editingResource.createdAt,
-        updatedAt: serverTimestamp(),
-        updatedBy: user?.username || 'unknown'
+        ...resourceData,
+        updatedBy: user.username
       };
 
-      await updateMutation.mutateAsync(updatePayload as Resource);
+      await updateMutation.mutateAsync(updatePayload);
     } catch (error: any) {
       console.error("Error updating resource:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update resource",
+        variant: "destructive"
+      });
       throw error;
     }
   };
 
-  const handleDeleteResource = async (id: string) => {
+  const handleDeleteResource = async (id: string, userCreated: string) => {
+    // Check if user has permission to delete
+    if (!user || !isValidRole(user.role)) {
+      toast({
+        title: "Error",
+        description: "Invalid user role",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (user.role !== 'admin' && (user.role !== 'editor' || userCreated !== user.username)) {
+      toast({
+        title: "Error",
+        description: "You do not have permission to delete this resource",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (
       !window.confirm(
         "Are you sure you want to delete this resource? This action cannot be undone.",
@@ -245,7 +284,7 @@ export function Resources() {
           </p>
 
           {/* Create Resource Button for admin/editor */}
-          {user && ["admin", "editor"].includes(user.role) && (
+          {user && isValidRole(user.role) && (user.role === "admin" || user.role === "editor") && (
             <div className="flex justify-end mb-8">
               <Button
                 onClick={() => {
@@ -287,9 +326,11 @@ export function Resources() {
                         </Link>
                       </Button>
 
-                      {/* Edit and Delete buttons for admin/editor */}
-                      {user &&
-                        ["admin", "editor"].includes(user.role) && (
+                      {/* Edit and Delete buttons for admin or resource creator */}
+                      {user && isValidRole(user.role) && (
+                        (user.role === "admin" || 
+                         (user.role === "editor" && resource.userCreated === user.username)
+                        ) && (
                           <div className="flex gap-2 mt-2">
                             <Button
                               variant="outline"
@@ -306,12 +347,12 @@ export function Resources() {
                               variant="destructive"
                               size="sm"
                               className="flex-1"
-                              onClick={() => handleDeleteResource(resource.id)}
+                              onClick={() => handleDeleteResource(resource.id, resource.userCreated)}
                             >
                               Delete
                             </Button>
                           </div>
-                        )}
+                        ))}
                     </div>
                   </CardContent>
                 </Card>
