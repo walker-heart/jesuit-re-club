@@ -3,24 +3,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar, BookOpen } from 'lucide-react'
 import { EditModal } from './EditModal'
+import { ResourceModal } from './ResourceModal'
 import { fetchEvents, deleteEvent, type FirebaseEvent } from '@/lib/firebase/events'
 import { fetchResources, deleteResource, type FirebaseResource } from '@/lib/firebase/resources'
 import { useToast } from "@/hooks/use-toast"
+import { auth } from '@/lib/firebase/firebase-config'
 
 export function PostsTab() {
   const { toast } = useToast();
-  const [editingItem, setEditingItem] = useState<FirebaseEvent | FirebaseResource | null>(null);
-  const [editingType, setEditingType] = useState<'event' | 'resource' | null>(null);
+  const [editingEvent, setEditingEvent] = useState<FirebaseEvent | null>(null);
+  const [editingResource, setEditingResource] = useState<FirebaseResource | null>(null);
   const [events, setEvents] = useState<FirebaseEvent[]>([]);
   const [resources, setResources] = useState<FirebaseResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        setError(null);
         
         const [eventsData, resourcesData] = await Promise.all([
           fetchEvents(),
@@ -33,16 +33,13 @@ export function PostsTab() {
           const dateB = new Date(`${b.date} ${b.time}`);
           const now = new Date();
           
-          // Check if events are upcoming or past
           const aIsUpcoming = dateA >= now;
           const bIsUpcoming = dateB >= now;
           
           if (aIsUpcoming === bIsUpcoming) {
-            // If both are upcoming or both are past, sort by date
             return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
           }
           
-          // Put upcoming events first
           return aIsUpcoming ? -1 : 1;
         });
 
@@ -50,7 +47,6 @@ export function PostsTab() {
         setResources(resourcesData);
       } catch (error: any) {
         console.error('Error loading data:', error);
-        setError(error.message || 'Failed to load data');
         toast({
           title: "Error",
           description: error.message || "Failed to load data",
@@ -64,55 +60,51 @@ export function PostsTab() {
     loadData();
   }, [toast]);
 
-  const handleEdit = (item: FirebaseEvent | FirebaseResource, type: 'event' | 'resource') => {
-    setEditingItem(item);
-    setEditingType(type);
-  };
-
-  const handleDelete = async (id: string | undefined, type: 'event' | 'resource') => {
+  const handleDeleteEvent = async (id: string) => {
     if (!id) return;
     
     try {
-      // Confirm deletion
-      if (!window.confirm(`Are you sure you want to delete this ${type}? This action cannot be undone.`)) {
+      if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
         return;
       }
 
-      if (type === 'event') {
-        await deleteEvent(id);
-        const updatedEvents = await fetchEvents();
-        const sortedEvents = updatedEvents.sort((a, b) => {
-          const dateA = new Date(`${a.date} ${a.time}`);
-          const dateB = new Date(`${b.date} ${b.time}`);
-          const now = new Date();
-          const aIsUpcoming = dateA >= now;
-          const bIsUpcoming = dateB >= now;
-          
-          if (aIsUpcoming === bIsUpcoming) {
-            return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
-          }
-          return aIsUpcoming ? -1 : 1;
-        });
-
-        setEvents(sortedEvents);
-        toast({
-          title: "Success",
-          description: "Event deleted successfully"
-        });
-      } else if (type === 'resource') {
-        await deleteResource(id);
-        const updatedResources = await fetchResources();
-        setResources(updatedResources);
-        toast({
-          title: "Success",
-          description: "Resource deleted successfully"
-        });
-      }
+      await deleteEvent(id);
+      const updatedEvents = await fetchEvents();
+      setEvents(updatedEvents);
+      toast({
+        title: "Success",
+        description: "Event deleted successfully"
+      });
     } catch (error: any) {
-      console.error('Error deleting item:', error);
+      console.error('Error deleting event:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to delete item",
+        description: error.message || "Failed to delete event",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteResource = async (id: string) => {
+    if (!id) return;
+    
+    try {
+      if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
+        return;
+      }
+
+      await deleteResource(id);
+      const updatedResources = await fetchResources();
+      setResources(updatedResources);
+      toast({
+        title: "Success",
+        description: "Resource deleted successfully"
+      });
+    } catch (error: any) {
+      console.error('Error deleting resource:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete resource",
         variant: "destructive"
       });
     }
@@ -120,6 +112,7 @@ export function PostsTab() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Events Column */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -145,8 +138,20 @@ export function PostsTab() {
                 <p className="text-sm text-gray-600 mb-2">Speaker: {event.speaker}</p>
                 <p className="text-sm text-gray-500 mb-2">Created by: {event.userCreated}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(event, 'event')}>Edit</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(event.id, 'event')}>Delete</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setEditingEvent(event)}
+                  >
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => event.id && handleDeleteEvent(event.id)}
+                  >
+                    Delete
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -154,6 +159,7 @@ export function PostsTab() {
         </CardContent>
       </Card>
 
+      {/* Resources Column */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -175,19 +181,22 @@ export function PostsTab() {
               <Card key={resource.id} className="p-4 relative">
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
-                <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
                 <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
-                <p className="text-sm text-gray-500 mb-2">
-                  Created at: {new Date(resource.createdAt).toLocaleString()}
-                </p>
-                {resource.updatedAt && (
-                  <p className="text-sm text-gray-500 mb-2">
-                    Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}
-                  </p>
-                )}
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(resource, 'resource')}>Edit</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(resource.id, 'resource')}>Delete</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setEditingResource(resource)}
+                  >
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => resource.id && handleDeleteResource(resource.id)}
+                  >
+                    Delete
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -195,29 +204,52 @@ export function PostsTab() {
         </CardContent>
       </Card>
 
+      {/* Edit Modal for Events */}
       <EditModal
-        isOpen={!!editingItem}
+        isOpen={!!editingEvent}
+        onClose={() => setEditingEvent(null)}
+        onSave={async (updatedEvent) => {
+          const updatedEvents = events.map(event => 
+            event.id === updatedEvent.id ? updatedEvent as FirebaseEvent : event
+          );
+          setEvents(updatedEvents);
+          setEditingEvent(null);
+        }}
+        item={editingEvent}
+        type="event"
+      />
+
+      {/* Resource Modal for Resources */}
+      {/* Resource Modal for Resources */}
+      <ResourceModal
+        isOpen={!!editingResource}
         onClose={() => {
-          setEditingItem(null);
-          setEditingType(null);
+          setEditingResource(null);
         }}
-        onSave={async (updatedItem) => {
-          if (editingType === 'event') {
-            const updatedEvents = events.map(event => 
-              event.id === updatedItem.id ? updatedItem as FirebaseEvent : event
-            );
-            setEvents(updatedEvents);
-          } else if (editingType === 'resource') {
-            const updatedResources = resources.map(resource => 
-              resource.id === updatedItem.id ? updatedItem as FirebaseResource : resource
-            );
-            setResources(updatedResources);
+        resource={editingResource}
+        onSave={async (resourceData) => {
+          try {
+            if (!auth.currentUser) {
+              throw new Error('User must be authenticated to save resources');
+            }
+
+            // Refresh resources after save
+            await loadData();
+            toast({
+              title: "Success",
+              description: "Resource updated successfully"
+            });
+          } catch (error: any) {
+            console.error('Error saving resource:', error);
+            toast({
+              title: "Error",
+              description: error.message || "Failed to save resource",
+              variant: "destructive"
+            });
+          } finally {
+            setEditingResource(null);
           }
-          setEditingItem(null);
-          setEditingType(null);
         }}
-        item={editingItem}
-        type={editingType || 'event'}
       />
     </div>
   );
