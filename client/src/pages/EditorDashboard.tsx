@@ -1,7 +1,9 @@
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { EditorPostsTab } from '@/components/admin/EditorPostsTab'
+import { EditorEventsTab } from '@/components/editor/EditorEventsTab'
+import { EditorResourcesTab } from '@/components/editor/EditorResourcesTab'
+import { EditorNewsTab } from '@/components/editor/EditorNewsTab'
 import { useAuth } from '@/hooks/useAuth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
@@ -25,12 +27,20 @@ export function EditorDashboard() {
 
   return (
     <div className="container mx-auto py-10">
-      <Tabs defaultValue="posts">
+      <Tabs defaultValue="events">
         <TabsList>
-          <TabsTrigger value="posts">Posts</TabsTrigger>
+          <TabsTrigger value="events">Events</TabsTrigger>
+          <TabsTrigger value="resources">Resources</TabsTrigger>
+          <TabsTrigger value="news">News</TabsTrigger>
         </TabsList>
-        <TabsContent value="posts">
-          <EditorPostsTab />
+        <TabsContent value="events">
+          <EditorEventsTab />
+        </TabsContent>
+        <TabsContent value="resources">
+          <EditorResourcesTab />
+        </TabsContent>
+        <TabsContent value="news">
+          <EditorNewsTab />
         </TabsContent>
       </Tabs>
     </div>
