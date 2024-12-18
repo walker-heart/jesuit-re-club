@@ -3,9 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar } from 'lucide-react'
 import { EventModal } from '../admin/EventModal'
-import { fetchEvents, deleteEvent } from '@/lib/firebase/events'
+import {  deleteEvent } from '@/lib/firebase/events'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
+import {db} from "@/lib/firebase"
+import { collection, query, where, getDocs } from "firebase/firestore";
+
 
 type EventItem = {
   id?: string;
@@ -27,49 +30,56 @@ export function EditorEventsTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); // Add error state
+
+  const loadEvents = async () => {
+    try {
+      setIsLoading(true);
+      setError(null); // Clear any previous errors
+      const eventsRef = collection(db, 'events');
+      const q = query(eventsRef, where('userCreated', '==', user?.username));
+      const snapshot = await getDocs(q);
+      
+      const userEvents = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as EventItem[];
+
+      // Sort events by date, putting upcoming events first
+      const sortedEvents = userEvents.sort((a, b) => {
+        const dateA = new Date(`${a.date} ${a.time}`);
+        const dateB = new Date(`${b.date} ${b.time}`);
+        const now = new Date();
+        
+        const aIsUpcoming = dateA >= now;
+        const bIsUpcoming = dateB >= now;
+        
+        if (aIsUpcoming === bIsUpcoming) {
+          return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+        }
+        
+        return aIsUpcoming ? -1 : 1;
+      });
+
+      setEvents(sortedEvents);
+    } catch (error: any) {
+      console.error('Error loading events:', error);
+      setError(error.message || "Failed to load events"); // Set error message
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load events",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadEvents = async () => {
-      try {
-        setIsLoading(true);
-        const allEvents = await fetchEvents();
-        
-        // Filter events to only show those created by the current user
-        const userEvents = allEvents.filter(event => event.userCreated === user?.username);
-        
-        // Sort events by date, putting upcoming events first
-        const sortedEvents = userEvents.sort((a, b) => {
-          const dateA = new Date(`${a.date} ${a.time}`);
-          const dateB = new Date(`${b.date} ${b.time}`);
-          const now = new Date();
-          
-          const aIsUpcoming = dateA >= now;
-          const bIsUpcoming = dateB >= now;
-          
-          if (aIsUpcoming === bIsUpcoming) {
-            return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
-          }
-          
-          return aIsUpcoming ? -1 : 1;
-        });
-
-        setEvents(sortedEvents);
-      } catch (error) {
-        console.error('Error loading events:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load events",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (user) {
       loadEvents();
     }
-  }, [user]);
+  }, [user, toast]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -90,24 +100,9 @@ export function EditorEventsTab() {
       }
 
       await deleteEvent(id);
-      
-      // Refresh the events list
-      const updatedEvents = await fetchEvents();
-      const userEvents = updatedEvents.filter(event => event.userCreated === user?.username);
-      const sortedEvents = userEvents.sort((a, b) => {
-        const dateA = new Date(`${a.date} ${a.time}`);
-        const dateB = new Date(`${b.date} ${b.time}`);
-        const now = new Date();
-        const aIsUpcoming = dateA >= now;
-        const bIsUpcoming = dateB >= now;
-        
-        if (aIsUpcoming === bIsUpcoming) {
-          return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
-        }
-        return aIsUpcoming ? -1 : 1;
-      });
 
-      setEvents(sortedEvents);
+      // Refresh the events list
+      loadEvents(); // Use the updated loadEvents function
       toast({
         title: "Success",
         description: "Event deleted successfully"
@@ -142,6 +137,10 @@ export function EditorEventsTab() {
               <Card className="p-4">
                 <p className="text-gray-600">Loading events...</p>
               </Card>
+            ) : error ? ( // Display error message if present
+              <Card className="p-4">
+                <p className="text-red-600">Error: {error}</p>
+              </Card>
             ) : events.length === 0 ? (
               <Card className="p-4">
                 <p className="text-gray-600">No events found</p>
@@ -174,7 +173,7 @@ export function EditorEventsTab() {
         eventData={editingEvent}
         onSave={async (eventData) => {
           // Refresh events after save
-          await loadEvents();
+          loadEvents();
           setIsModalOpen(false);
           setEditingEvent(null);
         }}

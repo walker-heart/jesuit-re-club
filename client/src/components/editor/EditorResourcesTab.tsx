@@ -31,6 +31,7 @@ export function EditorResourcesTab() {
   const loadResources = async () => {
     try {
       setIsLoading(true);
+      setError(null); // Clear any previous errors
       const resourcesRef = collection(db, 'resources');
       const q = query(resourcesRef, where('userCreated', '==', user?.username));
       const snapshot = await getDocs(q);
@@ -41,11 +42,12 @@ export function EditorResourcesTab() {
       })) as Resource[];
 
       setResources(userResources);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading resources:', error);
+      setError(error.message || "Failed to load resources");
       toast({
         title: "Error",
-        description: "Failed to load resources",
+        description: error.message || "Failed to load resources",
         variant: "destructive"
       });
     } finally {

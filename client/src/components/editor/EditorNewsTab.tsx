@@ -29,6 +29,7 @@ export function EditorNewsTab() {
   const loadNews = async () => {
     try {
       setIsLoading(true);
+      setError(null); // Clear any previous errors
       const newsRef = collection(db, 'news');
       const q = query(newsRef, where('userCreated', '==', user?.username));
       const snapshot = await getDocs(q);
@@ -44,11 +45,12 @@ export function EditorNewsTab() {
       });
 
       setNewsItems(sortedNews);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading news:', error);
+      setError(error.message || "Failed to load news");
       toast({
         title: "Error",
-        description: "Failed to load news",
+        description: error.message || "Failed to load news",
         variant: "destructive"
       });
     } finally {
