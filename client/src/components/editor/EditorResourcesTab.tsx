@@ -5,44 +5,35 @@ import { BookOpen } from 'lucide-react'
 import { ResourceModal } from '../admin/ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-
-type Resource = {
-  id: string;
-  title: string;
-  description: string;
-  numberOfTexts: number;
-  textFields: string[];
-  userCreated: string;
-  createdAt: any;
-  updatedAt: any;
-  updatedBy: string;
-}
+import { auth } from '@/lib/firebase/firebase-config'
+import { fetchResources, deleteResource, type FirebaseResource } from '@/lib/firebase/resources'
 
 export function EditorResourcesTab() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [resources, setResources] = useState<Resource[]>([]);
+  const [resources, setResources] = useState<FirebaseResource[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [editingResource, setEditingResource] = useState<FirebaseResource | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadResources = async () => {
     try {
-      if (!user) return;
+      if (!auth.currentUser) {
+        setError("User not authenticated");
+        return;
+      }
       
       setIsLoading(true);
       setError(null); // Clear any previous errors
-      const resourcesRef = collection(db, 'resources');
-      const q = query(resourcesRef, where('userCreated', '==', user.email));
-      const snapshot = await getDocs(q);
       
-      const userResources = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Resource[];
+      const allResources = await fetchResources();
+      
+      // Filter resources to only show those created by the current user
+      const userResources = allResources.filter(resource => 
+        resource.userCreated === auth.currentUser?.displayName || 
+        resource.userCreated === auth.currentUser?.email
+      );
 
       setResources(userResources);
     } catch (error: any) {
@@ -59,19 +50,31 @@ export function EditorResourcesTab() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (auth.currentUser) {
       loadResources();
     }
-  }, [user]);
+  }, [auth.currentUser]);
 
   const handleDelete = async (id: string) => {
     try {
       // Find the resource and check if the user created it
       const resource = resources.find(r => r.id === id);
-      if (!resource || resource.userCreated !== user?.username) {
+      if (!auth.currentUser) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to delete resources",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const isCreator = resource?.userCreated === auth.currentUser.displayName || 
+                       resource?.userCreated === auth.currentUser.email;
+      
+      if (!resource || !isCreator) {
         toast({
           title: "Access Denied",
-          description: "You can only delete your own resources",
+          description: "You can only delete resources you created",
           variant: "destructive"
         });
         return;
@@ -82,8 +85,7 @@ export function EditorResourcesTab() {
         return;
       }
 
-      const resourceRef = doc(db, 'resources', id);
-      await deleteDoc(resourceRef);
+      await deleteResource(id);
       
       // Refresh the resources list
       await loadResources();
@@ -122,6 +124,10 @@ export function EditorResourcesTab() {
               <Card className="p-4">
                 <p className="text-gray-600">Loading resources...</p>
               </Card>
+            ) : error ? (
+              <Card className="p-4">
+                <p className="text-red-600">Error: {error}</p>
+              </Card>
             ) : resources.length === 0 ? (
               <Card className="p-4">
                 <p className="text-gray-600">No resources found</p>
@@ -131,12 +137,18 @@ export function EditorResourcesTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => {
-                    setEditingResource(resource);
-                    setIsModalOpen(true);
-                  }}>Edit</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(resource.id)}>Delete</Button>
+                  {(resource.userCreated === auth.currentUser?.displayName || 
+                    resource.userCreated === auth.currentUser?.email) && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setEditingResource(resource);
+                        setIsModalOpen(true);
+                      }}>Edit</Button>
+                      <Button variant="destructive" size="sm" onClick={() => resource.id && handleDelete(resource.id)}>Delete</Button>
+                    </>
+                  )}
                 </div>
               </Card>
             ))}
@@ -152,10 +164,24 @@ export function EditorResourcesTab() {
         }}
         resource={editingResource}
         onSave={async (resourceData) => {
-          // Refresh resources after save
-          await loadResources();
-          setIsModalOpen(false);
-          setEditingResource(null);
+          try {
+            // Refresh resources after save
+            await loadResources();
+            toast({
+              title: "Success",
+              description: editingResource ? "Resource updated successfully" : "Resource created successfully"
+            });
+          } catch (error: any) {
+            console.error('Error saving resource:', error);
+            toast({
+              title: "Error",
+              description: error.message || "Failed to save resource",
+              variant: "destructive"
+            });
+          } finally {
+            setIsModalOpen(false);
+            setEditingResource(null);
+          }
         }}
       />
     </div>

@@ -6,24 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-
-interface Resource {
-  id: string;
-  title: string;
-  description: string;
-  numberOfTexts: number;
-  textFields: string[];
-  userCreated: string;
-  createdAt: any; // Firebase Timestamp
-  updatedAt: any; // Firebase Timestamp
-  updatedBy: string;
-}
+import { auth } from "@/lib/firebase/firebase-config";
+import type { FirebaseResource } from "@/lib/firebase/resources";
 
 type ResourceModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (resourceData: Partial<Resource>) => Promise<void>;
-  resource: Resource | null;
+  onSave: (resourceData: Partial<FirebaseResource>) => Promise<void>;
+  resource: FirebaseResource | null;
 };
 
 export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceModalProps) {
@@ -83,6 +73,10 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
 
     setIsSubmitting(true);
     try {
+      if (!auth.currentUser) {
+        throw new Error('User must be authenticated to save resources');
+      }
+
       const resourceData = {
         title,
         description,

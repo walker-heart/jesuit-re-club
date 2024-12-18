@@ -175,9 +175,15 @@ export function Resources() {
     },
   });
 
-  const handleCreateResource = async (resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy">) => {
+  const handleCreateResource = async (resourceData: Partial<Resource>) => {
     try {
-      await createMutation.mutateAsync(resourceData);
+      const newResourceData = {
+        title: resourceData.title || '',
+        description: resourceData.description || '',
+        numberOfTexts: resourceData.numberOfTexts || 1,
+        textFields: resourceData.textFields || []
+      };
+      await createMutation.mutateAsync(newResourceData);
     } catch (error) {
       console.error("Error creating resource:", error);
     }
