@@ -116,13 +116,27 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
 
     setIsSubmitting(true);
     try {
-      const resourceData = {
-        ...(resource?.id ? { id: resource.id } : {}),
-        title: title.trim(),
-        description: description.trim(),
-        numberOfTexts: parseInt(numberOfTexts),
-        textFields: trimmedFields,
-      };
+      let resourceData;
+      
+      if (resource) {
+        // Update existing resource
+        resourceData = {
+          id: resource.id,
+          title: title.trim(),
+          description: description.trim(),
+          numberOfTexts: parseInt(numberOfTexts),
+          textFields: trimmedFields,
+          updatedAt: new Date().toISOString(),
+        };
+      } else {
+        // Create new resource
+        resourceData = {
+          title: title.trim(),
+          description: description.trim(),
+          numberOfTexts: parseInt(numberOfTexts),
+          textFields: trimmedFields,
+        };
+      }
 
       await onSave(resourceData);
       toast({

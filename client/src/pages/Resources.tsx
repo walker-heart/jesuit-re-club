@@ -7,7 +7,7 @@ import { ResourceModal } from "@/components/admin/ResourceModal";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAuthToken } from "@/lib/firebase"; // Update import to use centralized configuration
+import { getAuthToken } from "@/lib/firebase/firebase";
 
 interface Resource {
   id: number;
@@ -20,8 +20,6 @@ interface Resource {
   updatedAt: string;
   updatedBy: string;
 }
-
-import { getAuthToken } from "@/lib/firebase/auth";
 
 async function fetchResources(): Promise<Resource[]> {
   try {
