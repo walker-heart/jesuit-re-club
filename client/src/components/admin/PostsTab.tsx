@@ -246,21 +246,47 @@ export function PostsTab() {
               throw new Error('User must be authenticated to save events');
             }
 
+            if (!auth.currentUser) {
+              throw new Error('User must be authenticated to save events');
+            }
+
             if (editingEvent) {
-              await updateEvent({
-                ...eventData as FirebaseEvent,
-                id: editingEvent.id,
+              // Handle event update
+              if (!eventData || typeof eventData !== 'object') {
+                throw new Error('Invalid event data');
+              }
+
+              const updatePayload: FirebaseEvent = {
+                ...editingEvent,
+                title: (eventData as FirebaseEvent).title || '',
+                date: (eventData as FirebaseEvent).date || '',
+                time: (eventData as FirebaseEvent).time || '',
+                location: (eventData as FirebaseEvent).location || '',
+                speaker: (eventData as FirebaseEvent).speaker || '',
+                speakerDescription: (eventData as FirebaseEvent).speakerDescription || '',
+                agenda: (eventData as FirebaseEvent).agenda || '',
                 updatedAt: new Date().toISOString(),
-                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
-              });
+                updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
+              };
+              
+              await updateEvent(updatePayload);
             } else {
-              await createEvent({
-                ...eventData as FirebaseEvent,
-                userCreated: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user',
+              // Handle new event creation
+              const newEventData: Omit<FirebaseEvent, 'id'> = {
+                title: '',
+                date: '',
+                time: '',
+                location: '',
+                speaker: '',
+                speakerDescription: '',
+                agenda: '',
+                userCreated: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
-                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
-              });
+                updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
+              };
+              
+              await createEvent(newEventData);
             }
 
             await loadData();

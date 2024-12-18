@@ -1,48 +1,90 @@
-import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { updateEvent } from '@/lib/firebase/events'
-import { useToast } from "@/hooks/use-toast"
-import type { FirebaseEvent } from '@/lib/firebase/events'
-import type { FirebaseResource } from '@/lib/firebase/resources'
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import type { FirebaseEvent, FirebaseResource } from '@/lib/firebase/types';
 
 type EditModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: FirebaseEvent | FirebaseResource) => void;
+  onSave: (item: FirebaseEvent | FirebaseResource) => Promise<void>;
   item: FirebaseEvent | FirebaseResource | null;
   type: 'event' | 'resource';
 }
 
 export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProps) {
   const [editedItem, setEditedItem] = useState<FirebaseEvent | FirebaseResource | null>(null);
-  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
+    setIsSubmitting(false);
+    
     if (item) {
       setEditedItem(item);
+    } else {
+      // Initialize with empty state for new items
+      setEditedItem(type === 'event' ? {
+        title: '',
+        date: '',
+        time: '',
+        location: '',
+        speaker: '',
+        speakerDescription: '',
+        agenda: '',
+      } as Partial<FirebaseEvent> : {
+        title: '',
+        description: '',
+        numberOfTexts: 1,
+        textFields: ['']
+      } as Partial<FirebaseResource>);
     }
-  }, [item]);
+  }, [item, type, isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setEditedItem(prev => prev ? { ...prev, [name]: value } : null);
+    setEditedItem(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        [name]: value
+      };
+    });
+  };
+
+  const validateEventData = (data: Partial<FirebaseEvent>) => {
+    if (!data.title?.trim()) return "Title is required";
+    if (!data.date?.trim()) return "Date is required";
+    if (!data.time?.trim()) return "Time is required";
+    if (!data.location?.trim()) return "Location is required";
+    if (!data.speaker?.trim()) return "Speaker is required";
+    if (!data.speakerDescription?.trim()) return "Speaker description is required";
+    if (!data.agenda?.trim()) return "Agenda is required";
+    return null;
   };
 
   const handleSave = async () => {
     if (!editedItem) return;
+
+    // Type-specific validation
+    if (type === 'event') {
+      const error = validateEventData(editedItem as Partial<FirebaseEvent>);
+      if (error) {
+        toast({
+          title: "Validation Error",
+          description: error,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
     
     setIsSubmitting(true);
     try {
-      if (type === 'event') {
-        await updateEvent(editedItem as FirebaseEvent);
-      }
-      await onSave(editedItem);
+      await onSave(editedItem as FirebaseEvent | FirebaseResource); //Corrected type assertion
       toast({
         title: "Success",
         description: `${type.charAt(0).toUpperCase() + type.slice(1)} ${item ? 'updated' : 'created'} successfully`
@@ -64,96 +106,101 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Edit {type.charAt(0).toUpperCase() + type.slice(1)}</DialogTitle>
+          <DialogTitle>
+            {item ? 'Edit' : 'Create New'} Event
+          </DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          {type === 'event' ? (
+        <div className="space-y-4">
+          {type === 'event' && (
             <>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="title" className="text-right">Title</Label>
+              <div>
+                <Label htmlFor="title">Title</Label>
                 <Input 
                   id="title" 
                   name="title" 
-                  value={(editedItem as FirebaseEvent).title} 
-                  onChange={handleInputChange} 
-                  className="col-span-3" 
+                  value={(editedItem as FirebaseEvent).title || ''} 
+                  onChange={handleInputChange}
+                  className="mt-1.5" 
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="date" className="text-right">Date</Label>
+              <div>
+                <Label htmlFor="date">Date</Label>
                 <Input 
                   id="date" 
                   name="date" 
                   type="date" 
-                  value={(editedItem as FirebaseEvent).date} 
-                  onChange={handleInputChange} 
-                  className="col-span-3" 
+                  value={(editedItem as FirebaseEvent).date || ''} 
+                  onChange={handleInputChange}
+                  className="mt-1.5" 
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="time" className="text-right">Time</Label>
+              <div>
+                <Label htmlFor="time">Time</Label>
                 <Input 
                   id="time" 
                   name="time" 
                   type="time" 
-                  value={(editedItem as FirebaseEvent).time} 
-                  onChange={handleInputChange} 
-                  className="col-span-3" 
+                  value={(editedItem as FirebaseEvent).time || ''} 
+                  onChange={handleInputChange}
+                  className="mt-1.5" 
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="location" className="text-right">Location</Label>
+              <div>
+                <Label htmlFor="location">Location</Label>
                 <Input 
                   id="location" 
                   name="location" 
-                  value={(editedItem as FirebaseEvent).location} 
-                  onChange={handleInputChange} 
-                  className="col-span-3" 
+                  value={(editedItem as FirebaseEvent).location || ''} 
+                  onChange={handleInputChange}
+                  className="mt-1.5" 
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="speaker" className="text-right">Speaker</Label>
+              <div>
+                <Label htmlFor="speaker">Speaker</Label>
                 <Input 
                   id="speaker" 
                   name="speaker" 
-                  value={(editedItem as FirebaseEvent).speaker} 
-                  onChange={handleInputChange} 
-                  className="col-span-3" 
+                  value={(editedItem as FirebaseEvent).speaker || ''} 
+                  onChange={handleInputChange}
+                  className="mt-1.5" 
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="speakerDescription" className="text-right">Speaker Description</Label>
+              <div>
+                <Label htmlFor="speakerDescription">Speaker Description</Label>
                 <Textarea 
                   id="speakerDescription" 
                   name="speakerDescription" 
-                  value={(editedItem as FirebaseEvent).speakerDescription} 
-                  onChange={handleInputChange} 
-                  className="col-span-3" 
+                  value={(editedItem as FirebaseEvent).speakerDescription || ''} 
+                  onChange={handleInputChange}
+                  className="mt-1.5 h-24" 
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="agenda" className="text-right">Agenda</Label>
+              <div>
+                <Label htmlFor="agenda">Agenda</Label>
                 <Textarea 
                   id="agenda" 
                   name="agenda" 
-                  value={(editedItem as FirebaseEvent).agenda} 
-                  onChange={handleInputChange} 
-                  className="col-span-3" 
+                  value={(editedItem as FirebaseEvent).agenda || ''} 
+                  onChange={handleInputChange}
+                  className="mt-1.5 h-24" 
                 />
               </div>
             </>
-          ) : (
+          )}
+          {type === 'resource' && (
             <>
+              {/* Resource form fields -  This section remains largely the same */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="title" className="text-right">Title</Label>
                 <Input 
                   id="title" 
                   name="title" 
-                  value={(editedItem as FirebaseResource).title} 
+                  value={(editedItem as FirebaseResource).title || ''} 
                   onChange={handleInputChange} 
                   className="col-span-3" 
+                  placeholder="Enter resource title"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -161,15 +208,16 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
                 <Textarea 
                   id="description" 
                   name="description" 
-                  value={(editedItem as FirebaseResource).description} 
+                  value={(editedItem as FirebaseResource).description || ''} 
                   onChange={handleInputChange} 
                   className="col-span-3" 
+                  placeholder="Enter resource description"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="numberOfTexts" className="text-right">Number of Texts</Label>
                 <Select 
-                  value={(editedItem as FirebaseResource).numberOfTexts.toString()}
+                  value={(editedItem as FirebaseResource).numberOfTexts?.toString() || "1"} //Handle undefined
                   onValueChange={(value) => {
                     const num = parseInt(value);
                     setEditedItem(prev => {
@@ -179,7 +227,7 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
                       while (newTextFields.length < num) {
                         newTextFields.push("");
                       }
-                      newTextFields.splice(num);
+                      newTextFields.length = num; //Ensure correct length
                       return {
                         ...resource,
                         numberOfTexts: num,
@@ -200,12 +248,12 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
                   </SelectContent>
                 </Select>
               </div>
-              {(editedItem as FirebaseResource).textFields.map((text, index) => (
+              {(editedItem as FirebaseResource).textFields?.map((text, index) => ( //Handle undefined
                 <div key={index} className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor={`text-${index}`} className="text-right">Text {index + 1}</Label>
                   <Textarea
                     id={`text-${index}`}
-                    value={text}
+                    value={text || ''} //Handle undefined
                     onChange={(e) => {
                       setEditedItem(prev => {
                         if (!prev) return null;
@@ -226,12 +274,22 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
             </>
           )}
         </div>
-        <DialogFooter>
-          <Button onClick={onClose} variant="outline" disabled={isSubmitting}>Cancel</Button>
-          <Button onClick={handleSave} disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
+        <div className="flex justify-end gap-2 mt-6">
+          <Button 
+            onClick={onClose} 
+            variant="outline" 
+            disabled={isSubmitting}
+          >
+            Cancel
           </Button>
-        </DialogFooter>
+          <Button 
+            onClick={handleSave} 
+            disabled={isSubmitting}
+            className="bg-[#003c71] hover:bg-[#002c51]"
+          >
+            {isSubmitting ? 'Creating...' : 'Create Event'}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
