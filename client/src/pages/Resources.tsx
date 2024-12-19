@@ -1,15 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { ResourceModal } from "@/components/admin/ResourceModal";
-import { Plus } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { auth } from "@/lib/firebase"; // Added import for auth
+import { auth } from "@/lib/firebase";
 
 interface Resource {
   id: string;
@@ -104,76 +104,33 @@ async function deleteResource(id: string): Promise<void> {
 export function Resources() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: resources = [], isLoading } = useQuery({
-    queryKey: ["resources"],
-    queryFn: fetchResources,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: createResource,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast({
-        title: "Success",
-        description: "Resource created successfully",
-      });
-      setIsModalOpen(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (resourceData: Resource) => {
-      if (!resourceData.id) {
-        throw new Error('Resource ID is required for update');
+  useEffect(() => {
+    const loadResources = async () => {
+      try {
+        setIsLoading(true);
+        const fetchedResources = await fetchResources();
+        setResources(fetchedResources);
+      } catch (error: any) {
+        console.error('Error fetching resources:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load resources",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
       }
-      return updateResource(resourceData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources"] });
-      setIsModalOpen(false);
-      setEditingResource(null);
-      toast({
-        title: "Success",
-        description: "Resource updated successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+    };
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteResource,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast({
-        title: "Success",
-        description: "Resource deleted successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+    if (auth.currentUser) {
+      loadResources();
+    }
+  }, [auth.currentUser]);
 
   const handleCreateResource = async (resourceData: Partial<Resource>) => {
     try {
@@ -183,9 +140,23 @@ export function Resources() {
         numberOfTexts: resourceData.numberOfTexts || 1,
         textFields: resourceData.textFields || []
       };
-      await createMutation.mutateAsync(newResourceData);
-    } catch (error) {
+
+      await createResource(newResourceData);
+      const updatedResources = await fetchResources();
+      setResources(updatedResources);
+      setIsModalOpen(false);
+
+      toast({
+        title: "Success",
+        description: "Resource created successfully",
+      });
+    } catch (error: any) {
       console.error("Error creating resource:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create resource",
+        variant: "destructive",
+      });
     }
   };
 
@@ -204,27 +175,65 @@ export function Resources() {
         userCreated: editingResource.userCreated,
         createdAt: editingResource.createdAt,
         updatedAt: serverTimestamp(),
-        updatedBy: user?.username || 'unknown'
+        updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
       };
 
-      await updateMutation.mutateAsync(updatePayload as Resource);
+      await updateResource(updatePayload as Resource);
+      const updatedResources = await fetchResources();
+      setResources(updatedResources);
+      setIsModalOpen(false);
+      setEditingResource(null);
+
+      toast({
+        title: "Success",
+        description: "Resource updated successfully",
+      });
     } catch (error: any) {
       console.error("Error updating resource:", error);
-      throw error;
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update resource",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDeleteResource = async (id: string) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this resource? This action cannot be undone.",
-      )
-    ) {
+    if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
       return;
     }
-    
+
     try {
-      await deleteMutation.mutateAsync(id);
+      // Find the resource and check permissions
+      const resource = resources.find(r => r.id === id);
+      if (!resource) return;
+
+      if (!auth.currentUser || !user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to delete resources",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
+      const canDelete = user.role === 'admin' || 
+                       (user.role === 'editor' && resource.userCreated === currentUserIdentifier);
+
+      if (!canDelete) {
+        toast({
+          title: "Access Denied",
+          description: "You can only delete resources you created",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      await deleteResource(id);
+      const updatedResources = await fetchResources();
+      setResources(updatedResources);
+
       toast({
         title: "Success",
         description: "Resource deleted successfully",
@@ -239,108 +248,118 @@ export function Resources() {
     }
   };
 
+  const canModifyResource = (resource: Resource) => {
+    if (!auth.currentUser || !user || !user.role) return false;
+    
+    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
+    if (!currentUserIdentifier) return false;
+    
+    // Admins can modify all resources
+    if (user.role === 'admin') return true;
+    
+    // Editors can only modify their own resources
+    if (user.role === 'editor') {
+      return resource.userCreated === currentUserIdentifier;
+    }
+    
+    return false;
+  };
+
   return (
-    <div>
-      <div className="w-full py-8 md:py-12 lg:py-8">
-        <div className="container px-4 md:px-6 mx-auto">
+    <div className="w-full py-4">
+      <div className="container px-4 mx-auto">
+        <div className="w-full flex justify-end mb-4">
+          {(['admin', 'editor'].includes(user?.role || '')) && (
+            <Button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-[#003c71] text-white hover:bg-[#002c61]"
+            >
+              Create New Resource
+            </Button>
+          )}
+        </div>
+
+        <div className="space-y-8">
           <h1 className="text-3xl font-bold text-[#003c71] mb-6 animate-fade-in">
             Useful Resources
           </h1>
-          <p className="text-gray-600 mb-8 animate-slide-up">
-            Stay informed with the latest educational resources from the Real
-            Estate Club
-          </p>
-
-          {/* Create Resource Button for admin/editor */}
-          {user && ["admin", "editor"].includes(user.role) && (
-            <div className="flex justify-end mb-8">
-              <Button
-                onClick={() => {
-                  setEditingResource(null);
-                  setIsModalOpen(true);
-                }}
-                className="bg-[#003c71] hover:bg-[#002c51] text-white"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Create New Resource
-              </Button>
-            </div>
-          )}
-
-          {/* Resources Grid */}
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-8">
             {isLoading ? (
-              <p>Loading resources...</p>
+              <Card className="p-4">
+                <p className="text-gray-600">Loading resources...</p>
+              </Card>
+            ) : resources.length === 0 ? (
+              <Card className="p-4">
+                <p className="text-gray-600">No resources found</p>
+              </Card>
             ) : (
               resources.map((resource) => (
                 <Card
                   key={resource.id}
-                  className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200"
+                  className="animate-fade-in card-hover"
                 >
-                  <CardHeader>
-                    <CardTitle className="text-lg font-bold text-[#003c71]">
-                      {resource.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-gray-600">{resource.description}</p>
-                    <div className="flex flex-col space-y-2">
-                      <Button
-                        asChild
-                        className="w-full justify-center bg-[#b3a369] hover:bg-[#b3a369]/90 text-[#003c71] border-none"
-                      >
-                        <Link href={`/resources/${resource.id}`}>
-                          View Resource
-                        </Link>
-                      </Button>
-
-                      {/* Edit and Delete buttons for admin/editor */}
-                      {user && auth.currentUser && (
-                        (user.role && user.role === 'admin') || 
-                        (user.role && user.role === 'editor' && 
-                          resource.userCreated === (auth.currentUser.email || auth.currentUser.displayName)
-                        )
-                      ) && (
-                          <div className="flex gap-2 mt-2">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-[#003c71] mb-2">
+                          {resource.title}
+                        </h3>
+                        <p className="text-gray-600">{resource.description}</p>
+                        <div className="text-sm text-gray-500 mt-2">
+                          Created by: {resource.userCreated}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          asChild
+                          className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover shrink-0"
+                        >
+                          <Link href={`/resources/${resource.id}`}>View Details →</Link>
+                        </Button>
+                        {canModifyResource(resource) && (
+                          <>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="flex-1"
                               onClick={() => {
                                 setEditingResource(resource);
                                 setIsModalOpen(true);
                               }}
+                              className="flex items-center gap-2"
                             >
+                              <Edit className="h-4 w-4" />
                               Edit
                             </Button>
                             <Button
                               variant="destructive"
                               size="sm"
-                              className="flex-1"
                               onClick={() => handleDeleteResource(resource.id)}
+                              className="flex items-center gap-2"
                             >
+                              <Trash2 className="h-4 w-4" />
                               Delete
                             </Button>
-                          </div>
+                          </>
                         )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))
             )}
           </div>
-
-          {/* Resource Modal for Create/Edit */}
-          <ResourceModal
-            isOpen={isModalOpen}
-            onClose={() => {
-              setIsModalOpen(false);
-              setEditingResource(null);
-            }}
-            onSave={editingResource ? handleUpdateResource : handleCreateResource}
-            resource={editingResource}
-          />
         </div>
+
+        {/* Resource Modal for Create/Edit */}
+        <ResourceModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingResource(null);
+          }}
+          onSave={editingResource ? handleUpdateResource : handleCreateResource}
+          resource={editingResource}
+        />
       </div>
     </div>
   );
