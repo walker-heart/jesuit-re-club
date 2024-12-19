@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Edit, Trash2 } from 'lucide-react'
 import { ResourceModal } from '../admin/ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/firebase-config'
-import { fetchResources, deleteResource, type FirebaseResource } from '@/lib/firebase/resources'
+import { fetchResources, deleteResource, type FirebaseResource, createResource, updateResource } from '@/lib/firebase/resources'
 
 export function EditorResourcesTab() {
   const { user } = useAuth();
@@ -57,9 +57,7 @@ export function EditorResourcesTab() {
 
   const handleDelete = async (id: string) => {
     try {
-      // Find the resource and check if the user created it
-      const resource = resources.find(r => r.id === id);
-      if (!auth.currentUser) {
+      if (!auth.currentUser || !user) {
         toast({
           title: "Error",
           description: "You must be logged in to delete resources",
@@ -68,10 +66,15 @@ export function EditorResourcesTab() {
         return;
       }
 
-      const isCreator = resource?.userCreated === auth.currentUser.displayName || 
-                       resource?.userCreated === auth.currentUser.email;
-      
-      if (!resource || !isCreator) {
+      // Find the resource and check permissions
+      const resource = resources.find(r => r.id === id);
+      if (!resource) return;
+
+      const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
+      const canDelete = user.role === 'admin' || 
+                       (user.role === 'editor' && resource.userCreated === currentUserIdentifier);
+
+      if (!canDelete) {
         toast({
           title: "Access Denied",
           description: "You can only delete resources you created",
@@ -86,9 +89,7 @@ export function EditorResourcesTab() {
       }
 
       await deleteResource(id);
-      
-      // Refresh the resources list
-      await loadResources();
+      await loadResources(); // Refresh the list after deletion
 
       toast({
         title: "Success",
@@ -165,15 +166,37 @@ export function EditorResourcesTab() {
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
                 <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {/* Show edit/delete buttons based on user permissions */}
-                  {canModifyResource(resource) && (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => {
-                        setEditingResource(resource);
-                        setIsModalOpen(true);
-                      }}>Edit</Button>
-                      <Button variant="destructive" size="sm" onClick={() => resource.id && handleDelete(resource.id)}>Delete</Button>
-                    </>
+                  {/* Show edit/delete buttons for resources the user created */}
+                  {user && auth.currentUser && (
+                    (user.role === 'admin' || 
+                     (user.role === 'editor' && 
+                      resource.userCreated === (auth.currentUser.email || auth.currentUser.displayName)
+                     )
+                    ) && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            setEditingResource(resource);
+                            setIsModalOpen(true);
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => resource.id && handleDelete(resource.id)}
+                          className="flex items-center gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      </>
+                    )
                   )}
                 </div>
               </Card>

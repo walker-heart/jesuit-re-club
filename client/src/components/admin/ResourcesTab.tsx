@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Edit, Trash2 } from 'lucide-react'
 import { ResourceModal } from './ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
@@ -47,7 +47,31 @@ export function ResourcesTab() {
 
   const handleDelete = async (id: string) => {
     try {
-      if (!id || !auth.currentUser) return;
+      if (!id || !auth.currentUser) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to delete resources",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Find the resource and check permissions
+      const resource = resources.find(r => r.id === id);
+      if (!resource) return;
+
+      const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
+      const canDelete = user?.role === 'admin' || 
+                       (user?.role === 'editor' && resource.userCreated === currentUserIdentifier);
+
+      if (!canDelete) {
+        toast({
+          title: "Access Denied",
+          description: "You can only delete resources you created",
+          variant: "destructive"
+        });
+        return;
+      }
 
       // Confirm deletion
       if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
@@ -110,15 +134,37 @@ export function ResourcesTab() {
                   <p className="text-sm text-gray-500 mb-2">Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}</p>
                 )}
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {/* Show edit/delete buttons if user is admin or if they created the resource */}
-                {(user?.role === 'admin' || resource.userCreated === auth.currentUser?.email) && (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => {
-                        setEditingResource(resource);
-                        setIsModalOpen(true);
-                      }}>Edit</Button>
-                      <Button variant="destructive" size="sm" onClick={() => resource.id && handleDelete(resource.id)}>Delete</Button>
-                    </>
+                  {/* Show edit/delete buttons based on user permissions */}
+                  {user && auth.currentUser && (
+                    (user.role === 'admin' || 
+                     (user.role === 'editor' && 
+                      resource.userCreated === (auth.currentUser.email || auth.currentUser.displayName)
+                     )
+                    ) && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            setEditingResource(resource);
+                            setIsModalOpen(true);
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => resource.id && handleDelete(resource.id)}
+                          className="flex items-center gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      </>
+                    )
                   )}
                 </div>
               </Card>
