@@ -27,10 +27,8 @@ export function EventModal({ isOpen, onClose, onEventCreated, event }: EventModa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  // Update form data when event changes or modal closes
   useEffect(() => {
     if (event) {
-      console.log('Initializing form with event:', event);
       setFormData({
         title: event.title || '',
         date: event.date || '',
@@ -41,7 +39,6 @@ export function EventModal({ isOpen, onClose, onEventCreated, event }: EventModa
         agenda: event.agenda || ''
       });
     } else {
-      // Reset form when not editing
       setFormData({
         title: '',
         date: '',
@@ -60,16 +57,14 @@ export function EventModal({ isOpen, onClose, onEventCreated, event }: EventModa
     try {
       let updatedEvent;
       if (event) {
-        // Update existing event
         updatedEvent = {
           ...event,
           ...formData,
-          id: event.id, // Ensure ID is preserved
-          userCreated: event.userCreated, // Preserve original creator
-          createdAt: event.createdAt // Preserve creation timestamp
+          id: event.id,
+          userCreated: event.userCreated,
+          createdAt: event.createdAt
         };
       } else {
-        // Create new event
         updatedEvent = await createEvent(formData);
       }
       
@@ -113,97 +108,97 @@ export function EventModal({ isOpen, onClose, onEventCreated, event }: EventModa
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>{event ? 'Edit Event' : 'Create New Event'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">Title</Label>
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-3">
+          <div className="grid gap-2">
+            <div className="grid grid-cols-4 items-center gap-3">
+              <Label htmlFor="title" className="text-right text-sm">Title</Label>
               <Input
                 id="title"
                 name="title"
                 value={formData.title}
                 onChange={handleInputChange}
-                className="col-span-3"
+                className="col-span-3 h-8"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="date" className="text-right">Date</Label>
+            <div className="grid grid-cols-4 items-center gap-3">
+              <Label htmlFor="date" className="text-right text-sm">Date</Label>
               <Input
                 id="date"
                 name="date"
                 type="date"
                 value={formData.date}
                 onChange={handleInputChange}
-                className="col-span-3"
+                className="col-span-3 h-8"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="time" className="text-right">Time</Label>
+            <div className="grid grid-cols-4 items-center gap-3">
+              <Label htmlFor="time" className="text-right text-sm">Time</Label>
               <Input
                 id="time"
                 name="time"
                 type="time"
                 value={formData.time}
                 onChange={handleInputChange}
-                className="col-span-3"
+                className="col-span-3 h-8"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="location" className="text-right">Location</Label>
+            <div className="grid grid-cols-4 items-center gap-3">
+              <Label htmlFor="location" className="text-right text-sm">Location</Label>
               <Input
                 id="location"
                 name="location"
                 value={formData.location}
                 onChange={handleInputChange}
-                className="col-span-3"
+                className="col-span-3 h-8"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="speaker" className="text-right">Speaker</Label>
+            <div className="grid grid-cols-4 items-center gap-3">
+              <Label htmlFor="speaker" className="text-right text-sm">Speaker</Label>
               <Input
                 id="speaker"
                 name="speaker"
                 value={formData.speaker}
                 onChange={handleInputChange}
-                className="col-span-3"
+                className="col-span-3 h-8"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="speakerDescription" className="text-right">Speaker Description</Label>
+            <div className="grid grid-cols-4 items-center gap-3">
+              <Label htmlFor="speakerDescription" className="text-right text-sm">Bio</Label>
               <Textarea
                 id="speakerDescription"
                 name="speakerDescription"
                 value={formData.speakerDescription}
                 onChange={handleInputChange}
-                className="col-span-3"
+                className="col-span-3 h-20 resize-none"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="agenda" className="text-right">Agenda</Label>
+            <div className="grid grid-cols-4 items-center gap-3">
+              <Label htmlFor="agenda" className="text-right text-sm">Agenda</Label>
               <Textarea
                 id="agenda"
                 name="agenda"
                 value={formData.agenda}
                 onChange={handleInputChange}
-                className="col-span-3"
+                className="col-span-3 h-20 resize-none"
                 required
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose}>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={onClose} size="sm">
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} size="sm">
               {isSubmitting 
                 ? (event ? "Updating..." : "Creating...") 
                 : (event ? "Update Event" : "Create Event")}
