@@ -296,7 +296,7 @@ export function Resources() {
 
                       {/* Edit and Delete buttons for admin/editor */}
                       {user &&
-                        ["admin", "editor"].includes(user.role) && (
+                        (user.role === "admin" || (user.role === "editor" && resource.userCreated === auth.currentUser?.email)) && (
                           <div className="flex gap-2 mt-2">
                             <Button
                               variant="outline"
