@@ -132,7 +132,7 @@ export function ResourcesTab() {
                   <p className="text-sm text-gray-500 mb-2">Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}</p>
                 )}
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {user && (auth.currentUser && (resource.userCreated === auth.currentUser.email || user.role === 'admin')) && (
+                  {user && (user.role === 'admin' || resource.userCreated === auth.currentUser?.email) && (
                     <>
                       <Button variant="outline" size="sm" onClick={() => {
                         setEditingResource(resource);
@@ -157,7 +157,17 @@ export function ResourcesTab() {
         resource={editingResource}
         onSave={async (resourceData) => {
           try {
-            // Refresh resources after save
+            if (editingResource) {
+              // Update existing resource
+              await updateResource({
+                ...editingResource,
+                ...resourceData,
+                id: editingResource.id
+              });
+            } else {
+              // Create new resource
+              await createResource(resourceData);
+            }
             await loadResources();
             toast({
               title: "Success",
