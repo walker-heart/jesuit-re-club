@@ -55,15 +55,29 @@ export function EventModal({ isOpen, onClose, onEventCreated, event }: EventModa
     setIsSubmitting(true);
 
     try {
+      // Validate required fields
+      const requiredFields = ['title', 'date', 'time', 'location', 'speaker', 'speakerDescription', 'agenda'] as const;
+      const missingFields = requiredFields.filter(field => {
+        const value = formData[field];
+        return !value || value.toString().trim() === '';
+      });
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
       let updatedEvent;
       if (event) {
-        updatedEvent = {
+        // Prepare event data with preserved fields
+        const eventData: FirebaseEvent = {
           ...event,
           ...formData,
           id: event.id,
           userCreated: event.userCreated,
-          createdAt: event.createdAt
+          createdAt: event.createdAt,
+          updatedAt: new Date().toISOString()
         };
+        updatedEvent = eventData;
       } else {
         updatedEvent = await createEvent(formData);
       }
@@ -108,7 +122,7 @@ export function EventModal({ isOpen, onClose, onEventCreated, event }: EventModa
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent className="sm:max-w-[350px]">
         <DialogHeader>
           <DialogTitle>{event ? 'Edit Event' : 'Create New Event'}</DialogTitle>
         </DialogHeader>

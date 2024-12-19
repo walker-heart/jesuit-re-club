@@ -13,6 +13,7 @@ import {
 import { EditModal } from "@/components/admin/EditModal";
 import { deleteEvent, fetchEvents, updateEvent, type FirebaseEvent } from "@/lib/firebase/events";
 import { auth } from "@/lib/firebase/firebase-config";
+import { useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { EventModal } from "@/components/admin/EventModal";
 import { useToast } from "@/hooks/use-toast";
@@ -118,24 +119,16 @@ export function Events() {
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    const loadEvents = async () => {
       try {
         setIsLoadingEvents(true);
-        const response = await fetch('/api/events', {
-          credentials: 'include'
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch events');
-        }
-
-        const data = await response.json();
-        const events = data.events.map((event: FirebaseEvent) => ({
+        const events = await fetchEvents();
+        const formattedEvents = events.map((event: FirebaseEvent) => ({
           ...event,
           description: event.speakerDescription // Map speakerDescription to description for display
         }));
 
-        setAllEvents(events);
+        setAllEvents(formattedEvents);
       } catch (error) {
         console.error('Error fetching events:', error);
         toast({
@@ -148,7 +141,7 @@ export function Events() {
       }
     };
 
-    fetchEvents();
+    loadEvents();
   }, [user]);
 
   // Split events into upcoming and past based on date
@@ -416,15 +409,14 @@ export function Events() {
 
       {/* Edit Modal */}
       {editingEvent && (
-        <EditModal
+        <EventModal
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);
             setEditingEvent(null);
           }}
-          onSave={handleEventUpdated}
-          item={editingEvent}
-          type="event"
+          onEventCreated={handleEventUpdated}
+          event={editingEvent}
         />
       )}
     </div>

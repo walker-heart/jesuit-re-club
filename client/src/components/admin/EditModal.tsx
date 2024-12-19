@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,102 +99,104 @@ export function EditModal({ isOpen, onClose, onSave, item }: EditModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>
             {item ? 'Edit' : 'Create New'} Event
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="title">Title</Label>
+        <div className="grid gap-2">
+          <div className="grid grid-cols-4 items-center gap-3">
+            <Label htmlFor="title" className="text-right text-sm">Title</Label>
             <Input 
               id="title" 
               name="title" 
               value={editedItem.title} 
               onChange={handleInputChange}
-              className="mt-1.5" 
+              className="col-span-3 h-8" 
             />
           </div>
-          <div>
-            <Label htmlFor="date">Date</Label>
+          <div className="grid grid-cols-4 items-center gap-3">
+            <Label htmlFor="date" className="text-right text-sm">Date</Label>
             <Input 
               id="date" 
               name="date" 
               type="date" 
               value={editedItem.date} 
               onChange={handleInputChange}
-              className="mt-1.5" 
+              className="col-span-3 h-8" 
             />
           </div>
-          <div>
-            <Label htmlFor="time">Time</Label>
+          <div className="grid grid-cols-4 items-center gap-3">
+            <Label htmlFor="time" className="text-right text-sm">Time</Label>
             <Input 
               id="time" 
               name="time" 
               type="time" 
               value={editedItem.time} 
               onChange={handleInputChange}
-              className="mt-1.5" 
+              className="col-span-3 h-8" 
             />
           </div>
-          <div>
-            <Label htmlFor="location">Location</Label>
+          <div className="grid grid-cols-4 items-center gap-3">
+            <Label htmlFor="location" className="text-right text-sm">Location</Label>
             <Input 
               id="location" 
               name="location" 
               value={editedItem.location} 
               onChange={handleInputChange}
-              className="mt-1.5" 
+              className="col-span-3 h-8" 
             />
           </div>
-          <div>
-            <Label htmlFor="speaker">Speaker</Label>
+          <div className="grid grid-cols-4 items-center gap-3">
+            <Label htmlFor="speaker" className="text-right text-sm">Speaker</Label>
             <Input 
               id="speaker" 
               name="speaker" 
               value={editedItem.speaker} 
               onChange={handleInputChange}
-              className="mt-1.5" 
+              className="col-span-3 h-8" 
             />
           </div>
-          <div>
-            <Label htmlFor="speakerDescription">Speaker Description</Label>
+          <div className="grid grid-cols-4 items-center gap-3">
+            <Label htmlFor="speakerDescription" className="text-right text-sm">Bio</Label>
             <Textarea 
               id="speakerDescription" 
               name="speakerDescription" 
               value={editedItem.speakerDescription} 
               onChange={handleInputChange}
-              className="mt-1.5 h-24" 
+              className="col-span-3 h-20 resize-none" 
             />
           </div>
-          <div>
-            <Label htmlFor="agenda">Agenda</Label>
+          <div className="grid grid-cols-4 items-center gap-3">
+            <Label htmlFor="agenda" className="text-right text-sm">Agenda</Label>
             <Textarea 
               id="agenda" 
               name="agenda" 
               value={editedItem.agenda} 
               onChange={handleInputChange}
-              className="mt-1.5 h-24" 
+              className="col-span-3 h-20 resize-none" 
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2 mt-6">
+        <DialogFooter className="mt-4">
           <Button 
             onClick={onClose} 
             variant="outline" 
+            size="sm"
             disabled={isSubmitting}
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSave} 
+            size="sm"
             disabled={isSubmitting}
             className="bg-[#003c71] hover:bg-[#002c51]"
           >
             {isSubmitting ? 'Saving...' : 'Save'}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
