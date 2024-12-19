@@ -86,6 +86,10 @@ async function verifyFirebaseToken(req: Request, res: Response, next: NextFuncti
 }
 
 export function registerRoutes(app: Express): Server {
+  const server = createServer(app);
+  
+  // Register routes
+  // All routes should be prefixed with /api
   // Health check endpoint
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -671,9 +675,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Create HTTP server
-  const httpServer = createServer(app);
-  return httpServer;
+  return server;
 }
 
 // Add custom properties to Express Request
