@@ -62,10 +62,21 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title || !description || !numberOfTexts || textFields.some(field => !field.trim())) {
+    // Validate required fields
+    const requiredFields = {
+      title: "Title",
+      description: "Description",
+      numberOfTexts: "Number of Texts"
+    };
+    
+    const missingFields = Object.entries(requiredFields)
+      .filter(([key, _]) => !formData[key])
+      .map(([_, label]) => label);
+      
+    if (missingFields.length > 0 || textFields.some(field => !field.trim())) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: `Please fill in all required fields: ${missingFields.join(', ')}${textFields.some(field => !field.trim()) ? ' and all text sections' : ''}`,
         variant: "destructive",
       });
       return;
@@ -106,7 +117,7 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[350px]">
         <DialogHeader>
           <DialogTitle>{resource ? "Edit Resource" : "Create New Resource"}</DialogTitle>
         </DialogHeader>
