@@ -148,18 +148,21 @@ export function ResourcesTab() {
               }
 
               const updatePayload: FirebaseResource = {
-                ...editingResource,
-                title: (resourceData as FirebaseResource).title || '',
-                description: (resourceData as FirebaseResource).description || '',
-                numberOfTexts: (resourceData as FirebaseResource).numberOfTexts || 0,
-                textFields: (resourceData as FirebaseResource).textFields || [],
+                ...resourceData as FirebaseResource,
+                id: editingResource.id,
+                userCreated: editingResource.userCreated,
+                createdAt: editingResource.createdAt,
                 updatedAt: new Date().toISOString(),
                 updatedBy: auth.currentUser.email || 'Unknown user'
               };
               
               console.log('Starting resource update:', updatePayload);
               await updateResource(updatePayload);
-              console.log('Resource update completed');
+              
+              // Refresh the resources list
+              const fetchedResources = await fetchResources();
+              setResources(fetchedResources);
+              console.log('Resource update completed and list refreshed');
             } else {
               // Create new resource
               const newResource = {
