@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Clock, ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase/firebase-config";
-import { deleteEvent, updateEvent, type FirebaseEvent } from "@/lib/firebase/events";
+import { deleteEvent, type FirebaseEvent } from "@/lib/firebase/events";
+import { updateEventInFirebase } from "@/lib/firebase/eventUpdates";
 import { EditModal } from "@/components/admin/EditModal";
 
 type EventDetails = FirebaseEvent & {
@@ -108,11 +109,7 @@ export function EventPage() {
 
   const handleEventUpdated = async (updatedEvent: FirebaseEvent) => {
     try {
-      if (!updatedEvent.id) {
-        throw new Error('Event ID is required for update');
-      }
-      
-      await updateEvent(updatedEvent);
+      await updateEventInFirebase(updatedEvent);
       
       // Refresh the event data after update
       if (slug) {
