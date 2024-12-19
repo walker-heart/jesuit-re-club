@@ -54,16 +54,24 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
     }
 
     // Validate required fields
-    const requiredFields = ['title', 'description', 'numberOfTexts', 'textFields'];
-    const missingFields = requiredFields.filter(field => !resourceData[field]);
+    const requiredFields = ['title', 'description', 'numberOfTexts', 'textFields'] as const;
+    const missingFields = requiredFields.filter(field => {
+      const value = resourceData[field];
+      return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+    });
     
     if (missingFields.length > 0) {
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
     const resourceRef = doc(db, 'resources', resourceData.id);
+    
+    // Only include fields that should be updated
     const updateData = {
-      ...resourceData,
+      title: resourceData.title,
+      description: resourceData.description,
+      numberOfTexts: resourceData.numberOfTexts,
+      textFields: resourceData.textFields,
       updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser.email || 'Unknown user'
     };
@@ -71,8 +79,15 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
     console.log('Updating resource:', updateData);
     await updateDoc(resourceRef, updateData);
     
-    console.log('Resource updated successfully:', updateData);
-    return updateData;
+    // Return the complete updated resource
+    const updatedResource = {
+      ...resourceData,
+      ...updateData,
+      id: resourceData.id
+    };
+    
+    console.log('Resource updated successfully:', updatedResource);
+    return updatedResource;
   } catch (error) {
     console.error('Error updating resource:', error);
     throw error;

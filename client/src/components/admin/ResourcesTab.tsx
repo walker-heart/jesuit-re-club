@@ -142,16 +142,24 @@ export function ResourcesTab() {
             console.log('Saving resource:', resourceData);
 
             if (editingResource) {
-              // Update existing resource
-              const updatedResource = {
+              // Handle resource update
+              if (!resourceData || typeof resourceData !== 'object') {
+                throw new Error('Invalid resource data');
+              }
+
+              const updatePayload: FirebaseResource = {
                 ...editingResource,
-                ...resourceData,
-                id: editingResource.id,
+                title: (resourceData as FirebaseResource).title || '',
+                description: (resourceData as FirebaseResource).description || '',
+                numberOfTexts: (resourceData as FirebaseResource).numberOfTexts || 0,
+                textFields: (resourceData as FirebaseResource).textFields || [],
                 updatedAt: new Date().toISOString(),
                 updatedBy: auth.currentUser.email || 'Unknown user'
               };
               
-              await updateResource(updatedResource);
+              console.log('Starting resource update:', updatePayload);
+              await updateResource(updatePayload);
+              console.log('Resource update completed');
             } else {
               // Create new resource
               const newResource = {
