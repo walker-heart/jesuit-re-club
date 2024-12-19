@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { EditModal } from "@/components/admin/EditModal";
-import { deleteEvent, fetchEvents, type FirebaseEvent } from "@/lib/firebase/events";
+import { deleteEvent, fetchEvents, updateEvent, type FirebaseEvent } from "@/lib/firebase/events";
 import { auth } from "@/lib/firebase/firebase-config";
 import { Card, CardContent } from "@/components/ui/card";
 import { EventModal } from "@/components/admin/EventModal";
@@ -79,9 +79,12 @@ export function Events() {
     }
   };
 
-  const handleEventUpdated = async () => {
+  const handleEventUpdated = async (updatedEvent: FirebaseEvent) => {
     try {
-      // Refresh the events list after update
+      // Update the event in Firebase
+      const result = await updateEvent(updatedEvent);
+      
+      // Refresh the events list
       const fetchedEvents = await fetchEvents();
       setAllEvents(fetchedEvents);
       setIsEditModalOpen(false);
@@ -91,11 +94,11 @@ export function Events() {
         title: "Success",
         description: "Event updated successfully"
       });
-    } catch (error) {
-      console.error('Error refreshing events:', error);
+    } catch (error: any) {
+      console.error('Error updating event:', error);
       toast({
         title: "Error",
-        description: "Failed to refresh events",
+        description: error.message || "Failed to update event",
         variant: "destructive"
       });
     }
@@ -325,7 +328,7 @@ export function Events() {
     <div className="w-full py-4">
       <div className="container px-4 mx-auto">
         <div className="w-full flex justify-end mb-4">
-          {(user?.role === 'admin' || user?.role === 'editor') && (
+          {(['admin', 'editor'].includes(user?.role || '')) && (
             <>
               <EventModal 
                 isOpen={isDialogOpen}
@@ -402,10 +405,7 @@ export function Events() {
             setEditingEvent(null);
           }}
           onSave={handleEventUpdated}
-          item={{
-            ...editingEvent,
-            speakerDescription: editingEvent.description || editingEvent.speakerDescription
-          }}
+          item={editingEvent}
           type="event"
         />
       )}

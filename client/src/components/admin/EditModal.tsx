@@ -6,17 +6,28 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { FirebaseEvent, FirebaseResource } from '@/lib/firebase/types';
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@radix-ui/react-select'
 
 type EditModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: FirebaseEvent | FirebaseResource) => Promise<void>;
-  item: FirebaseEvent | FirebaseResource | null;
-  type: 'event' | 'resource';
+  onSave: (item: FirebaseEvent) => Promise<void>;
+  item: FirebaseEvent | null;
+  type: 'event';
 }
 
-export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProps) {
-  const [editedItem, setEditedItem] = useState<FirebaseEvent | FirebaseResource | null>(null);
+export function EditModal({ isOpen, onClose, onSave, item }: EditModalProps) {
+  const [editedItem, setEditedItem] = useState<FirebaseEvent>({
+    title: '',
+    date: '',
+    time: '',
+    location: '',
+    speaker: '',
+    speakerDescription: '',
+    agenda: '',
+    userCreated: '',
+    createdAt: new Date().toISOString(),
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -27,7 +38,7 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
       setEditedItem(item);
     } else {
       // Initialize with empty state for new items
-      setEditedItem(type === 'event' ? {
+      setEditedItem({
         title: '',
         date: '',
         time: '',
@@ -35,24 +46,18 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
         speaker: '',
         speakerDescription: '',
         agenda: '',
-      } as Partial<FirebaseEvent> : {
-        title: '',
-        description: '',
-        numberOfTexts: 1,
-        textFields: ['']
-      } as Partial<FirebaseResource>);
+        userCreated: '',
+        createdAt: new Date().toISOString(),
+      });
     }
-  }, [item, type, isOpen]);
+  }, [item, isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setEditedItem(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        [name]: value
-      };
-    });
+    setEditedItem(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const validateEventData = (data: Partial<FirebaseEvent>) => {
@@ -69,32 +74,36 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
   const handleSave = async () => {
     if (!editedItem) return;
 
-    // Type-specific validation
-    if (type === 'event') {
-      const error = validateEventData(editedItem as Partial<FirebaseEvent>);
-      if (error) {
-        toast({
-          title: "Validation Error",
-          description: error,
-          variant: "destructive"
-        });
-        return;
-      }
-    }
-    
     setIsSubmitting(true);
     try {
-      await onSave(editedItem as FirebaseEvent | FirebaseResource); //Corrected type assertion
+      const requiredFields = ['title', 'date', 'time', 'location', 'speaker', 'speakerDescription', 'agenda'] as const;
+      const missingFields = requiredFields.filter(field => !editedItem[field]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
+      // Prepare event data with preserved fields
+      const eventData: FirebaseEvent = {
+        ...editedItem,
+        id: item?.id,
+        userCreated: item?.userCreated || 'Unknown',
+        createdAt: item?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await onSave(eventData);
+      
       toast({
         title: "Success",
-        description: `${type.charAt(0).toUpperCase() + type.slice(1)} ${item ? 'updated' : 'created'} successfully`
+        description: `Event ${item ? 'updated' : 'created'} successfully`
       });
       onClose();
     } catch (error: any) {
-      console.error(`Error ${item ? 'updating' : 'creating'} ${type}:`, error);
+      console.error(`Error ${item ? 'updating' : 'creating'} event:`, error);
       toast({
         title: "Error",
-        description: error.message || `Failed to ${item ? 'update' : 'create'} ${type}`,
+        description: error.message || `Failed to ${item ? 'update' : 'create'} event`,
         variant: "destructive"
       });
     } finally {
@@ -113,14 +122,12 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {type === 'event' && (
-            <>
-              <div>
+          <div>
                 <Label htmlFor="title">Title</Label>
                 <Input 
                   id="title" 
                   name="title" 
-                  value={(editedItem as FirebaseEvent).title || ''} 
+                  value={editedItem.title} 
                   onChange={handleInputChange}
                   className="mt-1.5" 
                 />
@@ -287,7 +294,7 @@ export function EditModal({ isOpen, onClose, onSave, item, type }: EditModalProp
             disabled={isSubmitting}
             className="bg-[#003c71] hover:bg-[#002c51]"
           >
-            {isSubmitting ? 'Creating...' : 'Create Event'}
+            {isSubmitting ? 'Saving...' : 'Save'}
           </Button>
         </div>
       </DialogContent>

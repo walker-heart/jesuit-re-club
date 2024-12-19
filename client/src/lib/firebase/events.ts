@@ -28,7 +28,7 @@ export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'created
   }
 };
 
-export const updateEvent = async (eventData: FirebaseEvent): Promise<void> => {
+export const updateEvent = async (eventData: FirebaseEvent): Promise<FirebaseEvent> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to update event');
@@ -36,6 +36,17 @@ export const updateEvent = async (eventData: FirebaseEvent): Promise<void> => {
 
     if (!eventData.id) {
       throw new Error('Event ID is required for update');
+    }
+
+    // Validate required fields
+    const requiredFields = ['title', 'date', 'time', 'location', 'speaker', 'speakerDescription', 'agenda'] as const;
+    const missingFields = requiredFields.filter(field => {
+      const value = eventData[field];
+      return !value || value.toString().trim() === '';
+    });
+    
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
     const eventRef = doc(db, 'events', eventData.id);
@@ -46,8 +57,17 @@ export const updateEvent = async (eventData: FirebaseEvent): Promise<void> => {
     };
 
     await updateDoc(eventRef, updateData);
-  } catch (error) {
+    
+    // Return the updated event data
+    return {
+      ...updateData,
+      id: eventData.id
+    } as FirebaseEvent;
+  } catch (error: any) {
     console.error('Error updating event:', error);
+    if (error.code === 'permission-denied') {
+      throw new Error('You do not have permission to update this event');
+    }
     throw error;
   }
 };

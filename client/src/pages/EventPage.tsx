@@ -107,30 +107,52 @@ export function EventPage() {
     }
   };
 
-  const handleEventUpdated = async (updatedEvent: FirebaseEvent) => {
+  const handleEventUpdated = async (eventData: FirebaseEvent) => {
     try {
+      if (!event?.id) return;
+      
+      console.log('Starting event update in EventPage:', eventData);
+      
+      const updatedEvent: FirebaseEvent = {
+        ...eventData,
+        id: event.id,
+        userCreated: event.userCreated,
+        createdAt: event.createdAt,
+        updatedAt: new Date().toISOString()
+      };
+      
       await updateEventInFirebase(updatedEvent);
       
-      // Force refetch all event data to ensure synchronization
-      const response = await fetch('/api/events', {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to refresh events');
-      }
-      
-      // Refresh the current event data
-      if (slug) {
+      // Force refresh events data
+      console.log('Refreshing events data after update');
+      try {
+        // Update global events list
+        const eventsResponse = await fetch('/api/events', {
+          credentials: 'include'
+        });
+        
+        if (!eventsResponse.ok) {
+          throw new Error('Failed to refresh events list');
+        }
+        
+        // Refresh current event details
         await fetchEvent();
+        
+        toast({
+          title: "Success",
+          description: "Event updated successfully"
+        });
+        
+        setIsEditModalOpen(false);
+      } catch (refreshError) {
+        console.error('Error refreshing data:', refreshError);
+        // Even if refresh fails, the update succeeded
+        toast({
+          title: "Partial Success",
+          description: "Event updated but please refresh the page to see changes",
+          variant: "default"
+        });
       }
-
-      toast({
-        title: "Success",
-        description: "Event updated successfully"
-      });
-
-      setIsEditModalOpen(false);
     } catch (error: any) {
       console.error('Error updating event:', error);
       toast({
