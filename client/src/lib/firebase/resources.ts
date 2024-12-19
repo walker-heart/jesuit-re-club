@@ -53,37 +53,36 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
       throw new Error('Resource ID is required for update');
     }
 
-    // Validate required fields
-    const requiredFields = ['title', 'description', 'numberOfTexts', 'textFields'] as const;
-    const missingFields = requiredFields.filter(field => {
-      const value = resourceData[field];
-      return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
-    });
+    // Validate required fields and trim string values
+    const title = resourceData.title?.trim();
+    const description = resourceData.description?.trim();
+    const textFields = resourceData.textFields?.map(field => field.trim());
     
-    if (missingFields.length > 0) {
-      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    if (!title || !description || !textFields || resourceData.numberOfTexts === undefined) {
+      throw new Error('All fields are required and cannot be empty');
     }
 
     const resourceRef = doc(db, 'resources', resourceData.id);
     
-    // Only include fields that should be updated
+    // Create update payload
     const updateData = {
-      title: resourceData.title,
-      description: resourceData.description,
+      title,
+      description,
       numberOfTexts: resourceData.numberOfTexts,
-      textFields: resourceData.textFields,
+      textFields,
       updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser.email || 'Unknown user'
     };
 
-    console.log('Updating resource:', updateData);
+    console.log('Updating resource with data:', updateData);
+    
+    // Update the document in Firebase
     await updateDoc(resourceRef, updateData);
     
     // Return the complete updated resource
-    const updatedResource = {
-      ...resourceData,
-      ...updateData,
-      id: resourceData.id
+    const updatedResource: FirebaseResource = {
+      ...resourceData, // Preserve existing data
+      ...updateData,   // Apply updates
     };
     
     console.log('Resource updated successfully:', updatedResource);

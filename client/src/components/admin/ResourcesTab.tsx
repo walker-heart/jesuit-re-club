@@ -147,26 +147,35 @@ export function ResourcesTab() {
                 throw new Error('Invalid resource data');
               }
 
+              const typedData = resourceData as FirebaseResource;
+              
+              // Keep existing data and update with new values
               const updatePayload: FirebaseResource = {
-                ...resourceData as FirebaseResource,
-                id: editingResource.id,
-                userCreated: editingResource.userCreated,
-                createdAt: editingResource.createdAt,
-                updatedAt: new Date().toISOString(),
-                updatedBy: auth.currentUser.email || 'Unknown user'
+                ...editingResource,
+                title: typedData.title.trim(),
+                description: typedData.description.trim(),
+                numberOfTexts: typedData.numberOfTexts,
+                textFields: typedData.textFields.map(field => field.trim()),
               };
               
-              console.log('Starting resource update:', updatePayload);
+              console.log('Starting resource update with payload:', updatePayload);
               await updateResource(updatePayload);
+              console.log('Resource update completed');
               
               // Refresh the resources list
-              const fetchedResources = await fetchResources();
-              setResources(fetchedResources);
-              console.log('Resource update completed and list refreshed');
+              await loadResources();
+              console.log('Resources list refreshed after update');
             } else {
               // Create new resource
-              const newResource = {
-                ...resourceData,
+              if (!resourceData || typeof resourceData !== 'object') {
+                throw new Error('Invalid resource data');
+              }
+
+              const newResource: Omit<FirebaseResource, 'id'> = {
+                title: (resourceData as FirebaseResource).title,
+                description: (resourceData as FirebaseResource).description,
+                numberOfTexts: (resourceData as FirebaseResource).numberOfTexts,
+                textFields: (resourceData as FirebaseResource).textFields,
                 userCreated: auth.currentUser.email || 'Unknown user',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
