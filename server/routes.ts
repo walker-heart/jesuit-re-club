@@ -5,26 +5,51 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
-// Initialize Firebase Admin with better error handling
-try {
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-    console.log('Firebase Admin initialized successfully');
+// Initialize Firebase Admin with better error handling and credential verification
+const initializeFirebaseAdmin = () => {
+  try {
+    // Check if required environment variables are present
+    const requiredEnvVars = [
+      'VITE_FIREBASE_PROJECT_ID',
+      'FIREBASE_CLIENT_EMAIL',
+      'FIREBASE_PRIVATE_KEY'
+    ];
+
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    if (missingVars.length > 0) {
+      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+    }
+
+    // Only initialize if not already initialized
+    if (!admin.apps.length) {
+      const firebaseConfig = {
+        credential: admin.credential.cert({
+          projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        }),
+      };
+
+      admin.initializeApp(firebaseConfig);
+      console.log('Firebase Admin initialized successfully');
+    }
+
+    return admin.firestore();
+  } catch (error: any) {
+    console.error('Firebase Admin initialization error:', error);
+    console.error('Please check your Firebase credentials and environment variables');
+    throw error; // Let the calling code handle the error
   }
+};
+
+// Initialize Firebase and get Firestore instance
+let db: admin.firestore.Firestore;
+try {
+  db = initializeFirebaseAdmin();
 } catch (error) {
-  console.error('Firebase Admin initialization error:', error);
-  console.error('Missing or invalid Firebase credentials');
+  console.error('Failed to initialize Firebase:', error);
   process.exit(1);
 }
-
-// Get Firestore instance
-const db = admin.firestore();
 
 // Middleware to verify Firebase token and add user data
 async function verifyFirebaseToken(req: Request, res: Response, next: NextFunction) {

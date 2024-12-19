@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Clock, ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase/firebase-config";
-import { deleteEvent } from "@/lib/firebase/events";
+import { deleteEvent, updateEvent, type FirebaseEvent } from "@/lib/firebase/events";
 import { EditModal } from "@/components/admin/EditModal";
 
-interface EventDetails {
+type EventDetails = FirebaseEvent & {
   id: string;
   title: string;
   date: string;
@@ -106,10 +106,32 @@ export function EventPage() {
     }
   };
 
-  const handleEventUpdated = () => {
-    // Refresh the event data after update
-    if (slug) {
-      fetchEvent();
+  const handleEventUpdated = async (updatedEvent: FirebaseEvent) => {
+    try {
+      if (!updatedEvent.id) {
+        throw new Error('Event ID is required for update');
+      }
+      
+      await updateEvent(updatedEvent);
+      
+      // Refresh the event data after update
+      if (slug) {
+        await fetchEvent();
+      }
+
+      toast({
+        title: "Success",
+        description: "Event updated successfully"
+      });
+
+      setIsEditModalOpen(false);
+    } catch (error: any) {
+      console.error('Error updating event:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update event",
+        variant: "destructive"
+      });
     }
   };
 
@@ -228,7 +250,18 @@ export function EventPage() {
         <EditModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          onSave={handleEventUpdated}
+          onSave={async (updatedItem) => {
+            if (!event.id) return;
+            
+            const updatedEvent: FirebaseEvent = {
+              ...updatedItem as FirebaseEvent,
+              id: event.id,
+              userCreated: event.userCreated,
+              createdAt: event.createdAt
+            };
+            
+            await handleEventUpdated(updatedEvent);
+          }}
           item={event}
           type="event"
         />
