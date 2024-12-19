@@ -6,7 +6,8 @@ import { ResourceModal } from './ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/firebase-config'
-import { fetchResources, deleteResource, type FirebaseResource } from '@/lib/firebase/resources'
+import { fetchResources, deleteResource, createResource, updateResource } from '@/lib/firebase/resources'
+import type { FirebaseResource } from '@/lib/firebase/types'
 
 export function ResourcesTab() {
   const { user } = useAuth();
@@ -19,35 +20,12 @@ export function ResourcesTab() {
 
   const loadResources = async () => {
     try {
-      if (!auth.currentUser) {
-        setError("User not authenticated");
-        return;
-      }
-      
       setIsLoading(true);
       setError(null); // Clear any previous errors
       
-      const idToken = await auth.currentUser.getIdToken();
-      const response = await fetch('/api/admin/resources', {
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to fetch resources');
-      }
-
-      const data = await response.json();
-      console.log('Resources data:', data);
-      
-      if (data.success && Array.isArray(data.resources)) {
-        setResources(data.resources);
-      } else {
-        throw new Error('Invalid response format');
-      }
+      const fetchedResources = await fetchResources();
+      console.log('Fetched resources:', fetchedResources);
+      setResources(fetchedResources);
     } catch (error: any) {
       console.error('Error loading resources:', error);
       setError(error.message || "Failed to load resources");
@@ -69,15 +47,15 @@ export function ResourcesTab() {
 
   const handleDelete = async (id: string) => {
     try {
+      if (!id || !auth.currentUser) return;
+
       // Confirm deletion
       if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
         return;
       }
 
       await deleteResource(id);
-      
-      // Refresh the resources list
-      await loadResources();
+      await loadResources(); // Refresh the list after deletion
 
       toast({
         title: "Success",
@@ -157,22 +135,46 @@ export function ResourcesTab() {
         resource={editingResource}
         onSave={async (resourceData) => {
           try {
+            if (!auth.currentUser) {
+              throw new Error('You must be logged in to save resources');
+            }
+
+            console.log('Saving resource:', resourceData);
+
             if (editingResource) {
               // Update existing resource
-              await updateResource({
+              const updatedResource = {
                 ...editingResource,
                 ...resourceData,
-                id: editingResource.id
-              });
+                id: editingResource.id,
+                updatedAt: new Date().toISOString(),
+                updatedBy: auth.currentUser.email || 'Unknown user'
+              };
+              
+              await updateResource(updatedResource);
             } else {
               // Create new resource
-              await createResource(resourceData);
+              const newResource = {
+                ...resourceData,
+                userCreated: auth.currentUser.email || 'Unknown user',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                updatedBy: auth.currentUser.email || 'Unknown user'
+              };
+              
+              await createResource(newResource);
             }
+
+            // Refresh the resources list
             await loadResources();
+
             toast({
               title: "Success",
               description: editingResource ? "Resource updated successfully" : "Resource created successfully"
             });
+            
+            setIsModalOpen(false);
+            setEditingResource(null);
           } catch (error: any) {
             console.error('Error saving resource:', error);
             toast({
@@ -180,9 +182,6 @@ export function ResourcesTab() {
               description: error.message || "Failed to save resource",
               variant: "destructive"
             });
-          } finally {
-            setIsModalOpen(false);
-            setEditingResource(null);
           }
         }}
       />
