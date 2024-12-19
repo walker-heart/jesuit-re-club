@@ -63,16 +63,11 @@ export function ResourceModal({ isOpen, onClose, onSave, resource }: ResourceMod
     e.preventDefault();
     
     // Validate required fields
-    const requiredFields = {
-      title: "Title",
-      description: "Description",
-      numberOfTexts: "Number of Texts"
-    };
+    const missingFields: string[] = [];
+    if (!title.trim()) missingFields.push("Title");
+    if (!description.trim()) missingFields.push("Description");
+    if (!numberOfTexts) missingFields.push("Number of Texts");
     
-    const missingFields = Object.entries(requiredFields)
-      .filter(([key, _]) => !formData[key])
-      .map(([_, label]) => label);
-      
     if (missingFields.length > 0 || textFields.some(field => !field.trim())) {
       toast({
         title: "Error",

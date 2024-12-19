@@ -132,7 +132,7 @@ export function ResourcesTab() {
                   <p className="text-sm text-gray-500 mb-2">Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}</p>
                 )}
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {user && (resource.userCreated === user.email || user.role === 'admin') && (
+                  {user && (auth.currentUser && (resource.userCreated === auth.currentUser.email || user.role === 'admin')) && (
                     <>
                       <Button variant="outline" size="sm" onClick={() => {
                         setEditingResource(resource);
