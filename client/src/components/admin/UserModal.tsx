@@ -17,7 +17,7 @@ type UserFormData = {
   username: string;
   email: string;
   password: string;
-  role: 'admin' | 'editor' | 'user';
+  role: User['role'];
   createdAt?: string;
   updatedAt?: string;
 }

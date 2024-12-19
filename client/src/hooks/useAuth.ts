@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { User, LoginCredentials, RegisterCredentials } from '@/lib/types';
 import { auth, loginWithEmail, registerWithEmail, logoutUser, getCurrentUser } from '@/lib/firebase';
+import type { FirebaseUser } from '@/lib/firebase/users';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export function useAuth() {

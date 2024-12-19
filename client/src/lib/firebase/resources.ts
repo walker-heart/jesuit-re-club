@@ -1,30 +1,32 @@
-import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
 
 import { type FirebaseResource } from './types';
 
 export type { FirebaseResource };
 
-export const createResource = async (resourceData: Omit<FirebaseResource, 'id' | 'createdAt' | 'userCreated'>): Promise<FirebaseResource> => {
+export const createResource = async (resourceData: Omit<FirebaseResource, 'id' | 'userCreated' | 'createdAt'>): Promise<FirebaseResource> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to create resource');
     }
 
     // Validate required fields
-    const requiredFields = ['title', 'description', 'numberOfTexts', 'textFields'];
-    const missingFields = requiredFields.filter(field => !resourceData[field]);
+    const requiredFields = ['title', 'description', 'numberOfTexts', 'textFields'] as const;
+    const missingFields = requiredFields.filter(field => !resourceData[field as keyof typeof resourceData]);
     
     if (missingFields.length > 0) {
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
+    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName || 'Unknown user';
+
     const newResource = {
       ...resourceData,
       createdAt: new Date().toISOString(),
-      userCreated: auth.currentUser?.email || 'Unknown user',
+      userCreated: currentUserIdentifier,
       updatedAt: new Date().toISOString(),
-      updatedBy: auth.currentUser?.email || 'Unknown user'
+      updatedBy: currentUserIdentifier
     };
 
     console.log('Creating new resource:', newResource);
@@ -53,6 +55,22 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
       throw new Error('Resource ID is required for update');
     }
 
+    // Get the existing resource to check permissions
+    const resourceRef = doc(db, 'resources', resourceData.id);
+    const resourceDoc = await getDoc(resourceRef);
+    
+    if (!resourceDoc.exists()) {
+      throw new Error('Resource not found');
+    }
+
+    const existingResource = resourceDoc.data() as FirebaseResource;
+    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName || 'Unknown user';
+
+    // Check if user is the creator of the resource
+    if (existingResource.userCreated !== currentUserIdentifier) {
+      throw new Error('You do not have permission to update this resource');
+    }
+
     // Validate and clean input data
     const title = resourceData.title?.trim();
     const description = resourceData.description?.trim();
@@ -71,19 +89,18 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
       numberOfTexts,
       textFields,
       updatedAt: new Date().toISOString(),
-      updatedBy: auth.currentUser.email || 'Unknown user'
+      updatedBy: currentUserIdentifier
     };
 
     console.log('Updating resource with data:', updateData);
     
     // Update document in Firestore
-    const resourceRef = doc(db, 'resources', resourceData.id);
     await updateDoc(resourceRef, updateData);
     
     // Return updated resource with complete type information
     const updatedResource: FirebaseResource = {
-      ...resourceData, // Preserve existing metadata
-      ...updateData,   // Apply updates
+      ...existingResource,
+      ...updateData,
       id: resourceData.id
     };
     

@@ -104,6 +104,24 @@ export function EditorResourcesTab() {
     }
   };
 
+  const canModifyResource = (resource: FirebaseResource) => {
+    if (!auth.currentUser || !user || !user.role) return false;
+    
+    // Get current user identifier
+    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
+    if (!currentUserIdentifier) return false;
+    
+    // Admins can modify all resources
+    if (user.role === 'admin') return true;
+    
+    // Editors can only modify their own resources
+    if (user.role === 'editor') {
+      return resource.userCreated === currentUserIdentifier;
+    }
+    
+    return false;
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <Card className="col-span-1">
@@ -113,9 +131,17 @@ export function EditorResourcesTab() {
               <BookOpen className="mr-2" />
               My Resources
             </div>
-            <Button onClick={() => setIsModalOpen(true)}>
-              Create Resource
-            </Button>
+            {user && ['admin', 'editor'].includes(user.role) && (
+              <Button 
+                onClick={() => {
+                  setEditingResource(null);
+                  setIsModalOpen(true);
+                }}
+                className="bg-[#003c71] hover:bg-[#002c51] text-white"
+              >
+                Create Resource
+              </Button>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -139,8 +165,8 @@ export function EditorResourcesTab() {
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
                 <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {(resource.userCreated === auth.currentUser?.displayName || 
-                    resource.userCreated === auth.currentUser?.email) && (
+                  {/* Show edit/delete buttons based on user permissions */}
+                  {canModifyResource(resource) && (
                     <>
                       <Button variant="outline" size="sm" onClick={() => {
                         setEditingResource(resource);
@@ -165,12 +191,49 @@ export function EditorResourcesTab() {
         resource={editingResource}
         onSave={async (resourceData) => {
           try {
+            if (!auth.currentUser) {
+              throw new Error('You must be logged in to save resources');
+            }
+
+            if (!user || !['admin', 'editor'].includes(user.role)) {
+              throw new Error('You do not have permission to save resources');
+            }
+
+            const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
+            
+            if (editingResource) {
+              // Only allow editing if user has permission
+              if (!canModifyResource(editingResource)) {
+                throw new Error('You do not have permission to edit this resource');
+              }
+
+              await updateResource({
+                ...editingResource,
+                ...resourceData,
+                updatedAt: new Date().toISOString(),
+                updatedBy: currentUserIdentifier
+              } as FirebaseResource);
+            } else {
+              // Create new resource
+              await createResource({
+                ...resourceData,
+                userCreated: currentUserIdentifier,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                updatedBy: currentUserIdentifier
+              } as FirebaseResource);
+            }
+
             // Refresh resources after save
             await loadResources();
+            
             toast({
               title: "Success",
               description: editingResource ? "Resource updated successfully" : "Resource created successfully"
             });
+            
+            setIsModalOpen(false);
+            setEditingResource(null);
           } catch (error: any) {
             console.error('Error saving resource:', error);
             toast({
@@ -178,9 +241,6 @@ export function EditorResourcesTab() {
               description: error.message || "Failed to save resource",
               variant: "destructive"
             });
-          } finally {
-            setIsModalOpen(false);
-            setEditingResource(null);
           }
         }}
       />

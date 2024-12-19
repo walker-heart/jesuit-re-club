@@ -110,7 +110,8 @@ export function ResourcesTab() {
                   <p className="text-sm text-gray-500 mb-2">Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}</p>
                 )}
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {user && (user.role === 'admin' || resource.userCreated === auth.currentUser?.email) && (
+                  {/* Show edit/delete buttons if user is admin or if they created the resource */}
+                {(user?.role === 'admin' || resource.userCreated === auth.currentUser?.email) && (
                     <>
                       <Button variant="outline" size="sm" onClick={() => {
                         setEditingResource(resource);
