@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/firebase-config'
 import { fetchEvents, deleteEvent, type FirebaseEvent } from '@/lib/firebase/events'
+import { updateEventInFirebase } from '@/lib/firebase/eventUpdates';
 
 export function EditorEventsTab() {
   const { user } = useAuth();
@@ -179,12 +180,41 @@ export function EditorEventsTab() {
           setIsModalOpen(false);
           setEditingEvent(null);
         }}
-        onEventCreated={() => {
-          // Refresh events after save
-          loadEvents();
-          setIsModalOpen(false);
-          setEditingEvent(null);
+        onEventCreated={async (updatedEvent) => {
+          try {
+            if (editingEvent) {
+              // If editing, use the update function
+              const eventToUpdate = {
+                ...updatedEvent as FirebaseEvent,
+                id: editingEvent.id,
+                userCreated: editingEvent.userCreated,
+                createdAt: editingEvent.createdAt
+              };
+              
+              await updateEventInFirebase(eventToUpdate);
+              
+              // Force refresh all events to ensure sync
+              const refreshedEvents = await fetchEvents();
+              setEvents(refreshedEvents);
+            }
+            
+            setIsModalOpen(false);
+            setEditingEvent(null);
+            
+            toast({
+              title: "Success",
+              description: editingEvent ? "Event updated successfully" : "Event created successfully"
+            });
+          } catch (error: any) {
+            console.error('Error updating event:', error);
+            toast({
+              title: "Error",
+              description: error.message || "Failed to update event",
+              variant: "destructive"
+            });
+          }
         }}
+        event={editingEvent}
       />
     </div>
   );
