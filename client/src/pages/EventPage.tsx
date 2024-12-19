@@ -111,7 +111,16 @@ export function EventPage() {
     try {
       await updateEventInFirebase(updatedEvent);
       
-      // Refresh the event data after update
+      // Force refetch all event data to ensure synchronization
+      const response = await fetch('/api/events', {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to refresh events');
+      }
+      
+      // Refresh the current event data
       if (slug) {
         await fetchEvent();
       }
