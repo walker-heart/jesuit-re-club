@@ -53,22 +53,22 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
       throw new Error('Resource ID is required for update');
     }
 
-    // Validate required fields and trim string values
+    // Validate and clean input data
     const title = resourceData.title?.trim();
     const description = resourceData.description?.trim();
-    const textFields = resourceData.textFields?.map(field => field.trim());
-    
-    if (!title || !description || !textFields || resourceData.numberOfTexts === undefined) {
+    const textFields = resourceData.textFields?.map(field => field?.trim()).filter(Boolean);
+    const numberOfTexts = resourceData.numberOfTexts;
+
+    // Validate all required fields
+    if (!title || !description || !textFields?.length || typeof numberOfTexts !== 'number') {
       throw new Error('All fields are required and cannot be empty');
     }
 
-    const resourceRef = doc(db, 'resources', resourceData.id);
-    
-    // Create update payload
+    // Prepare update payload
     const updateData = {
       title,
       description,
-      numberOfTexts: resourceData.numberOfTexts,
+      numberOfTexts,
       textFields,
       updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser.email || 'Unknown user'
@@ -76,13 +76,15 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
 
     console.log('Updating resource with data:', updateData);
     
-    // Update the document in Firebase
+    // Update document in Firestore
+    const resourceRef = doc(db, 'resources', resourceData.id);
     await updateDoc(resourceRef, updateData);
     
-    // Return the complete updated resource
+    // Return updated resource with complete type information
     const updatedResource: FirebaseResource = {
-      ...resourceData, // Preserve existing data
+      ...resourceData, // Preserve existing metadata
       ...updateData,   // Apply updates
+      id: resourceData.id
     };
     
     console.log('Resource updated successfully:', updatedResource);

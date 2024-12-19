@@ -149,18 +149,23 @@ export function ResourcesTab() {
 
               const typedData = resourceData as FirebaseResource;
               
-              // Keep existing data and update with new values
+              // Create a validated update payload with all required fields
               const updatePayload: FirebaseResource = {
-                ...editingResource,
-                title: typedData.title.trim(),
-                description: typedData.description.trim(),
-                numberOfTexts: typedData.numberOfTexts,
-                textFields: typedData.textFields.map(field => field.trim()),
+                ...editingResource, // Keep existing metadata
+                id: editingResource.id,
+                title: typedData.title?.trim() || '',
+                description: typedData.description?.trim() || '',
+                numberOfTexts: typedData.numberOfTexts || 0,
+                textFields: (typedData.textFields || []).map(field => field?.trim() || ''),
+                userCreated: editingResource.userCreated,
+                createdAt: editingResource.createdAt,
+                updatedAt: new Date().toISOString(),
+                updatedBy: auth.currentUser?.email || 'Unknown user'
               };
               
               console.log('Starting resource update with payload:', updatePayload);
-              await updateResource(updatePayload);
-              console.log('Resource update completed');
+              const updatedResource = await updateResource(updatePayload);
+              console.log('Resource update completed:', updatedResource);
               
               // Refresh the resources list
               await loadResources();
