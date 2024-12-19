@@ -82,11 +82,15 @@ export function Events() {
   const handleEventUpdated = async (updatedEvent: FirebaseEvent) => {
     try {
       // Update the event in Firebase
-      const result = await updateEvent(updatedEvent);
+      await updateEvent(updatedEvent);
       
       // Refresh the events list
       const fetchedEvents = await fetchEvents();
-      setAllEvents(fetchedEvents);
+      setAllEvents(fetchedEvents.map(event => ({
+        ...event,
+        description: event.speakerDescription
+      })));
+      
       setIsEditModalOpen(false);
       setEditingEvent(null);
       
@@ -333,14 +337,28 @@ export function Events() {
               <EventModal 
                 isOpen={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
-                onEventCreated={(event) => {
-                  // Refresh the events list after creation
-                  toast({
-                    title: "Success",
-                    description: "Event created successfully"
-                  });
-                  // TODO: Update events list
-                  setIsDialogOpen(false);
+                onEventCreated={async (event) => {
+                  try {
+                    // Refresh the events list
+                    const fetchedEvents = await fetchEvents();
+                    setAllEvents(fetchedEvents.map(event => ({
+                      ...event,
+                      description: event.speakerDescription
+                    })));
+                    
+                    toast({
+                      title: "Success",
+                      description: "Event created successfully"
+                    });
+                    setIsDialogOpen(false);
+                  } catch (error: any) {
+                    console.error('Error refreshing events:', error);
+                    toast({
+                      title: "Error",
+                      description: "Event created but failed to refresh list",
+                      variant: "destructive"
+                    });
+                  }
                 }}
               />
               <Button 
