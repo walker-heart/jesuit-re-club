@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createEvent, type FirebaseEvent } from "@/lib/firebase/events"
 import { useToast } from "@/hooks/use-toast"
 
@@ -11,9 +11,10 @@ interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEventCreated?: (event: FirebaseEvent) => void;
+  event?: FirebaseEvent | null;
 }
 
-export function EventModal({ isOpen, onClose, onEventCreated }: EventModalProps) {
+export function EventModal({ isOpen, onClose, onEventCreated, event }: EventModalProps) {
   const [formData, setFormData] = useState({
     title: '',
     date: '',
@@ -26,22 +27,75 @@ export function EventModal({ isOpen, onClose, onEventCreated }: EventModalProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // Update form data when event changes or modal closes
+  useEffect(() => {
+    if (event) {
+      console.log('Initializing form with event:', event);
+      setFormData({
+        title: event.title || '',
+        date: event.date || '',
+        time: event.time || '',
+        location: event.location || '',
+        speaker: event.speaker || '',
+        speakerDescription: event.speakerDescription || '',
+        agenda: event.agenda || ''
+      });
+    } else {
+      // Reset form when not editing
+      setFormData({
+        title: '',
+        date: '',
+        time: '',
+        location: '',
+        speaker: '',
+        speakerDescription: '',
+        agenda: ''
+      });
+    }
+  }, [event, isOpen]);
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
     try {
-      const event = await createEvent(formData);
+      let updatedEvent;
+      if (event) {
+        // Update existing event
+        updatedEvent = {
+          ...event,
+          ...formData,
+          id: event.id, // Ensure ID is preserved
+          userCreated: event.userCreated, // Preserve original creator
+          createdAt: event.createdAt // Preserve creation timestamp
+        };
+      } else {
+        // Create new event
+        updatedEvent = await createEvent(formData);
+      }
+      
+      onEventCreated?.(updatedEvent);
+      
       toast({
         title: "Success",
-        description: "Event created successfully"
+        description: event ? "Event updated successfully" : "Event created successfully"
       });
-      onEventCreated?.(event);
+      
+      setFormData({
+        title: '',
+        date: '',
+        time: '',
+        location: '',
+        speaker: '',
+        speakerDescription: '',
+        agenda: ''
+      });
+      
       onClose();
     } catch (error: any) {
-      console.error('Error creating event:', error);
+      console.error('Error with event:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create event",
+        description: error.message || `Failed to ${event ? 'update' : 'create'} event`,
         variant: "destructive"
       });
     } finally {
@@ -61,7 +115,7 @@ export function EventModal({ isOpen, onClose, onEventCreated }: EventModalProps)
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Event</DialogTitle>
+          <DialogTitle>{event ? 'Edit Event' : 'Create New Event'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
           <div className="grid gap-4 py-4">
@@ -150,7 +204,9 @@ export function EventModal({ isOpen, onClose, onEventCreated }: EventModalProps)
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Event"}
+              {isSubmitting 
+                ? (event ? "Updating..." : "Creating...") 
+                : (event ? "Update Event" : "Create Event")}
             </Button>
           </DialogFooter>
         </form>
