@@ -29,11 +29,17 @@ export function EditorResourcesTab() {
       
       const allResources = await fetchResources();
       
-      // Filter resources to only show those created by the current user
-      const userResources = allResources.filter(resource => 
-        resource.userCreated === auth.currentUser?.displayName || 
-        resource.userCreated === auth.currentUser?.email
-      );
+      // Filter resources based on user role
+      const userResources = allResources.filter(resource => {
+        if (user?.role === 'admin') {
+          return true; // Admin can see all resources
+        }
+        if (user?.role === 'editor') {
+          const currentUserIdentifier = auth.currentUser?.email || auth.currentUser?.displayName;
+          return resource.userCreated === currentUserIdentifier;
+        }
+        return false;
+      });
 
       setResources(userResources);
     } catch (error: any) {
@@ -56,17 +62,24 @@ export function EditorResourcesTab() {
   }, [auth.currentUser]);
 
   const canModifyResource = (resource: FirebaseResource) => {
-    if (!auth.currentUser || !user) return false;
+    if (!auth.currentUser || !user) {
+      return false;
+    }
+
+    // Get the current user identifier
+    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName || '';
     
-    // Admins can modify all resources
-    if (user.role === 'admin') return true;
+    // Admin can modify all resources
+    if (user.role === 'admin') {
+      return true;
+    }
     
-    // Editors can only modify their own resources
+    // Editor can only modify their own resources
     if (user.role === 'editor') {
-      const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
       return resource.userCreated === currentUserIdentifier;
     }
     
+    // Other roles cannot modify resources
     return false;
   };
 
@@ -124,7 +137,7 @@ export function EditorResourcesTab() {
               <BookOpen className="mr-2" />
               My Resources
             </div>
-            {user && ['admin', 'editor'].includes(user.role) && (
+            {user && (user.role === 'admin' || user.role === 'editor') && (
               <Button 
                 onClick={() => {
                   setEditingResource(null);
