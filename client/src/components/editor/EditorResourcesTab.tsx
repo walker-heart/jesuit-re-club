@@ -25,7 +25,7 @@ export function EditorResourcesTab() {
       }
       
       setIsLoading(true);
-      setError(null); // Clear any previous errors
+      setError(null);
       
       const allResources = await fetchResources();
       
@@ -55,7 +55,22 @@ export function EditorResourcesTab() {
     }
   }, [auth.currentUser]);
 
-  const handleDelete = async (id: string) => {
+  const canModifyResource = (resource: FirebaseResource) => {
+    if (!auth.currentUser || !user) return false;
+    
+    // Admins can modify all resources
+    if (user.role === 'admin') return true;
+    
+    // Editors can only modify their own resources
+    if (user.role === 'editor') {
+      const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
+      return resource.userCreated === currentUserIdentifier;
+    }
+    
+    return false;
+  };
+
+  const handleDeleteResource = async (id: string) => {
     try {
       if (!auth.currentUser || !user) {
         toast({
@@ -70,11 +85,7 @@ export function EditorResourcesTab() {
       const resource = resources.find(r => r.id === id);
       if (!resource) return;
 
-      const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
-      const canDelete = user.role === 'admin' || 
-                       (user.role === 'editor' && resource.userCreated === currentUserIdentifier);
-
-      if (!canDelete) {
+      if (!canModifyResource(resource)) {
         toast({
           title: "Access Denied",
           description: "You can only delete resources you created",
@@ -83,7 +94,6 @@ export function EditorResourcesTab() {
         return;
       }
 
-      // Confirm deletion
       if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
         return;
       }
@@ -103,24 +113,6 @@ export function EditorResourcesTab() {
         variant: "destructive"
       });
     }
-  };
-
-  const canModifyResource = (resource: FirebaseResource) => {
-    if (!auth.currentUser || !user || !user.role) return false;
-    
-    // Get current user identifier
-    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
-    if (!currentUserIdentifier) return false;
-    
-    // Admins can modify all resources
-    if (user.role === 'admin') return true;
-    
-    // Editors can only modify their own resources
-    if (user.role === 'editor') {
-      return resource.userCreated === currentUserIdentifier;
-    }
-    
-    return false;
   };
 
   return (
@@ -166,37 +158,30 @@ export function EditorResourcesTab() {
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
                 <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {/* Show edit/delete buttons for resources the user created */}
-                  {user && auth.currentUser && (
-                    (user.role === 'admin' || 
-                     (user.role === 'editor' && 
-                      resource.userCreated === (auth.currentUser.email || auth.currentUser.displayName)
-                     )
-                    ) && (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => {
-                            setEditingResource(resource);
-                            setIsModalOpen(true);
-                          }}
-                          className="flex items-center gap-2"
-                        >
-                          <Edit className="h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          onClick={() => resource.id && handleDelete(resource.id)}
-                          className="flex items-center gap-2"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </Button>
-                      </>
-                    )
+                  {canModifyResource(resource) && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => {
+                          setEditingResource(resource);
+                          setIsModalOpen(true);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => resource.id && handleDeleteResource(resource.id)}
+                        className="flex items-center gap-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </Button>
+                    </>
                   )}
                 </div>
               </Card>

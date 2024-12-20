@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchResources, deleteResource, updateResource, createResource, type FirebaseResource } from "@/lib/firebase/resources";
 import { auth } from "@/lib/firebase/firebase-config";
 
-// Use the FirebaseResource type from firebase/resources
+// Use the FirebaseResource type directly
 type Resource = FirebaseResource;
 
 export function Resources() {
@@ -44,101 +44,77 @@ export function Resources() {
   }, [auth.currentUser]);
 
   const canModifyResource = (resource: Resource) => {
-    if (!auth.currentUser) return false;
-
-    const userRole = localStorage.getItem('userRole');
-
+    if (!auth.currentUser || !user) return false;
+    
     // Admins can modify all resources
-    if (userRole === 'admin') return true;
-
+    if (user.role === 'admin') return true;
+    
     // Editors can only modify their own resources
-    if (userRole === 'editor') {
-      return resource.userCreated === (auth.currentUser.displayName || auth.currentUser.email);
+    if (user.role === 'editor') {
+      const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
+      return resource.userCreated === currentUserIdentifier;
     }
-
+    
     return false;
   };
 
-  const handleCreateResource = async (resourceData: Partial<Resource>) => {
+  const handleResourceAction = async (resourceData: Partial<Resource>, isEdit: boolean = false) => {
     try {
       if (!auth.currentUser) {
-        throw new Error('You must be logged in to create resources');
+        throw new Error('You must be logged in to manage resources');
       }
 
-      // Create a proper resource payload
-      const newResource: Omit<FirebaseResource, 'id'> = {
-        title: resourceData.title || '',
-        description: resourceData.description || '',
-        numberOfTexts: resourceData.numberOfTexts || 0,
-        textFields: resourceData.textFields || [],
-        userCreated: auth.currentUser.email || auth.currentUser.displayName || 'Unknown user',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        updatedBy: auth.currentUser.email || auth.currentUser.displayName || 'Unknown user'
-      };
+      const currentUser = auth.currentUser.email || auth.currentUser.displayName || 'Unknown user';
 
-      await createResource(newResource);
-      
-      // Refresh the resources list
-      const updatedResources = await fetchResources();
-      setResources(updatedResources);
-      setIsModalOpen(false);
+      if (isEdit && editingResource) {
+        // Update existing resource
+        const updatePayload: FirebaseResource = {
+          ...editingResource,
+          ...resourceData,
+          updatedAt: new Date().toISOString(),
+          updatedBy: currentUser
+        };
 
-      toast({
-        title: "Success",
-        description: "Resource created successfully",
-      });
-    } catch (error: any) {
-      console.error("Error creating resource:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create resource",
-        variant: "destructive",
-      });
-    }
-  };
+        await updateResource(updatePayload);
+      } else {
+        // Create new resource
+        const newResource: Omit<FirebaseResource, 'id'> = {
+          title: resourceData.title || '',
+          description: resourceData.description || '',
+          numberOfTexts: resourceData.numberOfTexts || 0,
+          textFields: resourceData.textFields || [],
+          userCreated: currentUser,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          updatedBy: currentUser
+        };
 
-  const handleUpdateResource = async (resourceData: Partial<Resource>) => {
-    try {
-      if (!editingResource?.id) {
-        throw new Error('Resource ID is required for update');
+        await createResource(newResource);
       }
 
-      // Create a proper update payload
-      const updatePayload: FirebaseResource = {
-        ...editingResource,
-        title: resourceData.title || editingResource.title,
-        description: resourceData.description || editingResource.description,
-        numberOfTexts: resourceData.numberOfTexts || editingResource.numberOfTexts,
-        textFields: resourceData.textFields || editingResource.textFields,
-        id: editingResource.id,
-        userCreated: editingResource.userCreated,
-        createdAt: editingResource.createdAt,
-        updatedAt: new Date().toISOString(),
-        updatedBy: auth.currentUser?.email || auth.currentUser?.displayName || 'Unknown user'
-      };
-
-      await updateResource(updatePayload);
-      
-      // Refresh the resources list
+      // Refresh resources list
       const updatedResources = await fetchResources();
       setResources(updatedResources);
+      
       setIsModalOpen(false);
       setEditingResource(null);
 
       toast({
         title: "Success",
-        description: "Resource updated successfully",
+        description: `Resource ${isEdit ? 'updated' : 'created'} successfully`,
       });
     } catch (error: any) {
-      console.error("Error updating resource:", error);
+      console.error(`Error ${isEdit ? 'updating' : 'creating'} resource:`, error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update resource",
+        description: error.message || `Failed to ${isEdit ? 'update' : 'create'} resource`,
         variant: "destructive",
       });
     }
   };
+
+  const handleCreateResource = (resourceData: Partial<Resource>) => handleResourceAction(resourceData, false);
+  const handleUpdateResource = (resourceData: Partial<Resource>) => handleResourceAction(resourceData, true);
 
   const handleDeleteResource = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
@@ -146,6 +122,10 @@ export function Resources() {
     }
 
     try {
+      if (!id) {
+        throw new Error('Resource ID is required for deletion');
+      }
+
       const resource = resources.find(r => r.id === id);
       if (!resource || !canModifyResource(resource)) {
         toast({
@@ -178,7 +158,7 @@ export function Resources() {
     <div className="w-full py-4">
       <div className="container px-4 mx-auto">
         <div className="w-full flex justify-end mb-4">
-          {(['admin', 'editor'].includes(localStorage.getItem('userRole') || '')) && (
+          {user && (['admin', 'editor'].includes(user.role)) && (
             <Button 
               onClick={() => setIsModalOpen(true)}
               className="bg-[#003c71] text-white hover:bg-[#002c61]"
@@ -225,7 +205,7 @@ export function Resources() {
                         >
                           <Link href={`/resources/${resource.id}`}>View Details →</Link>
                         </Button>
-                        {canModifyResource(resource) && (
+                        {user && canModifyResource(resource) && (
                           <>
                             <Button
                               variant="outline"
@@ -242,7 +222,7 @@ export function Resources() {
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => handleDeleteResource(resource.id)}
+                              onClick={() => resource.id && handleDeleteResource(resource.id)}
                               className="flex items-center gap-2"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -259,15 +239,14 @@ export function Resources() {
           </div>
         </div>
 
-        {/* Resource Modal for Create/Edit */}
         <ResourceModal
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
             setEditingResource(null);
           }}
-          onSave={editingResource ? handleUpdateResource : handleCreateResource}
           resource={editingResource}
+          onSave={editingResource ? handleUpdateResource : handleCreateResource}
         />
       </div>
     </div>
