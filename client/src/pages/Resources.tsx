@@ -6,100 +6,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { ResourceModal } from "@/components/admin/ResourceModal";
 import { Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { auth } from "@/lib/firebase";
+import { fetchResources, deleteResource, updateResource, createResource, type FirebaseResource } from "@/lib/firebase/resources";
+import { auth } from "@/lib/firebase/firebase-config";
 
-interface Resource {
-  id: string;
-  title: string;
-  description: string;
-  numberOfTexts: number;
-  textFields: string[];
-  userCreated: string;
-  createdAt: any; // Firebase Timestamp
-  updatedAt: any; // Firebase Timestamp
-  updatedBy: string;
-}
-
-async function fetchResources(): Promise<Resource[]> {
-  try {
-    const resourcesRef = collection(db, 'resources');
-    const snapshot = await getDocs(resourcesRef);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as Resource));
-  } catch (error) {
-    console.error('Error fetching resources:', error);
-    throw new Error('Failed to fetch resources');
-  }
-}
-
-async function createResource(resourceData: Omit<Resource, "id" | "createdAt" | "updatedAt" | "userCreated" | "updatedBy">): Promise<Resource> {
-  try {
-    const resourceRef = collection(db, 'resources');
-    const docRef = await addDoc(resourceRef, {
-      ...resourceData,
-      userCreated: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
-    });
-    
-    const newDoc = await getDoc(docRef);
-    if (!newDoc.exists()) {
-      throw new Error('Failed to create resource: Document does not exist after creation');
-    }
-    
-    return {
-      id: docRef.id,
-      ...newDoc.data()
-    } as Resource;
-  } catch (error) {
-    console.error('Error creating resource:', error);
-    throw new Error('Failed to create resource');
-  }
-}
-
-async function updateResource(resourceData: Partial<Resource> & { id: string }): Promise<Resource> {
-  try {
-    const { id, ...updateData } = resourceData;
-    const resourceRef = doc(db, 'resources', id);
-    
-    const updatePayload = {
-      ...updateData,
-      updatedAt: serverTimestamp(),
-      updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
-    };
-
-    await updateDoc(resourceRef, updatePayload);
-
-    const updatedDoc = await getDoc(resourceRef);
-    if (!updatedDoc.exists()) {
-      throw new Error('Resource not found after update');
-    }
-
-    return {
-      id,
-      ...updatedDoc.data()
-    } as Resource;
-  } catch (error) {
-    console.error('Error updating resource:', error);
-    throw new Error('Failed to update resource');
-  }
-}
-
-async function deleteResource(id: string): Promise<void> {
-  try {
-    const resourceRef = doc(db, 'resources', id);
-    await deleteDoc(resourceRef);
-  } catch (error) {
-    console.error('Error deleting resource:', error);
-    throw new Error('Failed to delete resource');
-  }
-}
+// Use the FirebaseResource type from firebase/resources
+type Resource = FirebaseResource;
 
 export function Resources() {
   const { user } = useAuth();
@@ -132,16 +43,25 @@ export function Resources() {
     }
   }, [auth.currentUser]);
 
+  const canModifyResource = (resource: Resource) => {
+    if (!auth.currentUser) return false;
+
+    const userRole = localStorage.getItem('userRole');
+
+    // Admins can modify all resources
+    if (userRole === 'admin') return true;
+
+    // Editors can only modify their own resources
+    if (userRole === 'editor') {
+      return resource.userCreated === (auth.currentUser.displayName || auth.currentUser.email);
+    }
+
+    return false;
+  };
+
   const handleCreateResource = async (resourceData: Partial<Resource>) => {
     try {
-      const newResourceData = {
-        title: resourceData.title || '',
-        description: resourceData.description || '',
-        numberOfTexts: resourceData.numberOfTexts || 1,
-        textFields: resourceData.textFields || []
-      };
-
-      await createResource(newResourceData);
+      await createResource(resourceData);
       const updatedResources = await fetchResources();
       setResources(updatedResources);
       setIsModalOpen(false);
@@ -166,19 +86,12 @@ export function Resources() {
         throw new Error('Resource ID is required for update');
       }
 
-      const updatePayload = {
-        id: editingResource.id,
-        title: resourceData.title || editingResource.title,
-        description: resourceData.description || editingResource.description,
-        numberOfTexts: resourceData.numberOfTexts || editingResource.numberOfTexts,
-        textFields: resourceData.textFields || editingResource.textFields,
-        userCreated: editingResource.userCreated,
-        createdAt: editingResource.createdAt,
-        updatedAt: serverTimestamp(),
-        updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
-      };
+      await updateResource({
+        ...editingResource,
+        ...resourceData,
+        id: editingResource.id
+      });
 
-      await updateResource(updatePayload as Resource);
       const updatedResources = await fetchResources();
       setResources(updatedResources);
       setIsModalOpen(false);
@@ -204,27 +117,11 @@ export function Resources() {
     }
 
     try {
-      // Find the resource and check permissions
       const resource = resources.find(r => r.id === id);
-      if (!resource) return;
-
-      if (!auth.currentUser || !user) {
+      if (!resource || !canModifyResource(resource)) {
         toast({
           title: "Error",
-          description: "You must be logged in to delete resources",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
-      const canDelete = user.role === 'admin' || 
-                       (user.role === 'editor' && resource.userCreated === currentUserIdentifier);
-
-      if (!canDelete) {
-        toast({
-          title: "Access Denied",
-          description: "You can only delete resources you created",
+          description: "You don't have permission to delete this resource",
           variant: "destructive"
         });
         return;
@@ -248,28 +145,11 @@ export function Resources() {
     }
   };
 
-  const canModifyResource = (resource: Resource) => {
-    if (!auth.currentUser || !user || !user.role) return false;
-    
-    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
-    if (!currentUserIdentifier) return false;
-    
-    // Admins can modify all resources
-    if (user.role === 'admin') return true;
-    
-    // Editors can only modify their own resources
-    if (user.role === 'editor') {
-      return resource.userCreated === currentUserIdentifier;
-    }
-    
-    return false;
-  };
-
   return (
     <div className="w-full py-4">
       <div className="container px-4 mx-auto">
         <div className="w-full flex justify-end mb-4">
-          {(['admin', 'editor'].includes(user?.role || '')) && (
+          {(['admin', 'editor'].includes(localStorage.getItem('userRole') || '')) && (
             <Button 
               onClick={() => setIsModalOpen(true)}
               className="bg-[#003c71] text-white hover:bg-[#002c61]"
