@@ -61,7 +61,25 @@ export function Resources() {
 
   const handleCreateResource = async (resourceData: Partial<Resource>) => {
     try {
-      await createResource(resourceData);
+      if (!auth.currentUser) {
+        throw new Error('You must be logged in to create resources');
+      }
+
+      // Create a proper resource payload
+      const newResource: Omit<FirebaseResource, 'id'> = {
+        title: resourceData.title || '',
+        description: resourceData.description || '',
+        numberOfTexts: resourceData.numberOfTexts || 0,
+        textFields: resourceData.textFields || [],
+        userCreated: auth.currentUser.email || auth.currentUser.displayName || 'Unknown user',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: auth.currentUser.email || auth.currentUser.displayName || 'Unknown user'
+      };
+
+      await createResource(newResource);
+      
+      // Refresh the resources list
       const updatedResources = await fetchResources();
       setResources(updatedResources);
       setIsModalOpen(false);
@@ -86,12 +104,23 @@ export function Resources() {
         throw new Error('Resource ID is required for update');
       }
 
-      await updateResource({
+      // Create a proper update payload
+      const updatePayload: FirebaseResource = {
         ...editingResource,
-        ...resourceData,
-        id: editingResource.id
-      });
+        title: resourceData.title || editingResource.title,
+        description: resourceData.description || editingResource.description,
+        numberOfTexts: resourceData.numberOfTexts || editingResource.numberOfTexts,
+        textFields: resourceData.textFields || editingResource.textFields,
+        id: editingResource.id,
+        userCreated: editingResource.userCreated,
+        createdAt: editingResource.createdAt,
+        updatedAt: new Date().toISOString(),
+        updatedBy: auth.currentUser?.email || auth.currentUser?.displayName || 'Unknown user'
+      };
 
+      await updateResource(updatePayload);
+      
+      // Refresh the resources list
       const updatedResources = await fetchResources();
       setResources(updatedResources);
       setIsModalOpen(false);
