@@ -67,6 +67,8 @@ export const loginWithEmail = async (email: string, password: string): Promise<U
       uid: userDoc.id,
       email: userCredential.user.email,
       username: userData.username,
+      firstName: userData.firstName || '',
+      lastName: userData.lastName || '',
       role: userData.role || 'user'
     };
   } catch (error: any) {
@@ -75,7 +77,7 @@ export const loginWithEmail = async (email: string, password: string): Promise<U
   }
 };
 
-export const registerWithEmail = async (email: string, password: string, username: string): Promise<User> => {
+export const registerWithEmail = async (email: string, password: string, username: string, firstName: string = '', lastName: string = ''): Promise<User> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
@@ -83,8 +85,8 @@ export const registerWithEmail = async (email: string, password: string, usernam
       uid: userCredential.user.uid,
       email: userCredential.user.email,
       username,
-      firstName: username, // Initialize with username as default
-      lastName: '',
+      firstName,
+      lastName,
       role: 'user',
       createdAt: serverTimestamp()
     };
@@ -95,6 +97,8 @@ export const registerWithEmail = async (email: string, password: string, usernam
       uid: userCredential.user.uid,
       email: userCredential.user.email,
       username,
+      firstName,
+      lastName,
       role: 'user'
     };
   } catch (error: any) {
@@ -118,15 +122,19 @@ export const getCurrentUser = async (firebaseUser: FirebaseUser): Promise<User |
     if (!userDoc.exists()) return null;
 
     const userData = userDoc.data();
-    const userRole = userData.role || 'user';
-    
+    const userRole = userData?.role || 'user';
+    const firstName = userData?.firstName || '';
+    const lastName = userData?.lastName || '';
+
     // Store user role in localStorage for role-based permissions
     localStorage.setItem('userRole', userRole);
-    
+
     return {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
-      username: userData.username,
+      username: userData?.username || '',
+      firstName,
+      lastName,
       role: userRole
     };
   } catch (error) {

@@ -5,10 +5,8 @@ import { BookOpen, Edit, Trash2 } from 'lucide-react'
 import { ResourceModal } from '../admin/ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
-import { auth, onAuthStateChanged } from '@/lib/firebase/firebase-config'
-import { getDoc, doc } from 'firebase/firestore'
-import { db } from '@/lib/firebase/firebase-config'
-import { fetchResources, deleteResource, type FirebaseResource, createResource, updateResource } from '@/lib/firebase/resources'
+import { auth } from '@/lib/firebase/firebase-config'
+import { fetchResources, deleteResource, createResource, updateResource, type FirebaseResource } from '@/lib/firebase/resources'
 
 export function EditorResourcesTab() {
   const { user } = useAuth();
@@ -21,80 +19,24 @@ export function EditorResourcesTab() {
 
   const loadResources = async () => {
     try {
-      console.log('Loading resources, auth state:', { 
-        currentUser: auth.currentUser?.email,
-        userState: user,
-        isAuthenticated: !!auth.currentUser 
-      });
-      
       if (!auth.currentUser) {
         console.log('No authenticated user found');
         setError("User not authenticated");
         return;
       }
-      
+
       setIsLoading(true);
       setError(null);
-      
+
       const allResources = await fetchResources();
       console.log('Fetched resources:', allResources);
-      
-      // Filter resources based on user role and fetch creator details
-      const userResources = await Promise.all(
-        allResources
-          .filter(resource => {
-            const hasAdminAccess = user?.role === 'admin';
-            const hasEditorAccess = user?.role === 'editor' && resource.userId === auth.currentUser?.uid;
-            return hasAdminAccess || hasEditorAccess;
-          })
-          .map(async (resource) => {
-            try {
-              // Fetch user data for the resource creator using the userCreated field (which contains the UID)
-              const creatorId = resource.userCreated;
-              if (!creatorId || creatorId === 'Unknown user') {
-                return {
-                  ...resource,
-                  creatorName: 'Unknown User'
-                };
-              }
 
-              const userDoc = await getDoc(doc(db, 'users', creatorId));
-              const userData = userDoc.data();
-              
-              if (!userData) {
-                console.log('No user data found for creator:', creatorId);
-                return {
-                  ...resource,
-                  creatorName: 'Unknown User'
-                };
-              }
-
-              // Construct creator name from firstName and lastName
-              const firstName = userData.firstName || '';
-              const lastName = userData.lastName || '';
-              const creatorName = `${firstName} ${lastName}`.trim() || 'Unknown User';
-
-              console.log('Creator data fetched:', {
-                resourceId: resource.id,
-                creatorId,
-                creatorName,
-                firstName,
-                lastName
-              });
-
-              return {
-                ...resource,
-                creatorName
-              };
-            } catch (error) {
-              console.error('Error fetching creator data:', error, 'for resource:', resource.id);
-              return {
-                ...resource,
-                creatorName: 'Unknown User'
-              };
-            }
-          })
-      );
+      // Filter resources based on user role
+      const userResources = allResources.filter(resource => {
+        const hasAdminAccess = user?.role === 'admin';
+        const hasEditorAccess = user?.role === 'editor' && resource.userId === auth.currentUser?.uid;
+        return hasAdminAccess || hasEditorAccess;
+      });
 
       console.log('Processed resources:', userResources);
       setResources(userResources);
@@ -117,42 +59,7 @@ export function EditorResourcesTab() {
     }
   }, [auth.currentUser]);
 
-  const canModifyResource = (resource: FirebaseResource) => {
-    console.log('Checking resource modification permissions:', {
-      resource,
-      currentUser: auth.currentUser?.uid,
-      userRole: user?.role,
-      authState: !!auth.currentUser,
-      userState: !!user
-    });
-
-    if (!auth.currentUser || !user) {
-      console.log('Permission denied: No authenticated user or user state');
-      return false;
-    }
-    
-    // Admin can modify all resources
-    if (user.role === 'admin') {
-      console.log('Permission granted: User is admin');
-      return true;
-    }
-    
-    // Editor can only modify their own resources
-    if (user.role === 'editor') {
-      const hasPermission = resource.userId === auth.currentUser.uid;
-      console.log('Editor permission check:', {
-        hasPermission,
-        resourceUserId: resource.userId,
-        currentUserId: auth.currentUser.uid
-      });
-      return hasPermission;
-    }
-    
-    console.log('Permission denied: User role not admin or editor');
-    return false;
-  };
-
-  const handleDeleteResource = async (id: string) => {
+  const handleDelete = async (id: string) => {
     try {
       if (!auth.currentUser || !user) {
         toast({
@@ -166,15 +73,6 @@ export function EditorResourcesTab() {
       // Find the resource and check permissions
       const resource = resources.find(r => r.id === id);
       if (!resource) return;
-
-      if (!canModifyResource(resource)) {
-        toast({
-          title: "Access Denied",
-          description: "You can only delete resources you created",
-          variant: "destructive"
-        });
-        return;
-      }
 
       if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
         return;
@@ -238,11 +136,15 @@ export function EditorResourcesTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
-                <p className="text-sm text-gray-500 mb-2">
-                  Created by: {resource.creatorName}
-                </p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {resource.creatorName}</p>
+                <p className="text-sm text-gray-500 mb-2">Created at: {new Date(resource.createdAt).toLocaleString()}</p>
+                {resource.updatedAt && (
+                  <p className="text-sm text-gray-500 mb-2">
+                    Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}
+                  </p>
+                )}
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {canModifyResource(resource) && (
+                  {user && (user.role === 'admin' || (user.role === 'editor' && resource.userId === auth.currentUser?.uid)) && (
                     <>
                       <Button 
                         variant="outline" 
@@ -259,7 +161,7 @@ export function EditorResourcesTab() {
                       <Button 
                         variant="destructive" 
                         size="sm" 
-                        onClick={() => resource.id && handleDeleteResource(resource.id)}
+                        onClick={() => resource.id && handleDelete(resource.id)}
                         className="flex items-center gap-2"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -291,39 +193,34 @@ export function EditorResourcesTab() {
               throw new Error('You do not have permission to save resources');
             }
 
-            const currentUserIdentifier = auth.currentUser.uid;
-            
-            if (editingResource) {
-              // Only allow editing if user has permission
-              if (!canModifyResource(editingResource)) {
-                throw new Error('You do not have permission to edit this resource');
-              }
+            // Ensure required fields are present
+            const requiredFields = ['title', 'description', 'numberOfTexts', 'textFields'];
+            const missingFields = requiredFields.filter(field => !resourceData[field as keyof typeof resourceData]);
 
+            if (missingFields.length > 0) {
+              throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+            }
+
+            if (editingResource) {
+              // Update existing resource
               await updateResource({
                 ...editingResource,
                 ...resourceData,
-                updatedAt: new Date().toISOString(),
-                updatedBy: currentUserIdentifier
+                id: editingResource.id
               } as FirebaseResource);
             } else {
               // Create new resource
-              await createResource({
-                ...resourceData,
-                userCreated: currentUserIdentifier,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                updatedBy: currentUserIdentifier
-              } as FirebaseResource);
+              await createResource(resourceData as FirebaseResource);
             }
 
-            // Refresh resources after save
+            // Refresh resources list
             await loadResources();
-            
+
             toast({
               title: "Success",
               description: editingResource ? "Resource updated successfully" : "Resource created successfully"
             });
-            
+
             setIsModalOpen(false);
             setEditingResource(null);
           } catch (error: any) {

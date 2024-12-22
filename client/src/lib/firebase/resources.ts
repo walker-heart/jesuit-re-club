@@ -1,11 +1,10 @@
 import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
-
 import { type FirebaseResource } from './types';
 
 export type { FirebaseResource };
 
-export const createResource = async (resourceData: Omit<FirebaseResource, 'id' | 'userCreated' | 'createdAt'>): Promise<FirebaseResource> => {
+export const createResource = async (resourceData: Omit<FirebaseResource, 'id'>): Promise<FirebaseResource> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to create resource');
@@ -13,46 +12,47 @@ export const createResource = async (resourceData: Omit<FirebaseResource, 'id' |
 
     // Validate required fields
     const requiredFields = ['title', 'description', 'numberOfTexts', 'textFields'] as const;
-    const missingFields = requiredFields.filter(field => !resourceData[field as keyof typeof resourceData]);
+    const missingFields = requiredFields.filter(field => !resourceData[field]);
     
     if (missingFields.length > 0) {
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
-    if (!auth.currentUser?.uid) {
+    const currentUserId = auth.currentUser.uid;
+    if (!currentUserId) {
       throw new Error('User ID is required to create a resource');
     }
 
     // Get current user's data from Firestore
-    const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    const userDoc = await getDoc(doc(db, 'users', currentUserId));
     const userData = userDoc.data();
-    
-    // Get creator name from user data
+
+    // Format creator name
     let creatorName = 'Unknown User';
-    if (userData && (userData.firstName || userData.lastName)) {
-      creatorName = userData.firstName + " " + userData.lastName;
+    if (userData?.firstName && userData?.lastName) {
+      creatorName = `${userData.firstName} ${userData.lastName}`;
+    } else if (userData?.firstName || userData?.lastName) {
+      creatorName = `${userData.firstName || ''}${userData.lastName || ''}`.trim();
     }
 
+    // Prepare the new resource
     const newResource = {
       ...resourceData,
-      userId: auth.currentUser.uid,
+      userId: currentUserId,
+      userCreated: currentUserId,
+      creatorName,
       createdAt: new Date().toISOString(),
-      userCreated: auth.currentUser.uid, // Store UID instead of email
-      creatorName, // Store the formatted name
       updatedAt: new Date().toISOString(),
-      updatedBy: auth.currentUser.uid
+      updatedBy: currentUserId
     };
 
-    console.log('Creating new resource:', newResource);
+    // Create the resource
     const docRef = await addDoc(collection(db, 'resources'), newResource);
     
-    const createdResource = {
+    return {
       id: docRef.id,
       ...newResource
-    } as FirebaseResource;
-    
-    console.log('Resource created successfully:', createdResource);
-    return createdResource;
+    };
   } catch (error) {
     console.error('Error creating resource:', error);
     throw error;
@@ -69,7 +69,9 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
       throw new Error('Resource ID is required for update');
     }
 
-    // Get the existing resource to check permissions
+    const currentUserId = auth.currentUser.uid;
+
+    // Get the existing resource
     const resourceRef = doc(db, 'resources', resourceData.id);
     const resourceDoc = await getDoc(resourceRef);
     
@@ -78,59 +80,38 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
     }
 
     const existingResource = resourceDoc.data() as FirebaseResource;
-    const currentUserId = auth.currentUser.uid;
 
-    // Check if user is the creator of the resource
-    if (existingResource.userCreated !== currentUserId) {
+    // Check if user has permission to update
+    const userDoc = await getDoc(doc(db, 'users', currentUserId));
+    const userData = userDoc.data();
+    const isAdmin = userData?.role === 'admin';
+
+    if (!isAdmin && existingResource.userId !== currentUserId) {
       throw new Error('You do not have permission to update this resource');
     }
 
-    // Get current user's data from Firestore
-    const userDoc = await getDoc(doc(db, 'users', currentUserId));
-    const userData = userDoc.data();
-    
-    // Get creator name from user data
-    let creatorName = 'Unknown User';
-    if (userData && (userData.firstName || userData.lastName)) {
-      creatorName = userData.firstName + " " + userData.lastName;
+    // Format creator name
+    let creatorName = existingResource.creatorName || 'Unknown User';
+    if (userData?.firstName || userData?.lastName) {
+      creatorName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
     }
 
-    // Validate and clean input data
-    const title = resourceData.title?.trim();
-    const description = resourceData.description?.trim();
-    const textFields = resourceData.textFields?.map(field => field?.trim()).filter(Boolean);
-    const numberOfTexts = resourceData.numberOfTexts;
-
-    // Validate all required fields
-    if (!title || !description || !textFields?.length || typeof numberOfTexts !== 'number') {
-      throw new Error('All fields are required and cannot be empty');
-    }
-
-    // Prepare update payload
+    // Prepare update data
     const updateData = {
-      title,
-      description,
-      numberOfTexts,
-      textFields,
+      ...resourceData,
       updatedAt: new Date().toISOString(),
       updatedBy: currentUserId,
-      creatorName: creatorName
+      creatorName
     };
 
-    console.log('Updating resource with data:', updateData);
-    
-    // Update document in Firestore
+    // Update the resource
     await updateDoc(resourceRef, updateData);
     
-    // Return updated resource with complete type information
-    const updatedResource: FirebaseResource = {
+    return {
       ...existingResource,
       ...updateData,
       id: resourceData.id
     };
-    
-    console.log('Resource updated successfully:', updatedResource);
-    return updatedResource;
   } catch (error) {
     console.error('Error updating resource:', error);
     throw error;
@@ -143,7 +124,25 @@ export const deleteResource = async (resourceId: string): Promise<void> => {
       throw new Error('Authentication required to delete resource');
     }
 
+    const currentUserId = auth.currentUser.uid;
     const resourceRef = doc(db, 'resources', resourceId);
+    const resourceDoc = await getDoc(resourceRef);
+    
+    if (!resourceDoc.exists()) {
+      throw new Error('Resource not found');
+    }
+
+    const resource = resourceDoc.data() as FirebaseResource;
+    
+    // Check if user has permission to delete
+    const userDoc = await getDoc(doc(db, 'users', currentUserId));
+    const userData = userDoc.data();
+    const isAdmin = userData?.role === 'admin';
+
+    if (!isAdmin && resource.userId !== currentUserId) {
+      throw new Error('You do not have permission to delete this resource');
+    }
+
     await deleteDoc(resourceRef);
   } catch (error) {
     console.error('Error deleting resource:', error);
@@ -156,10 +155,37 @@ export const fetchResources = async (): Promise<FirebaseResource[]> => {
     const resourcesRef = collection(db, 'resources');
     const resourcesSnapshot = await getDocs(resourcesRef);
     
-    return resourcesSnapshot.docs.map(doc => ({
+    // Get all resources
+    const resources = resourcesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as FirebaseResource));
+
+    // Update creator names
+    const resourcesWithCreatorNames = await Promise.all(
+      resources.map(async (resource) => {
+        try {
+          if (!resource.userCreated) {
+            return { ...resource, creatorName: 'Unknown User' };
+          }
+
+          const userDoc = await getDoc(doc(db, 'users', resource.userCreated));
+          const userData = userDoc.data();
+
+          let creatorName = 'Unknown User';
+          if (userData?.firstName || userData?.lastName) {
+            creatorName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+          }
+
+          return { ...resource, creatorName };
+        } catch (error) {
+          console.error('Error fetching creator data for resource:', resource.id, error);
+          return { ...resource, creatorName: 'Unknown User' };
+        }
+      })
+    );
+
+    return resourcesWithCreatorNames;
   } catch (error) {
     console.error('Error fetching resources:', error);
     throw error;
