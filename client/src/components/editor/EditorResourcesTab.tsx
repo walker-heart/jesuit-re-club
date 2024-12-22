@@ -37,46 +37,42 @@ export function EditorResourcesTab() {
       const allResources = await fetchResources();
       console.log('Fetched resources:', allResources);
       
-      // Filter resources based on user role
-      const userResources = allResources.filter(resource => {
-        const hasAdminAccess = user?.role === 'admin';
-        const hasEditorAccess = user?.role === 'editor' && resource.userId === auth.currentUser?.uid;
-        
-        console.log('Resource access check:', {
-          resourceId: resource.id,
-          resourceUserId: resource.userId,
-          currentUserId: auth.currentUser?.uid,
-          userRole: user?.role,
-          hasAdminAccess,
-          hasEditorAccess
-        });
-        
-        return hasAdminAccess || hasEditorAccess;
-      });
+      // Filter and fetch resources with creator names
+      const userResources = await Promise.all(
+        allResources
+          .filter(resource => {
+            const hasAdminAccess = user?.role === 'admin';
+            const hasEditorAccess = user?.role === 'editor' && resource.userId === auth.currentUser?.uid;
+            return hasAdminAccess || hasEditorAccess;
+          })
+          .map(async (resource) => {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', resource.userId));
+              const userData = userDoc.data();
+              
+              console.log('User data fetched:', {
+                resourceId: resource.id,
+                userId: resource.userId,
+                userData: userData
+              });
 
-      // Fetch creator names for each resource
-      const resourcesWithNames = await Promise.all(
-        userResources.map(async (resource) => {
-          try {
-            const userDoc = await getDoc(doc(db, 'users', resource.userId));
-            const userData = userDoc.data();
-            return {
-              ...resource,
-              creatorName: userData ? `${userData.firstName} ${userData.lastName}` : 'Unknown User'
-            };
-          } catch (error) {
-            console.error('Error fetching user data:', error);
-            return {
-              ...resource,
-              creatorName: 'Unknown User'
-            };
-          }
-        })
+              return {
+                ...resource,
+                creatorName: userData ? 
+                  `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Unknown User' 
+                  : 'Unknown User'
+              };
+            } catch (error) {
+              console.error('Error fetching creator data:', error);
+              return {
+                ...resource,
+                creatorName: 'Unknown User'
+              };
+            }
+          })
       );
 
-      setResources(resourcesWithNames);
-
-      console.log('Filtered resources:', userResources);
+      console.log('Processed resources:', userResources);
       setResources(userResources);
     } catch (error: any) {
       console.error('Error loading resources:', error);

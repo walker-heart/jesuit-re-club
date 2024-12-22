@@ -23,11 +23,18 @@ export const createResource = async (resourceData: Omit<FirebaseResource, 'id' |
       throw new Error('User ID is required to create a resource');
     }
 
+    // Get current user's data from Firestore
+    const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    const userData = userDoc.data();
+
     const newResource = {
       ...resourceData,
       userId: auth.currentUser.uid,
       createdAt: new Date().toISOString(),
       userCreated: auth.currentUser.email || 'Unknown user',
+      creatorName: userData ? 
+        `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Unknown User' 
+        : 'Unknown User',
       updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser.uid
     };
