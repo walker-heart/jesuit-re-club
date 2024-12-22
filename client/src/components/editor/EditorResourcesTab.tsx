@@ -5,7 +5,7 @@ import { BookOpen, Edit, Trash2 } from 'lucide-react'
 import { ResourceModal } from '../admin/ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
-import { auth } from '@/lib/firebase/firebase-config'
+import { auth, onAuthStateChanged } from '@/lib/firebase/firebase-config'
 import { fetchResources, deleteResource, type FirebaseResource, createResource, updateResource } from '@/lib/firebase/resources'
 
 export function EditorResourcesTab() {
@@ -19,7 +19,14 @@ export function EditorResourcesTab() {
 
   const loadResources = async () => {
     try {
+      console.log('Loading resources, auth state:', { 
+        currentUser: auth.currentUser?.email,
+        userState: user,
+        isAuthenticated: !!auth.currentUser 
+      });
+      
       if (!auth.currentUser) {
+        console.log('No authenticated user found');
         setError("User not authenticated");
         return;
       }
@@ -28,19 +35,28 @@ export function EditorResourcesTab() {
       setError(null);
       
       const allResources = await fetchResources();
+      console.log('Fetched resources:', allResources);
       
       // Filter resources based on user role
       const userResources = allResources.filter(resource => {
-        if (user?.role === 'admin') {
-          return true; // Admin can see all resources
-        }
-        if (user?.role === 'editor') {
-          const currentUserIdentifier = auth.currentUser?.email || auth.currentUser?.displayName;
-          return resource.userCreated === currentUserIdentifier;
-        }
-        return false;
+        const hasAdminAccess = user?.role === 'admin';
+        const hasEditorAccess = user?.role === 'editor' && (
+          resource.userCreated === auth.currentUser?.email || 
+          resource.userCreated === auth.currentUser?.displayName
+        );
+        
+        console.log('Resource access check:', {
+          resourceId: resource.id,
+          creator: resource.userCreated,
+          userRole: user?.role,
+          hasAdminAccess,
+          hasEditorAccess
+        });
+        
+        return hasAdminAccess || hasEditorAccess;
       });
 
+      console.log('Filtered resources:', userResources);
       setResources(userResources);
     } catch (error: any) {
       console.error('Error loading resources:', error);
@@ -62,7 +78,16 @@ export function EditorResourcesTab() {
   }, [auth.currentUser]);
 
   const canModifyResource = (resource: FirebaseResource) => {
+    console.log('Checking resource modification permissions:', {
+      resource,
+      currentUser: auth.currentUser?.email,
+      userRole: user?.role,
+      authState: !!auth.currentUser,
+      userState: !!user
+    });
+
     if (!auth.currentUser || !user) {
+      console.log('Permission denied: No authenticated user or user state');
       return false;
     }
 
@@ -71,15 +96,22 @@ export function EditorResourcesTab() {
     
     // Admin can modify all resources
     if (user.role === 'admin') {
+      console.log('Permission granted: User is admin');
       return true;
     }
     
     // Editor can only modify their own resources
     if (user.role === 'editor') {
-      return resource.userCreated === currentUserIdentifier;
+      const hasPermission = resource.userCreated === currentUserIdentifier;
+      console.log('Editor permission check:', {
+        hasPermission,
+        resourceCreator: resource.userCreated,
+        currentUser: currentUserIdentifier
+      });
+      return hasPermission;
     }
     
-    // Other roles cannot modify resources
+    console.log('Permission denied: User role not admin or editor');
     return false;
   };
 
