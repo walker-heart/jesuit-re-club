@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, BookOpen } from 'lucide-react'
+import { Calendar, BookOpen, Newspaper } from 'lucide-react'
 import { EditModal } from './EditModal'
 import { ResourceModal } from './ResourceModal'
 import { fetchEvents, deleteEvent, createEvent, updateEvent } from '@/lib/firebase/events'
@@ -9,6 +9,10 @@ import { fetchResources, deleteResource, createResource, updateResource, fetchUs
 import type { FirebaseEvent, FirebaseResource } from '@/lib/firebase/types'
 import { useToast } from "@/hooks/use-toast"
 import { auth } from '@/lib/firebase/firebase-config'
+import { fetchNews, deleteNews, createNews, updateNews } from '@/lib/firebase/news';
+import type { FirebaseNews } from '@/lib/firebase/types';
+import { NewsModal } from './NewsModal';
+
 
 export function PostsTab() {
   const { toast } = useToast();
@@ -16,18 +20,21 @@ export function PostsTab() {
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<FirebaseEvent | null>(null);
   const [editingResource, setEditingResource] = useState<FirebaseResource | null>(null);
+  const [editingNews, setEditingNews] = useState<FirebaseNews | null>(null);
   const [events, setEvents] = useState<FirebaseEvent[]>([]);
   const [resources, setResources] = useState<FirebaseResource[]>([]);
+  const [news, setNews] = useState<FirebaseNews[]>([]);
   const [users, setUsers] = useState<{ [key: string]: any }>({});
   const [isLoading, setIsLoading] = useState(true);
-
+  const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
   const loadData = async () => {
     try {
       setIsLoading(true);
       
-      const [eventsData, resourcesData] = await Promise.all([
+      const [eventsData, resourcesData, newsData] = await Promise.all([
         fetchEvents(),
-        fetchResources()
+        fetchResources(),
+        fetchNews()
       ]);
 
       // Fetch user data for each unique resource creator
@@ -63,6 +70,7 @@ export function PostsTab() {
 
       setEvents(sortedEvents);
       setResources(resourcesData);
+      setNews(newsData);
     } catch (error: any) {
       console.error('Error loading data:', error);
       toast({
@@ -129,8 +137,33 @@ export function PostsTab() {
     }
   };
 
+  const handleDeleteNews = async (id: string) => {
+    if (!id) return;
+
+    try {
+      if (!window.confirm('Are you sure you want to delete this news item? This action cannot be undone.')) {
+        return;
+      }
+
+      await deleteNews(id);
+      const updatedNews = await fetchNews();
+      setNews(updatedNews);
+      toast({
+        title: "Success",
+        description: "News item deleted successfully"
+      });
+    } catch (error: any) {
+      console.error('Error deleting news:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete news item",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Events Column */}
       <Card>
         <CardHeader>
@@ -251,129 +284,121 @@ export function PostsTab() {
         </CardContent>
       </Card>
 
-      {/* Edit Modal for Events */}
-      <EditModal
-        isOpen={!!editingEvent || isEventModalOpen}
+      {/* News Column */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center">
+                <Newspaper className="mr-2" />
+                News
+              </div>
+              <Button 
+                onClick={() => {
+                  setEditingNews(null);
+                  setIsNewsModalOpen(true);
+                }}
+                className="bg-[#003c71] hover:bg-[#002c51] text-white"
+              >
+                Create News
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 max-h-[600px] overflow-y-auto">
+            {isLoading ? (
+              <Card className="p-4">
+                <p className="text-gray-600">Loading news...</p>
+              </Card>
+            ) : news.length === 0 ? (
+              <Card className="p-4">
+                <p className="text-gray-600">No news found</p>
+              </Card>
+            ) : news.map((newsItem) => (
+              <Card key={newsItem.id} className="p-4 relative">
+                <h3 className="text-lg font-semibold text-[#003c71] mb-2">{newsItem.title}</h3>
+                <p className="text-sm text-gray-600 mb-2">{newsItem.content}</p>
+                <p className="text-sm text-gray-500 mb-2">Author: {newsItem.author}</p>
+                <p className="text-sm text-gray-500 mb-2">Date: {new Date(newsItem.date).toLocaleDateString()}</p>
+                <div className="absolute bottom-4 right-4 space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      setEditingNews(newsItem);
+                      setIsNewsModalOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => newsItem.id && handleDeleteNews(newsItem.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* News Modal */}
+      <NewsModal
+        isOpen={isNewsModalOpen}
         onClose={() => {
-          setEditingEvent(null);
-          setIsEventModalOpen(false);
+          setIsModalOpen(false);
+          setEditingNews(null);
         }}
-        onSave={async (eventData) => {
+        news={editingNews}
+        onSave={async (newsData) => {
           try {
             if (!auth.currentUser) {
-              throw new Error('User must be authenticated to save events');
+              throw new Error('You must be logged in to save news');
             }
 
-            if (!auth.currentUser) {
-              throw new Error('User must be authenticated to save events');
-            }
-
-            if (editingEvent) {
-              // Handle event update
-              if (!eventData || typeof eventData !== 'object') {
-                throw new Error('Invalid event data');
-              }
-
-              const updatePayload: FirebaseEvent = {
-                ...editingEvent,
-                title: (eventData as FirebaseEvent).title || '',
-                date: (eventData as FirebaseEvent).date || '',
-                time: (eventData as FirebaseEvent).time || '',
-                location: (eventData as FirebaseEvent).location || '',
-                speaker: (eventData as FirebaseEvent).speaker || '',
-                speakerDescription: (eventData as FirebaseEvent).speakerDescription || '',
-                agenda: (eventData as FirebaseEvent).agenda || '',
-                updatedAt: new Date().toISOString(),
-                updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
-              };
-              
-              await updateEvent(updatePayload);
-            } else {
-              // Handle new event creation
-              const newEventData: Omit<FirebaseEvent, 'id'> = {
-                title: '',
-                date: '',
-                time: '',
-                location: '',
-                speaker: '',
-                speakerDescription: '',
-                agenda: '',
-                userCreated: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
-              };
-              
-              await createEvent(newEventData);
-            }
-
-            await loadData();
-            toast({
-              title: "Success",
-              description: editingEvent ? "Event updated successfully" : "Event created successfully"
-            });
-          } catch (error: any) {
-            console.error('Error saving event:', error);
-            toast({
-              title: "Error",
-              description: error.message || "Failed to save event",
-              variant: "destructive"
-            });
-          } finally {
-            setEditingEvent(null);
-            setIsEventModalOpen(false);
-          }
-        }}
-        item={editingEvent}
-        type="event"
-      />
-
-      {/* Resource Modal for Resources */}
-      <ResourceModal
-        isOpen={!!editingResource || isResourceModalOpen}
-        onClose={() => {
-          setEditingResource(null);
-          setIsResourceModalOpen(false);
-        }}
-        resource={editingResource}
-        onSave={async (resourceData) => {
-          try {
-            if (!auth.currentUser) {
-              throw new Error('User must be authenticated to save resources');
-            }
-
-            if (editingResource) {
-              await updateResource({
-                ...resourceData as FirebaseResource,
-                id: editingResource.id,
+            if (editingNews) {
+              // Update existing news
+              await updateNews({
+                ...editingNews,
+                ...newsData,
                 updatedAt: new Date().toISOString(),
                 updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
               });
             } else {
-              await createResource({
-                ...resourceData as FirebaseResource,
+              // Create new news
+              await createNews({
+                ...newsData as FirebaseNews,
+                date: newsData.date || new Date().toISOString(),
+                userId: auth.currentUser.uid,
                 userCreated: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
-                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
+                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user',
+                isPublished: false
               });
             }
 
+            // Refresh the news list
             await loadData();
+
             toast({
               title: "Success",
-              description: editingResource ? "Resource updated successfully" : "Resource created successfully"
+              description: editingNews ? "News updated successfully" : "News created successfully"
             });
+            
+            setIsNewsModalOpen(false);
+            setEditingNews(null);
           } catch (error: any) {
-            console.error('Error saving resource:', error);
+            console.error('Error saving news:', error);
             toast({
               title: "Error",
-              description: error.message || "Failed to save resource",
+              description: error.message || "Failed to save news",
               variant: "destructive"
             });
-          } finally {
-            setEditingResource(null);
-            setIsResourceModalOpen(false);
           }
         }}
       />

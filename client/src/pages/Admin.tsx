@@ -102,11 +102,34 @@ export function Admin() {
   return (
     <>
       <div className="container mx-auto py-10">
-        <div className="grid grid-cols-3 gap-6">
-          <UsersTab />
-          <PostsTab />
-          <NewsTab />
-        </div>
+        <Tabs defaultValue="users" className="w-full">
+          <TabsList>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="posts">Posts</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
+          <TabsContent value="users">
+            <UsersTab />
+          </TabsContent>
+          <TabsContent value="posts">
+            <PostsTab />
+          </TabsContent>
+          <TabsContent value="files">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground">Coming soon...</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="activity">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground">Coming soon...</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </>
   );
