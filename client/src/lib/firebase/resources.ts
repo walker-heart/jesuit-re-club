@@ -39,8 +39,8 @@ export const createResource = async (resourceData: Omit<FirebaseResource, 'id' |
       ...resourceData,
       userId: auth.currentUser.uid,
       createdAt: new Date().toISOString(),
-      userCreated: auth.currentUser.email || 'Unknown user',
-      creatorName: creatorName,
+      userCreated: auth.currentUser.uid, // Store UID instead of email
+      creatorName, // Store the formatted name
       updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser.uid
     };

@@ -6,6 +6,8 @@ import { ResourceModal } from '../admin/ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth, onAuthStateChanged } from '@/lib/firebase/firebase-config'
+import { getDoc, doc } from 'firebase/firestore'
+import { db } from '@/lib/firebase/firebase-config'
 import { fetchResources, deleteResource, type FirebaseResource, createResource, updateResource } from '@/lib/firebase/resources'
 
 export function EditorResourcesTab() {
@@ -37,7 +39,6 @@ export function EditorResourcesTab() {
       const allResources = await fetchResources();
       console.log('Fetched resources:', allResources);
       
-      // Filter and fetch resources with creator names
       // Filter resources based on user role and fetch creator details
       const userResources = await Promise.all(
         allResources
@@ -48,26 +49,38 @@ export function EditorResourcesTab() {
           })
           .map(async (resource) => {
             try {
-              // Fetch user data for the resource creator
-              const userDoc = await getDoc(doc(db, 'users', resource.userId));
+              // Fetch user data for the resource creator using the userCreated field (which contains the UID)
+              const creatorId = resource.userCreated;
+              if (!creatorId || creatorId === 'Unknown user') {
+                return {
+                  ...resource,
+                  creatorName: 'Unknown User'
+                };
+              }
+
+              const userDoc = await getDoc(doc(db, 'users', creatorId));
               const userData = userDoc.data();
               
-              console.log('User data fetched for resource:', {
-                resourceId: resource.id,
-                userId: resource.userId,
-                userData: {
-                  firstName: userData?.firstName,
-                  lastName: userData?.lastName,
-                  name: userData?.name
-                }
-              });
-
-              let creatorName = 'Unknown User';
-              if (userData?.name) {
-                creatorName = userData.name;
-              } else if (userData?.firstName || userData?.lastName) {
-                creatorName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+              if (!userData) {
+                console.log('No user data found for creator:', creatorId);
+                return {
+                  ...resource,
+                  creatorName: 'Unknown User'
+                };
               }
+
+              // Construct creator name from firstName and lastName
+              const firstName = userData.firstName || '';
+              const lastName = userData.lastName || '';
+              const creatorName = `${firstName} ${lastName}`.trim() || 'Unknown User';
+
+              console.log('Creator data fetched:', {
+                resourceId: resource.id,
+                creatorId,
+                creatorName,
+                firstName,
+                lastName
+              });
 
               return {
                 ...resource,
@@ -278,7 +291,7 @@ export function EditorResourcesTab() {
               throw new Error('You do not have permission to save resources');
             }
 
-            const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
+            const currentUserIdentifier = auth.currentUser.uid;
             
             if (editingResource) {
               // Only allow editing if user has permission
