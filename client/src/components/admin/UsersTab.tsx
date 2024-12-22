@@ -172,7 +172,7 @@ export function UsersTab() {
                     firstName,
                     lastName,
                     username,
-                    role: 'user' as const,
+                    role: 'test' as const,
                   };
 
                   try {
