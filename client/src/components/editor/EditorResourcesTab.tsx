@@ -6,12 +6,13 @@ import { ResourceModal } from '../admin/ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/firebase-config'
-import { fetchResources, deleteResource, createResource, updateResource, type FirebaseResource } from '@/lib/firebase/resources'
+import { fetchResources, deleteResource, createResource, updateResource, fetchUser, type FirebaseResource } from '@/lib/firebase/resources'
 
 export function EditorResourcesTab() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [resources, setResources] = useState<FirebaseResource[]>([]);
+  const [users, setUsers] = useState<{ [key: string]: any }>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<FirebaseResource | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,6 +33,20 @@ export function EditorResourcesTab() {
       const isAdmin = user?.role === 'admin';
       const allResources = await fetchResources(!isAdmin);
       
+      // Fetch user data for each unique creator
+      const uniqueCreatorIds = Array.from(new Set(allResources.map(r => r.userId)));
+      const usersData: { [key: string]: any } = {};
+      
+      for (const userId of uniqueCreatorIds) {
+        if (userId) {
+          const userData = await fetchUser(userId);
+          if (userData) {
+            usersData[userId] = userData;
+          }
+        }
+      }
+      
+      setUsers(usersData);
       setResources(allResources);
     } catch (error: any) {
       console.error('Error loading resources:', error);
@@ -129,6 +144,7 @@ export function EditorResourcesTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {users[resource.userId] ? `${users[resource.userId].firstName || ''} ${users[resource.userId].lastName || ''}`.trim() || 'Unknown User' : 'Unknown User'}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
                   {user && (user.role === 'admin' || (user.role === 'editor' && resource.userId === auth.currentUser?.uid)) && (
                     <>
