@@ -80,11 +80,23 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
     }
 
     const existingResource = resourceDoc.data() as FirebaseResource;
-    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName || 'Unknown user';
+    const currentUserId = auth.currentUser.uid;
 
     // Check if user is the creator of the resource
-    if (existingResource.userCreated !== currentUserIdentifier) {
+    if (existingResource.userCreated !== currentUserId) {
       throw new Error('You do not have permission to update this resource');
+    }
+
+    // Get current user's data from Firestore
+    const userDoc = await getDoc(doc(db, 'users', currentUserId));
+    const userData = userDoc.data();
+    
+    // Get creator name from user data
+    let creatorName = 'Unknown User';
+    if (userData && (userData.firstName || userData.lastName)) {
+      const firstName = userData.firstName || '';
+      const lastName = userData.lastName || '';
+      creatorName = `${firstName} ${lastName}`.trim();
     }
 
     // Validate and clean input data
@@ -105,7 +117,8 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
       numberOfTexts,
       textFields,
       updatedAt: new Date().toISOString(),
-      updatedBy: currentUserIdentifier
+      updatedBy: currentUserId,
+      creatorName: creatorName
     };
 
     console.log('Updating resource with data:', updateData);

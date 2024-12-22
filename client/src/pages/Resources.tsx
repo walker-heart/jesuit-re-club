@@ -195,7 +195,7 @@ export function Resources() {
                         </h3>
                         <p className="text-gray-600">{resource.description}</p>
                         <div className="text-sm text-gray-500 mt-2">
-                          Created by: {resource.userCreated}
+                          Created by: {resource.creatorName || 'Unknown User'}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
