@@ -28,18 +28,11 @@ export function EditorResourcesTab() {
       setIsLoading(true);
       setError(null);
 
-      const allResources = await fetchResources();
-      console.log('Fetched resources:', allResources);
-
-      // Filter resources based on user role
-      const userResources = allResources.filter(resource => {
-        const hasAdminAccess = user?.role === 'admin';
-        const hasEditorAccess = user?.role === 'editor' && resource.userId === auth.currentUser?.uid;
-        return hasAdminAccess || hasEditorAccess;
-      });
-
-      console.log('Processed resources:', userResources);
-      setResources(userResources);
+      // Fetch only user's resources for editors, all resources for admins
+      const isAdmin = user?.role === 'admin';
+      const allResources = await fetchResources(!isAdmin);
+      
+      setResources(allResources);
     } catch (error: any) {
       console.error('Error loading resources:', error);
       setError(error.message || "Failed to load resources");
@@ -136,13 +129,6 @@ export function EditorResourcesTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
-                <p className="text-sm text-gray-500 mb-2">Created by: {resource.creatorName || 'Unknown User'}</p>
-                <p className="text-sm text-gray-500 mb-2">Created at: {new Date(resource.createdAt).toLocaleString()}</p>
-                {resource.updatedAt && (
-                  <p className="text-sm text-gray-500 mb-2">
-                    Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}
-                  </p>
-                )}
                 <div className="absolute bottom-4 right-4 space-x-2">
                   {user && (user.role === 'admin' || (user.role === 'editor' && resource.userId === auth.currentUser?.uid)) && (
                     <>
@@ -202,15 +188,23 @@ export function EditorResourcesTab() {
             }
 
             if (editingResource) {
-              // Update existing resource
               await updateResource({
                 ...editingResource,
                 ...resourceData,
-                id: editingResource.id
-              } as FirebaseResource);
+                userId: auth.currentUser.uid,
+                userCreated: auth.currentUser.uid
+              });
             } else {
-              // Create new resource
-              await createResource(resourceData as FirebaseResource);
+              await createResource({
+                ...resourceData,
+                userId: auth.currentUser.uid,
+                userCreated: auth.currentUser.uid,
+                numberOfTexts: resourceData.numberOfTexts || 0,
+                textFields: resourceData.textFields || [],
+                creatorName: user?.firstName && user?.lastName 
+                  ? `${user.firstName} ${user.lastName}`
+                  : auth.currentUser.email || 'Unknown User'
+              });
             }
 
             // Refresh resources list

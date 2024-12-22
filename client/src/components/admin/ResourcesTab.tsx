@@ -6,13 +6,14 @@ import { ResourceModal } from './ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/firebase-config'
-import { fetchResources, deleteResource, createResource, updateResource } from '@/lib/firebase/resources'
+import { fetchResources, deleteResource, createResource, updateResource, fetchUser } from '@/lib/firebase/resources'
 import type { FirebaseResource } from '@/lib/firebase/types'
 
 export function ResourcesTab() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [resources, setResources] = useState<FirebaseResource[]>([]);
+  const [users, setUsers] = useState<{ [key: string]: any }>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<FirebaseResource | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,9 +24,23 @@ export function ResourcesTab() {
       setIsLoading(true);
       setError(null); // Clear any previous errors
       
-      const fetchedResources = await fetchResources();
-      console.log('Fetched resources:', fetchedResources);
-      setResources(fetchedResources);
+      const allResources = await fetchResources();
+      
+      // Fetch user data for each unique creator
+      const uniqueCreatorIds = [...new Set(allResources.map(r => r.userId))];
+      const usersData: { [key: string]: any } = {};
+      
+      for (const userId of uniqueCreatorIds) {
+        if (userId) {
+          const userData = await fetchUser(userId);
+          if (userData) {
+            usersData[userId] = userData;
+          }
+        }
+      }
+      
+      setUsers(usersData);
+      setResources(allResources);
     } catch (error: any) {
       console.error('Error loading resources:', error);
       setError(error.message || "Failed to load resources");
@@ -128,7 +143,7 @@ export function ResourcesTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
-                <p className="text-sm text-gray-500 mb-2">Created by: {resource.creatorName || 'Unknown User'}</p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {users[resource.userId] ? `${users[resource.userId].firstName || ''} ${users[resource.userId].lastName || ''}`.trim() || 'Unknown User' : 'Unknown User'}</p>
                 <p className="text-sm text-gray-500 mb-2">Created at: {new Date(resource.createdAt).toLocaleString()}</p>
                 {resource.updatedAt && (
                   <p className="text-sm text-gray-500 mb-2">Last updated: {new Date(resource.updatedAt).toLocaleString()} by {resource.updatedBy}</p>

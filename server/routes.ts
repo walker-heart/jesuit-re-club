@@ -130,34 +130,44 @@ export function registerRoutes(app: Express): Server {
   // Resources routes for admin
   app.get("/api/admin/resources", verifyFirebaseToken, async (req: Request, res: Response) => {
     try {
-      console.log('Fetching resources for admin...');
       const resourcesRef = db.collection('resources');
       const resourcesSnapshot = await resourcesRef.get();
       
+      // Fetch all resources
       const resources = await Promise.all(resourcesSnapshot.docs.map(async doc => {
         const data = doc.data();
-        console.log('Resource data:', data);
-        
-        // Get creator's first and last name from Firestore
-        let creatorName = 'Unknown';
-        if (data.userId) {
-          try {
-            const userDoc = await db.collection('users').doc(data.userId).get();
-            const userData = userDoc.data();
-            if (userData?.firstName && userData?.lastName) {
-              creatorName = `${userData.firstName} ${userData.lastName}`;
-            } else if (userData?.firstName || userData?.lastName) {
-              creatorName = `${userData.firstName || ''}${userData.lastName || ''}`.trim();
+        let createdBy = 'Unknown User';
+
+        try {
+          // Only attempt to get user data if userCreated exists and is a string
+          if (data.userCreated && typeof data.userCreated === 'string') {
+            const userDoc = await db.collection('users').doc(data.userCreated).get();
+            
+            if (userDoc.exists) {
+              const userData = userDoc.data();
+              
+              // Check if userData exists and has the required fields
+              if (userData && 
+                  typeof userData === 'object' && 
+                  typeof userData.firstName === 'string' && 
+                  typeof userData.lastName === 'string') {
+                createdBy = `${userData.firstName} ${userData.lastName}`.trim();
+              } else if (userData && typeof userData.email === 'string') {
+                createdBy = userData.email;
+              }
             }
-          } catch (error) {
-            console.error('Error fetching user data for resource:', error);
           }
+        } catch (error) {
+          console.error(`Error fetching user data for resource ${doc.id}:`, error);
+          // Keep default "Unknown User" on error
         }
-        
+
+        // Return resource data with consistent naming
         return {
           id: doc.id,
           ...data,
-          creatorName
+          createdBy,
+          creatorName: createdBy // For backward compatibility
         };
       }));
       

@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ResourceModal } from "@/components/admin/ResourceModal";
 import { Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { fetchResources, deleteResource, updateResource, createResource, type FirebaseResource } from "@/lib/firebase/resources";
+import { fetchResources, deleteResource, updateResource, createResource, type FirebaseResource, fetchUser } from "@/lib/firebase/resources";
 import { auth } from "@/lib/firebase/firebase-config";
 
 // Use the FirebaseResource type directly
@@ -15,24 +15,38 @@ type Resource = FirebaseResource;
 export function Resources() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [users, setUsers] = useState<{ [key: string]: any }>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
-  const [resources, setResources] = useState<Resource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadResources = async () => {
       try {
         setIsLoading(true);
-        const fetchedResources = await fetchResources();
-        setResources(fetchedResources);
+        setError(null);
+        const allResources = await fetchResources();
+        
+        // Fetch user data for each unique creator
+        const uniqueCreatorIds = [...new Set(allResources.map(r => r.userId))];
+        const usersData: { [key: string]: any } = {};
+        
+        for (const userId of uniqueCreatorIds) {
+          if (userId) {
+            const userData = await fetchUser(userId);
+            if (userData) {
+              usersData[userId] = userData;
+            }
+          }
+        }
+        
+        setUsers(usersData);
+        setResources(allResources);
       } catch (error: any) {
-        console.error('Error fetching resources:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load resources",
-          variant: "destructive"
-        });
+        console.error('Error loading resources:', error);
+        setError(error.message || "Failed to load resources");
       } finally {
         setIsLoading(false);
       }
@@ -51,8 +65,7 @@ export function Resources() {
     
     // Editors can only modify their own resources
     if (user.role === 'editor') {
-      const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName;
-      return resource.userCreated === currentUserIdentifier;
+      return resource.userId === auth.currentUser.uid;
     }
     
     return false;
@@ -83,6 +96,7 @@ export function Resources() {
           description: resourceData.description || '',
           numberOfTexts: resourceData.numberOfTexts || 0,
           textFields: resourceData.textFields || [],
+          userId: auth.currentUser.uid,
           userCreated: currentUser,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -183,56 +197,50 @@ export function Resources() {
               </Card>
             ) : (
               resources.map((resource) => (
-                <Card
-                  key={resource.id}
-                  className="animate-fade-in card-hover"
-                >
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div>
-                        <h3 className="text-xl font-bold text-[#003c71] mb-2">
-                          {resource.title}
-                        </h3>
-                        <p className="text-gray-600">{resource.description}</p>
-                        <div className="text-sm text-gray-500 mt-2">
-                          Created by: {resource.creatorName || 'Unknown User'}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          asChild
-                          className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover shrink-0"
-                        >
-                          <Link href={`/resources/${resource.id}`}>View Details →</Link>
-                        </Button>
-                        {user && canModifyResource(resource) && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingResource(resource);
-                                setIsModalOpen(true);
-                              }}
-                              className="flex items-center gap-2"
-                            >
-                              <Edit className="h-4 w-4" />
-                              Edit
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => resource.id && handleDeleteResource(resource.id)}
-                              className="flex items-center gap-2"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                <Card key={resource.id} className="relative">
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold text-[#003c71] mb-2">
+                      {resource.title}
+                    </h3>
+                    <p className="text-gray-600 mb-4">{resource.description}</p>
+                    <div className="text-sm text-gray-500">
+                      Created by: {users[resource.userId] ? 
+                        `${users[resource.userId].firstName || ''} ${users[resource.userId].lastName || ''}`.trim() || 'Unknown User' 
+                        : 'Unknown User'}
                     </div>
-                  </CardContent>
+                    <div className="flex gap-2 items-center mt-4">
+                      <Button
+                        variant="secondary"
+                        asChild
+                        className="bg-[#C4B26E] hover:bg-[#b3a25f] text-white"
+                      >
+                        <Link href={`/resources/${resource.id}`}>View Details →</Link>
+                      </Button>
+                      {user && (user.role === 'admin' || resource.userId === auth.currentUser?.uid) && (
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setEditingResource(resource);
+                              setIsModalOpen(true);
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => resource.id && handleDeleteResource(resource.id)}
+                            className="flex items-center gap-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </Card>
               ))
             )}
