@@ -2,6 +2,8 @@ export interface User {
   uid: string;
   email: string | null;
   username: string;
+  firstName: string;
+  lastName: string;
   role: 'admin' | 'editor' | 'user';
 }
 

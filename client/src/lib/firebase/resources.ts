@@ -19,14 +19,17 @@ export const createResource = async (resourceData: Omit<FirebaseResource, 'id' |
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
-    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName || 'Unknown user';
+    if (!auth.currentUser?.uid) {
+      throw new Error('User ID is required to create a resource');
+    }
 
     const newResource = {
       ...resourceData,
+      userId: auth.currentUser.uid,
       createdAt: new Date().toISOString(),
-      userCreated: currentUserIdentifier,
+      userCreated: auth.currentUser.email || 'Unknown user',
       updatedAt: new Date().toISOString(),
-      updatedBy: currentUserIdentifier
+      updatedBy: auth.currentUser.uid
     };
 
     console.log('Creating new resource:', newResource);

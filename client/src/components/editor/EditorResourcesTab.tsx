@@ -40,14 +40,12 @@ export function EditorResourcesTab() {
       // Filter resources based on user role
       const userResources = allResources.filter(resource => {
         const hasAdminAccess = user?.role === 'admin';
-        const hasEditorAccess = user?.role === 'editor' && (
-          resource.userCreated === auth.currentUser?.email || 
-          resource.userCreated === auth.currentUser?.displayName
-        );
+        const hasEditorAccess = user?.role === 'editor' && resource.userId === auth.currentUser?.uid;
         
         console.log('Resource access check:', {
           resourceId: resource.id,
-          creator: resource.userCreated,
+          resourceUserId: resource.userId,
+          currentUserId: auth.currentUser?.uid,
           userRole: user?.role,
           hasAdminAccess,
           hasEditorAccess
@@ -55,6 +53,28 @@ export function EditorResourcesTab() {
         
         return hasAdminAccess || hasEditorAccess;
       });
+
+      // Fetch creator names for each resource
+      const resourcesWithNames = await Promise.all(
+        userResources.map(async (resource) => {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', resource.userId));
+            const userData = userDoc.data();
+            return {
+              ...resource,
+              creatorName: userData ? `${userData.firstName} ${userData.lastName}` : 'Unknown User'
+            };
+          } catch (error) {
+            console.error('Error fetching user data:', error);
+            return {
+              ...resource,
+              creatorName: 'Unknown User'
+            };
+          }
+        })
+      );
+
+      setResources(resourcesWithNames);
 
       console.log('Filtered resources:', userResources);
       setResources(userResources);
@@ -80,7 +100,7 @@ export function EditorResourcesTab() {
   const canModifyResource = (resource: FirebaseResource) => {
     console.log('Checking resource modification permissions:', {
       resource,
-      currentUser: auth.currentUser?.email,
+      currentUser: auth.currentUser?.uid,
       userRole: user?.role,
       authState: !!auth.currentUser,
       userState: !!user
@@ -90,9 +110,6 @@ export function EditorResourcesTab() {
       console.log('Permission denied: No authenticated user or user state');
       return false;
     }
-
-    // Get the current user identifier
-    const currentUserIdentifier = auth.currentUser.email || auth.currentUser.displayName || '';
     
     // Admin can modify all resources
     if (user.role === 'admin') {
@@ -102,11 +119,11 @@ export function EditorResourcesTab() {
     
     // Editor can only modify their own resources
     if (user.role === 'editor') {
-      const hasPermission = resource.userCreated === currentUserIdentifier;
+      const hasPermission = resource.userId === auth.currentUser.uid;
       console.log('Editor permission check:', {
         hasPermission,
-        resourceCreator: resource.userCreated,
-        currentUser: currentUserIdentifier
+        resourceUserId: resource.userId,
+        currentUserId: auth.currentUser.uid
       });
       return hasPermission;
     }
@@ -201,7 +218,7 @@ export function EditorResourcesTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
-                <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {resource.creatorName}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
                   {canModifyResource(resource) && (
                     <>

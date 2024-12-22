@@ -19,6 +19,8 @@ export interface FirebaseResource {
   description: string;
   numberOfTexts: number;
   textFields: string[];
+  userId: string;
+  creatorName?: string;
   userCreated: string;
   createdAt: string;
   updatedAt?: string;
