@@ -26,3 +26,20 @@ export interface FirebaseResource {
   updatedAt?: string;
   updatedBy?: string;
 }
+
+export interface FirebaseNews {
+  id?: string;
+  title: string;
+  content: string;
+  date: string;
+  author: string;
+  userId: string;
+  creatorName?: string;
+  userCreated: string;
+  createdAt: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  imageUrl?: string;
+  tags?: string[];
+  isPublished: boolean;
+}

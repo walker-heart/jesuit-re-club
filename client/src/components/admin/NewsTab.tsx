@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Newspaper, Edit, Trash2 } from 'lucide-react'
-import { NewsModal } from '../admin/NewsModal'
+import { NewsModal } from './NewsModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/firebase-config'
 import { fetchNews, deleteNews, createNews, updateNews } from '@/lib/firebase/news'
 import type { FirebaseNews } from '@/lib/firebase/types'
 
-export function EditorNewsTab() {
+export function NewsTab() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [news, setNews] = useState<FirebaseNews[]>([]);
@@ -20,17 +20,9 @@ export function EditorNewsTab() {
 
   const loadNews = async () => {
     try {
-      if (!auth.currentUser) {
-        console.log('No authenticated user found');
-        setError("User not authenticated");
-        return;
-      }
-
       setIsLoading(true);
       setError(null);
-
-      // Fetch only user's news for editors
-      const allNews = await fetchNews(true); // true for userOnly
+      const allNews = await fetchNews();
       setNews(allNews);
     } catch (error: any) {
       console.error('Error loading news:', error);
@@ -94,19 +86,17 @@ export function EditorNewsTab() {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center">
               <Newspaper className="mr-2" />
-              My News Articles
+              News
             </div>
-            {user && (user.role === 'admin' || user.role === 'editor') && (
-              <Button 
-                onClick={() => {
-                  setEditingNews(null);
-                  setIsModalOpen(true);
-                }}
-                className="bg-[#003c71] hover:bg-[#002c51] text-white"
-              >
-                Create News Article
-              </Button>
-            )}
+            <Button 
+              onClick={() => {
+                setEditingNews(null);
+                setIsModalOpen(true);
+              }}
+              className="bg-[#003c71] hover:bg-[#002c51] text-white"
+            >
+              Create News Article
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
