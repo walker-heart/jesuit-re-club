@@ -80,7 +80,7 @@ export function NewsTab() {
   };
 
   return (
-    <div className="grid grid-cols-3 gap-6">
+    <>
       <Card className="col-span-1">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -214,6 +214,6 @@ export function NewsTab() {
           }
         }}
       />
-    </div>
+    </>
   );
 }

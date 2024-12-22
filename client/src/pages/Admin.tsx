@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UsersTab } from '@/components/admin/UsersTab'
 import { PostsTab } from '@/components/admin/PostsTab'
-import { ActivityTab } from '@/components/admin/ActivityTab'
+import { NewsTab } from '@/components/admin/NewsTab'
 import { useAuth } from '@/hooks/useAuth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -102,22 +102,11 @@ export function Admin() {
   return (
     <>
       <div className="container mx-auto py-10">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="posts">Posts</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
-          <TabsContent value="users">
-            <UsersTab />
-          </TabsContent>
-          <TabsContent value="posts">
-            <PostsTab />
-          </TabsContent>
-          <TabsContent value="activity">
-            <ActivityTab />
-          </TabsContent>
-        </Tabs>
+        <div className="grid grid-cols-3 gap-6">
+          <UsersTab />
+          <PostsTab />
+          <NewsTab />
+        </div>
       </div>
     </>
   );
