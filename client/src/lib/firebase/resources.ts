@@ -30,9 +30,7 @@ export const createResource = async (resourceData: Omit<FirebaseResource, 'id' |
     // Get creator name from user data
     let creatorName = 'Unknown User';
     if (userData && (userData.firstName || userData.lastName)) {
-      const firstName = userData.firstName || '';
-      const lastName = userData.lastName || '';
-      creatorName = `${firstName} ${lastName}`.trim();
+      creatorName = userData.firstName + " " + userData.lastName;
     }
 
     const newResource = {
@@ -94,9 +92,7 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
     // Get creator name from user data
     let creatorName = 'Unknown User';
     if (userData && (userData.firstName || userData.lastName)) {
-      const firstName = userData.firstName || '';
-      const lastName = userData.lastName || '';
-      creatorName = `${firstName} ${lastName}`.trim();
+      creatorName = userData.firstName + " " + userData.lastName;
     }
 
     // Validate and clean input data
