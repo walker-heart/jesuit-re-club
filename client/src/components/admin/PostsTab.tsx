@@ -5,7 +5,7 @@ import { Calendar, BookOpen } from 'lucide-react'
 import { EditModal } from './EditModal'
 import { ResourceModal } from './ResourceModal'
 import { fetchEvents, deleteEvent, createEvent, updateEvent } from '@/lib/firebase/events'
-import { fetchResources, deleteResource, createResource, updateResource } from '@/lib/firebase/resources'
+import { fetchResources, deleteResource, createResource, updateResource, fetchUser } from '@/lib/firebase/resources'
 import type { FirebaseEvent, FirebaseResource } from '@/lib/firebase/types'
 import { useToast } from "@/hooks/use-toast"
 import { auth } from '@/lib/firebase/firebase-config'
@@ -18,6 +18,7 @@ export function PostsTab() {
   const [editingResource, setEditingResource] = useState<FirebaseResource | null>(null);
   const [events, setEvents] = useState<FirebaseEvent[]>([]);
   const [resources, setResources] = useState<FirebaseResource[]>([]);
+  const [users, setUsers] = useState<{ [key: string]: any }>({});
   const [isLoading, setIsLoading] = useState(true);
 
   const loadData = async () => {
@@ -28,6 +29,21 @@ export function PostsTab() {
         fetchEvents(),
         fetchResources()
       ]);
+
+      // Fetch user data for each unique resource creator
+      const uniqueCreatorIds = Array.from(new Set(resourcesData.map(r => r.userId)));
+      const usersData: { [key: string]: any } = {};
+      
+      for (const userId of uniqueCreatorIds) {
+        if (userId) {
+          const userData = await fetchUser(userId);
+          if (userData) {
+            usersData[userId] = userData;
+          }
+        }
+      }
+      
+      setUsers(usersData);
       
       // Sort events by date, putting upcoming events first
       const sortedEvents = eventsData.sort((a, b) => {
@@ -210,7 +226,9 @@ export function PostsTab() {
               <Card key={resource.id} className="p-4 relative">
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
-                <p className="text-sm text-gray-500 mb-2">Created by: {resource.userCreated}</p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {users[resource.userId] ? 
+                  `${users[resource.userId].firstName || ''} ${users[resource.userId].lastName || ''}`.trim() || 'Unknown User' 
+                  : 'Unknown User'}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
                   <Button 
                     variant="outline" 
