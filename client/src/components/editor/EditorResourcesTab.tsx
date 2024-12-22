@@ -38,6 +38,7 @@ export function EditorResourcesTab() {
       console.log('Fetched resources:', allResources);
       
       // Filter and fetch resources with creator names
+      // Filter resources based on user role and fetch creator details
       const userResources = await Promise.all(
         allResources
           .filter(resource => {
@@ -47,23 +48,33 @@ export function EditorResourcesTab() {
           })
           .map(async (resource) => {
             try {
+              // Fetch user data for the resource creator
               const userDoc = await getDoc(doc(db, 'users', resource.userId));
               const userData = userDoc.data();
               
-              console.log('User data fetched:', {
+              console.log('User data fetched for resource:', {
                 resourceId: resource.id,
                 userId: resource.userId,
-                userData: userData
+                userData: {
+                  firstName: userData?.firstName,
+                  lastName: userData?.lastName,
+                  name: userData?.name
+                }
               });
+
+              let creatorName = 'Unknown User';
+              if (userData?.name) {
+                creatorName = userData.name;
+              } else if (userData?.firstName || userData?.lastName) {
+                creatorName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+              }
 
               return {
                 ...resource,
-                creatorName: userData ? 
-                  `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Unknown User' 
-                  : 'Unknown User'
+                creatorName
               };
             } catch (error) {
-              console.error('Error fetching creator data:', error);
+              console.error('Error fetching creator data:', error, 'for resource:', resource.id);
               return {
                 ...resource,
                 creatorName: 'Unknown User'
@@ -214,7 +225,9 @@ export function EditorResourcesTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
-                <p className="text-sm text-gray-500 mb-2">Created by: {resource.creatorName}</p>
+                <p className="text-sm text-gray-500 mb-2">
+                  Created by: {resource.creatorName}
+                </p>
                 <div className="absolute bottom-4 right-4 space-x-2">
                   {canModifyResource(resource) && (
                     <>

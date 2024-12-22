@@ -83,6 +83,8 @@ export const registerWithEmail = async (email: string, password: string, usernam
       uid: userCredential.user.uid,
       email: userCredential.user.email,
       username,
+      firstName: username, // Initialize with username as default
+      lastName: '',
       role: 'user',
       createdAt: serverTimestamp()
     };

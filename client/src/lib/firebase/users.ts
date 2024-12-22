@@ -74,34 +74,26 @@ export const createUser = async (userData: Omit<FirebaseUser, 'uid'>) => {
     }
 
     const token = await auth.currentUser.getIdToken();
-    const response = await fetch('/api/admin/users/create', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(userData)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Failed to create user');
-    }
-
-    const { user } = await response.json();
-    const userRef = doc(db, 'users', user.uid);
+    
+    // Ensure firstName and lastName are present
+    const firstName = userData.firstName || userData.username || '';
+    const lastName = userData.lastName || '';
     
     const newUserData = {
       ...userData,
-      uid: user.uid,
-      createdAt: new Date().toLocaleString(),
-      updatedAt: new Date().toLocaleString()
+      firstName,
+      lastName,
+      name: `${firstName} ${lastName}`.trim(),
+      uid: auth.currentUser.uid,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     
     // Create the user document in Firestore
+    const userRef = doc(db, 'users', auth.currentUser.uid);
     await setDoc(userRef, newUserData);
 
+    console.log('Created user with data:', newUserData);
     return newUserData;
   } catch (error) {
     console.error('Error creating user:', error);
