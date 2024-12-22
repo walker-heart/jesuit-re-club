@@ -136,7 +136,7 @@ export function EditorResourcesTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
-                <p className="text-sm text-gray-500 mb-2">Created by: {resource.creatorName}</p>
+                <p className="text-sm text-gray-500 mb-2">Created by: {resource.creatorName || 'Unknown User'}</p>
                 <p className="text-sm text-gray-500 mb-2">Created at: {new Date(resource.createdAt).toLocaleString()}</p>
                 {resource.updatedAt && (
                   <p className="text-sm text-gray-500 mb-2">

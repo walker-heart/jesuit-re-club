@@ -138,12 +138,17 @@ export function registerRoutes(app: Express): Server {
         const data = doc.data();
         console.log('Resource data:', data);
         
-        // Get creator's display name from Firebase Auth
-        let creatorName = data.userCreated || 'Unknown';
-        if (data.userCreated && data.userCreated.includes('@')) {
+        // Get creator's first and last name from Firestore
+        let creatorName = 'Unknown';
+        if (data.userId) {
           try {
-            const userRecord = await admin.auth().getUserByEmail(data.userCreated);
-            creatorName = userRecord.displayName || data.userCreated;
+            const userDoc = await db.collection('users').doc(data.userId).get();
+            const userData = userDoc.data();
+            if (userData?.firstName && userData?.lastName) {
+              creatorName = `${userData.firstName} ${userData.lastName}`;
+            } else if (userData?.firstName || userData?.lastName) {
+              creatorName = `${userData.firstName || ''}${userData.lastName || ''}`.trim();
+            }
           } catch (error) {
             console.error('Error fetching user data for resource:', error);
           }
@@ -152,7 +157,7 @@ export function registerRoutes(app: Express): Server {
         return {
           id: doc.id,
           ...data,
-          userCreated: creatorName
+          creatorName
         };
       }));
       
