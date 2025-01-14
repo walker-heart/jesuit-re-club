@@ -9,8 +9,8 @@
     "test": "vitest",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "build": "vite build",
-    "start": "NODE_ENV=production node dist/index.js"
+    "build": "vite build --outDir dist/client && tsc server/*.ts --outDir dist/server && cp -r server/public dist/",
+    "start": "NODE_ENV=production node dist/server/index.js"
   },
   "keywords": [],
   "author": "",
