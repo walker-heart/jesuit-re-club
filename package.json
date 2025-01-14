@@ -4,8 +4,9 @@
   "description": "",
   "type": "module",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "dev": "NODE_OPTIONS='--import tsx' node server/index.ts",
+    "dev": "tsx watch server/index.ts",
     "test": "vitest",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
