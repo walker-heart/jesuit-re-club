@@ -38,28 +38,28 @@ export function Header() {
   return (
     <header className={headerClasses}>
       <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="text-2xl font-bold">
-          <Link href="/">Real Estate Club</Link>
-        </div>
+        <Link href="/">
+          <span className="text-2xl font-bold cursor-pointer">Real Estate Club</span>
+        </Link>
 
         <div className="flex gap-6 items-center">
           <Link href="/">
-            <span className="nav-link-hover">Home</span>
+            <span className="nav-link-hover cursor-pointer">Home</span>
           </Link>
           <Link href="/about">
-            <span className="nav-link-hover">About Us</span>
+            <span className="nav-link-hover cursor-pointer">About Us</span>
           </Link>
           <Link href="/events">
-            <span className="nav-link-hover">Events</span>
+            <span className="nav-link-hover cursor-pointer">Events</span>
           </Link>
           <Link href="/membership">
-            <span className="nav-link-hover">Membership</span>
+            <span className="nav-link-hover cursor-pointer">Membership</span>
           </Link>
           <Link href="/resources">
-            <span className="nav-link-hover">Resources</span>
+            <span className="nav-link-hover cursor-pointer">Resources</span>
           </Link>
           <Link href="/news">
-            <span className="nav-link-hover">News</span>
+            <span className="nav-link-hover cursor-pointer">News</span>
           </Link>
 
           {user?.role === 'admin' && (

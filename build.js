@@ -32,30 +32,26 @@ async function build() {
     // Copy necessary files
     console.log('Copying static files...');
     try {
-      // Copy client build to dist
-      await fs.cp('client/dist', 'dist/client', { recursive: true });
+      // Copy client build to dist/server/public for production serving
+      await fs.cp('dist/client', 'dist/server/public', { recursive: true });
 
-      // Copy public folder if it exists
-      await fs.cp('server/public', 'dist/server/public', { recursive: true }).catch(() => {
-        console.log('No public folder to copy, skipping...');
-      });
-
-      // Ensure schema file is copied
+      // Copy db folder for database schema
       await fs.cp('db', 'dist/db', { recursive: true }).catch(() => {
         console.log('No db folder to copy, skipping...');
       });
-    } catch (error) {
-      console.warn('Warning: Error copying static files:', error);
-    }
 
-    // Create a production .env file if it doesn't exist
-    const envPath = path.join(__dirname, '.env');
-    const prodEnvPath = path.join(__dirname, 'dist', '.env');
-    try {
-      await fs.access(envPath);
-      await fs.copyFile(envPath, prodEnvPath);
+      // Create a production .env file if it doesn't exist
+      const envPath = path.join(__dirname, '.env');
+      const prodEnvPath = path.join(__dirname, 'dist', '.env');
+      try {
+        await fs.access(envPath);
+        await fs.copyFile(envPath, prodEnvPath);
+      } catch (error) {
+        console.warn('No .env file found, skipping env file copy');
+      }
     } catch (error) {
-      console.warn('Warning: No .env file found, skipping env file copy');
+      console.error('Error copying files:', error);
+      throw error;
     }
 
     console.log('Build completed successfully!');

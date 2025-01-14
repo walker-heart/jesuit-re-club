@@ -45,8 +45,11 @@ app.use((req, res, next) => {
   next();
 });
 
+console.log('Starting server initialization...');
+
 (async () => {
   try {
+    console.log('Registering routes...');
     // Register API routes
     const server = registerRoutes(app);
 
@@ -62,13 +65,22 @@ app.use((req, res, next) => {
       });
     });
 
+    console.log('Setting up Vite or static file serving...');
     // Setup Vite or serve static files based on environment
     if (process.env.NODE_ENV === "development") {
       await setupVite(app, server);
     } else {
-      app.use(express.static(path.join(__dirname, '../client/dist')));
-      app.get('*', (_req, res) => {
-        res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+      // In production, serve static files from the client/dist directory
+      const clientDistPath = path.join(__dirname, '../client/dist');
+      console.log('Serving static files from:', clientDistPath);
+      app.use(express.static(clientDistPath));
+
+      // Handle client-side routing by serving index.html for all non-API routes
+      app.get('*', (req, res, next) => {
+        if (req.path.startsWith('/api')) {
+          return next();
+        }
+        res.sendFile(path.join(clientDistPath, 'index.html'));
       });
     }
 
