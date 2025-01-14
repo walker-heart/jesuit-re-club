@@ -4,14 +4,13 @@
   "description": "",
   "type": "module",
   "main": "index.js",
-  "type": "module",
   "scripts": {
-    "dev": "tsx watch server/index.ts",
+    "dev": "NODE_OPTIONS='--import tsx' node server/index.ts",
     "test": "vitest",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "build": "node build.js",
-    "start": "NODE_ENV=production node dist/server/index.js"
+    "build": "vite build",
+    "start": "NODE_ENV=production node dist/index.js"
   },
   "keywords": [],
   "author": "",
