@@ -1,13 +1,13 @@
 {
   "extends": "../tsconfig.json",
-  "include": ["./**/*", "../vite.config.ts"],
+  "include": ["./**/*"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "../dist/server",
-    "rootDir": "..",
+    "rootDir": ".",
     "noEmit": false,
     "allowImportingTsExtensions": false,
     "isolatedModules": true,
@@ -16,6 +16,11 @@
     "sourceMap": true,
     "composite": true,
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["client/src/*"],
+      "@db/*": ["db/*"]
+    }
   }
 }
