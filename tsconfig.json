@@ -1,3 +1,4 @@
+
 {
   "include": ["client/src/**/*", "db/**/*", "server/**/*"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
@@ -7,7 +8,7 @@
     "noEmit": true,
     "module": "ESNext",
     "strict": true,
-    "target": "ES2015",
+    "target": "ES2020",
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "preserve",
     "esModuleInterop": true,
