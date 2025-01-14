@@ -13,6 +13,7 @@ import { fetchNews, deleteNews, createNews, updateNews } from '@/lib/firebase/ne
 import type { FirebaseNews } from '@/lib/firebase/types';
 import { NewsModal } from './NewsModal';
 
+
 export function PostsTab() {
   const { toast } = useToast();
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -26,11 +27,10 @@ export function PostsTab() {
   const [users, setUsers] = useState<{ [key: string]: any }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
-
   const loadData = async () => {
     try {
       setIsLoading(true);
-
+      
       const [eventsData, resourcesData, newsData] = await Promise.all([
         fetchEvents(),
         fetchResources(),
@@ -40,7 +40,7 @@ export function PostsTab() {
       // Fetch user data for each unique resource creator
       const uniqueCreatorIds = Array.from(new Set(resourcesData.map(r => r.userId)));
       const usersData: { [key: string]: any } = {};
-
+      
       for (const userId of uniqueCreatorIds) {
         if (userId) {
           const userData = await fetchUser(userId);
@@ -49,22 +49,22 @@ export function PostsTab() {
           }
         }
       }
-
+      
       setUsers(usersData);
-
+      
       // Sort events by date, putting upcoming events first
-      const sortedEvents = eventsData.sort((a: any, b: any) => {
+      const sortedEvents = eventsData.sort((a, b) => {
         const dateA = new Date(`${a.date} ${a.time}`);
         const dateB = new Date(`${b.date} ${b.time}`);
         const now = new Date();
-
+        
         const aIsUpcoming = dateA >= now;
         const bIsUpcoming = dateB >= now;
-
+        
         if (aIsUpcoming === bIsUpcoming) {
           return aIsUpcoming ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
         }
-
+        
         return aIsUpcoming ? -1 : 1;
       });
 
@@ -89,7 +89,7 @@ export function PostsTab() {
 
   const handleDeleteEvent = async (id: string) => {
     if (!id) return;
-
+    
     try {
       if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
         return;
@@ -114,7 +114,7 @@ export function PostsTab() {
 
   const handleDeleteResource = async (id: string) => {
     if (!id) return;
-
+    
     try {
       if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
         return;
@@ -350,7 +350,7 @@ export function PostsTab() {
       <NewsModal
         isOpen={isNewsModalOpen}
         onClose={() => {
-          setIsNewsModalOpen(false);
+          setIsModalOpen(false);
           setEditingNews(null);
         }}
         news={editingNews}
@@ -389,7 +389,7 @@ export function PostsTab() {
               title: "Success",
               description: editingNews ? "News updated successfully" : "News created successfully"
             });
-
+            
             setIsNewsModalOpen(false);
             setEditingNews(null);
           } catch (error: any) {

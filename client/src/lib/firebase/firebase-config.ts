@@ -12,11 +12,8 @@ import {
   doc, 
   getDoc,
   setDoc,
-  type DocumentData,
   serverTimestamp,
-  deleteDoc,
-  enableIndexedDbPersistence,
-  CACHE_SIZE_UNLIMITED
+  deleteDoc
 } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 
@@ -42,26 +39,10 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase with better error handling
+// Initialize Firebase
 let app;
-let db;
 try {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-  db = getFirestore(app);
-
-  // Enable offline persistence
-  enableIndexedDbPersistence(db)
-    .then(() => {
-      console.log('Firebase offline persistence enabled');
-    })
-    .catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-      } else if (err.code === 'unimplemented') {
-        console.warn('The current browser does not support persistence.');
-      }
-    });
-
   console.log('Firebase initialized successfully');
 } catch (error) {
   console.error('Error initializing Firebase:', error);
@@ -69,14 +50,14 @@ try {
 }
 
 export const auth = getAuth(app);
-export const firestore = db;
+export const db = getFirestore(app);
 
 // Auth functions
 export const loginWithEmail = async (email: string, password: string): Promise<User> => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-
+    
     if (!userDoc.exists()) {
       throw new Error('User data not found');
     }
@@ -99,7 +80,7 @@ export const loginWithEmail = async (email: string, password: string): Promise<U
 export const registerWithEmail = async (email: string, password: string, username: string, firstName: string = '', lastName: string = ''): Promise<User> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-
+    
     const userData = {
       uid: userCredential.user.uid,
       email: userCredential.user.email,
@@ -109,9 +90,9 @@ export const registerWithEmail = async (email: string, password: string, usernam
       role: 'user',
       createdAt: serverTimestamp()
     };
-
+    
     await setDoc(doc(db, 'users', userCredential.user.uid), userData);
-
+    
     return {
       uid: userCredential.user.uid,
       email: userCredential.user.email,
@@ -141,9 +122,9 @@ export const getCurrentUser = async (firebaseUser: FirebaseUser): Promise<User |
     if (!userDoc.exists()) return null;
 
     const userData = userDoc.data();
-    const userRole = userData.role || 'user';
-    const firstName = userData.firstName || '';
-    const lastName = userData.lastName || '';
+    const userRole = userData?.role || 'user';
+    const firstName = userData?.firstName || '';
+    const lastName = userData?.lastName || '';
 
     // Store user role in localStorage for role-based permissions
     localStorage.setItem('userRole', userRole);
@@ -151,7 +132,7 @@ export const getCurrentUser = async (firebaseUser: FirebaseUser): Promise<User |
     return {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
-      username: userData.username || '',
+      username: userData?.username || '',
       firstName,
       lastName,
       role: userRole
