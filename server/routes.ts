@@ -10,6 +10,10 @@ dotenv.config();
 const initializeFirebaseAdmin = () => {
   console.log('Initializing Firebase Admin...');
   try {
+    if (admin.apps.length) {
+      return admin.firestore();
+    }
+
     // Check if required environment variables are present
     const requiredEnvVars = [
       'VITE_FIREBASE_PROJECT_ID',
