@@ -1,15 +1,18 @@
+
 {
   "extends": "../tsconfig.json",
   "include": ["src/**/*"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
-    "module": "ESNext",
+    "target": "ES2020",
+    "module": "ES2020",
     "moduleResolution": "bundler",
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "preserve",
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
+    "esModuleInterop": true,
     "types": ["node", "vite/client"]
   }
-} 
+}
