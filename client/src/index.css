@@ -2,80 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --background: #f8f9fa;
+  --navy: #003c71;
+  --gold: #b3a369;
+}
+
+body {
+  background-color: var(--background);
+}
+
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply bg-background text-foreground;
   }
 }
 
 @layer components {
-  .button-hover {
-    @apply transition-all duration-300 transform hover:scale-105;
+  .card {
+    @apply rounded-lg bg-white p-6 shadow;
   }
 
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  .input {
+    @apply rounded-md border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary;
   }
 
-  .nav-link-hover {
-    @apply transition-colors duration-300 text-[#003c71] hover:text-[#b3a369];
-  }
-}
-
-@layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  .table {
+    @apply w-full text-sm;
   }
 
-  .animate-slide-down {
-    animation: slideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  .table th {
+    @apply bg-gray-50 px-4 py-2 text-left font-medium text-gray-600;
   }
 
-  .animate-slide-up {
-    animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  .table td {
+    @apply border-t border-border px-4 py-2;
   }
 
-  .animate-scale {
-    animation: scale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  .table tr:hover {
+    @apply bg-gray-50;
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+  /* Modal styles */
+  .modal-backdrop {
+    @apply fixed inset-0 z-40 bg-black bg-opacity-50;
   }
 
-  @keyframes slideDown {
-    from { 
-      transform: translateY(-100%);
-      opacity: 0;
-    }
-    to { 
-      transform: translateY(0);
-      opacity: 1;
-    }
+  .modal-container {
+    @apply fixed inset-0 z-50 overflow-y-auto;
   }
 
-  @keyframes slideUp {
-    from { 
-      transform: translateY(0);
-      opacity: 1;
-    }
-    to { 
-      transform: translateY(-100%);
-      opacity: 0;
-    }
+  .modal {
+    @apply flex min-h-full items-center justify-center p-4 text-center;
   }
 
-  @keyframes scale {
-    from { transform: scale(0.95); }
-    to { transform: scale(1); }
+  .modal-content {
+    @apply w-full max-w-lg transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all;
   }
-}
 
-html {
-  scroll-behavior: smooth;
+  .modal-header {
+    @apply mb-4 flex items-center justify-between border-b border-border pb-4;
+  }
+
+  .modal-title {
+    @apply text-xl font-semibold text-foreground;
+  }
+
+  .modal-body {
+    @apply space-y-4 bg-white;
+  }
+
+  .modal-footer {
+    @apply mt-6 flex justify-end space-x-2 border-t border-border pt-4;
+  }
+
+  .form-group {
+    @apply mb-4;
+  }
+
+  .form-label {
+    @apply mb-1 block text-sm font-medium text-gray-700;
+  }
+
+  .form-input {
+    @apply w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary;
+  }
+
+  .form-textarea {
+    @apply w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary/90;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-white hover:bg-secondary/90;
+  }
+
+  .btn-outline {
+    @apply border border-primary text-primary hover:bg-primary hover:text-white;
+  }
+
+  .btn-destructive {
+    @apply bg-destructive text-white hover:bg-destructive/90;
+  }
 }
