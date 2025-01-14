@@ -14,12 +14,12 @@ export function Header() {
     const handleScroll = () => {
       const isHome = location === "/";
       const currentScrollY = window.scrollY;
-      
+
       if (isHome) {
         // Show header after minimal scroll
         setIsVisible(currentScrollY > 50);
       } else {
-        // On other pages, always show header
+        // Always show header on other pages
         setIsVisible(true);
       }
       setLastScrollY(currentScrollY);
@@ -40,8 +40,8 @@ export function Header() {
   return (
     <header className={headerClasses}>
       <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <Link href="/">
-          <a className="text-2xl font-bold">Real Estate Club</a>
+        <Link href="/" className="text-2xl font-bold">
+          Real Estate Club
         </Link>
 
         <div className="flex gap-6 items-center">
@@ -51,7 +51,7 @@ export function Header() {
           <Link href="/membership" className="nav-link-hover">Membership</Link>
           <Link href="/resources" className="nav-link-hover">Resources</Link>
           <Link href="/news" className="nav-link-hover">News</Link>
-          
+
           {user?.role === 'admin' && (
             <Link href="/admin">
               <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-[#003c71] button-hover">

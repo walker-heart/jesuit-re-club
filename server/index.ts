@@ -1,12 +1,33 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { registerRoutes } from "./routes.js";
+import { setupVite, serveStatic, log } from "./vite.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Essential middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// CORS configuration for development
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+}
+
+// Logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -23,13 +44,9 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        const logJson = JSON.stringify(capturedJsonResponse);
+        logLine += ` :: ${logJson.length > 100 ? logJson.slice(0, 100) + '...' : logJson}`;
       }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
       log(logLine);
     }
   });
@@ -39,30 +56,38 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    // Register API routes
     const server = registerRoutes(app);
 
+    // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      console.error('Server error:', err);
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
+      res.status(status).json({ 
+        success: false,
+        message,
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined 
+      });
     });
 
-    // importantly only setup vite in development and after
-    // setting up all the other routes so the catch-all route
-    // doesn't interfere with the other routes
-    if (app.get("env") === "development") {
+    // Setup Vite or serve static files based on environment
+    if (process.env.NODE_ENV === "development") {
       await setupVite(app, server);
     } else {
-      serveStatic(app);
+      app.use(express.static(path.join(__dirname, '../client/dist')));
+      app.get('*', (_req, res) => {
+        res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+      });
     }
 
-    // ALWAYS serve the app on port 5000
-    // this serves both the API and the client
-    const PORT = 5000;
-    server.listen(PORT, "0.0.0.0", () => {
-      log(`serving on port ${PORT}`);
+    // Start server
+    const PORT = parseInt(process.env.PORT || '5000', 10);
+    server.listen(PORT, () => {
+      log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);
+    process.exit(1);
   }
 })();

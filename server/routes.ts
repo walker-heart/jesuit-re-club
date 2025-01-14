@@ -38,7 +38,7 @@ const initializeFirebaseAdmin = () => {
   } catch (error: any) {
     console.error('Firebase Admin initialization error:', error);
     console.error('Please check your Firebase credentials and environment variables');
-    throw error; // Let the calling code handle the error
+    throw error;
   }
 };
 
