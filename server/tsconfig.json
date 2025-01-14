@@ -7,15 +7,15 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "../dist/server",
+    "rootDir": ".",
     "noEmit": false,
     "allowImportingTsExtensions": false,
     "isolatedModules": true,
-    "rootDir": ".",
-    "baseUrl": ".",
     "resolveJsonModule": true,
     "allowJs": true,
-    "paths": {
-      "*": ["../node_modules/*"]
-    }
+    "sourceMap": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true
   }
-} 
+}
