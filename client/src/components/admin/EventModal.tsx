@@ -4,13 +4,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useState, useEffect } from "react"
-import { createEvent, type FirebaseEvent } from "@/lib/firebase/events"
+import type { FirebaseEvent } from "@/lib/firebase/events"
 import { useToast } from "@/hooks/use-toast"
 
 interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEventCreated?: (event: FirebaseEvent) => void;
+  onEventCreated?: (event: Partial<FirebaseEvent>) => void;
   event?: FirebaseEvent | null;
 }
 
@@ -66,28 +66,8 @@ export function EventModal({ isOpen, onClose, onEventCreated, event }: EventModa
         throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
       }
 
-      let updatedEvent;
-      if (event) {
-        // Prepare event data with preserved fields
-        const eventData: FirebaseEvent = {
-          ...event,
-          ...formData,
-          id: event.id,
-          userCreated: event.userCreated,
-          createdAt: event.createdAt,
-          updatedAt: new Date().toISOString()
-        };
-        updatedEvent = eventData;
-      } else {
-        updatedEvent = await createEvent(formData);
-      }
-      
-      onEventCreated?.(updatedEvent);
-      
-      toast({
-        title: "Success",
-        description: event ? "Event updated successfully" : "Event created successfully"
-      });
+      // Pass the form data to the parent component
+      onEventCreated?.(formData);
       
       setFormData({
         title: '',

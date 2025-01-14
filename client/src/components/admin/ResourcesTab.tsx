@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Edit, Trash2 } from 'lucide-react'
+import { BookOpen, Edit, Trash2, Plus } from 'lucide-react'
 import { ResourceModal } from './ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
@@ -27,7 +27,7 @@ export function ResourcesTab() {
       const allResources = await fetchResources();
       
       // Fetch user data for each unique creator
-      const uniqueCreatorIds = [...new Set(allResources.map(r => r.userId))];
+      const uniqueCreatorIds = Array.from(new Set(allResources.map(r => r.userId)));
       const usersData: { [key: string]: any } = {};
       
       for (const userId of uniqueCreatorIds) {
@@ -119,7 +119,11 @@ export function ResourcesTab() {
               <BookOpen className="mr-2" />
               Resources
             </div>
-            <Button onClick={() => setIsModalOpen(true)}>
+            <Button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
               Create Resource
             </Button>
           </CardTitle>
@@ -243,6 +247,7 @@ export function ResourcesTab() {
                 description: (resourceData as FirebaseResource).description,
                 numberOfTexts: (resourceData as FirebaseResource).numberOfTexts,
                 textFields: (resourceData as FirebaseResource).textFields,
+                userId: auth.currentUser.uid,
                 userCreated: auth.currentUser.email || 'Unknown user',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),

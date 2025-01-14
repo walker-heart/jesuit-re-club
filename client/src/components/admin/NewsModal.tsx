@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,12 +20,12 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { type FirebaseNews } from "@/lib/firebase/types";
+import { useAuth } from "@/hooks/useAuth";
 
 const newsSchema = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Content is required"),
   date: z.string().min(1, "Date is required"),
-  author: z.string().min(1, "Author is required"),
   tags: z.string().optional(),
   imageUrl: z.string().optional(),
 });
@@ -39,23 +40,48 @@ interface NewsModalProps {
 }
 
 export function NewsModal({ isOpen, onClose, onSave, news }: NewsModalProps) {
+  const { user } = useAuth();
+  
   const form = useForm<NewsFormData>({
     resolver: zodResolver(newsSchema),
     defaultValues: {
-      title: news?.title || "",
-      content: news?.content || "",
-      date: news?.date || new Date().toISOString().split('T')[0],
-      author: news?.author || "",
-      tags: news?.tags?.join(", ") || "",
-      imageUrl: news?.imageUrl || "",
+      title: "",
+      content: "",
+      date: new Date().toISOString().split('T')[0],
+      tags: "",
+      imageUrl: "",
     },
   });
+
+  // Reset form when modal opens with news data or empty values
+  useEffect(() => {
+    if (isOpen) {
+      if (news) {
+        form.reset({
+          title: news.title || "",
+          content: news.content || "",
+          date: news.date ? new Date(news.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          tags: news.tags?.join(", ") || "",
+          imageUrl: news.imageUrl || "",
+        });
+      } else {
+        form.reset({
+          title: "",
+          content: "",
+          date: new Date().toISOString().split('T')[0],
+          tags: "",
+          imageUrl: "",
+        });
+      }
+    }
+  }, [isOpen, news, form]);
 
   const onSubmit = async (data: NewsFormData) => {
     try {
       const newsData: Partial<FirebaseNews> = {
         ...data,
-        tags: data.tags ? data.tags.split(",").map(tag => tag.trim()) : undefined,
+        creatorName: user?.displayName || user?.email || 'Unknown user',
+        tags: data.tags ? data.tags.split(",").map(tag => tag.trim()).filter(Boolean) : undefined,
       };
       await onSave(newsData);
       form.reset();
@@ -116,20 +142,6 @@ export function NewsModal({ isOpen, onClose, onSave, news }: NewsModalProps) {
                   <FormLabel>Date</FormLabel>
                   <FormControl>
                     <Input {...field} type="date" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="author"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Author</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Enter author name" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

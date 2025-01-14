@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Newspaper, Edit, Trash2 } from 'lucide-react'
+import { Newspaper, Edit, Trash2, Plus } from 'lucide-react'
 import { NewsModal } from '../admin/NewsModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/firebase-config'
 import { fetchNews, deleteNews, createNews, updateNews } from '@/lib/firebase/news'
-import type { FirebaseNews } from '@/lib/firebase/types'
+import type { FirebaseNews, UserInfo } from '@/lib/firebase/types'
 
 export function EditorNewsTab() {
   const { user } = useAuth();
@@ -16,25 +16,16 @@ export function EditorNewsTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<FirebaseNews | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const loadNews = async () => {
     try {
-      if (!auth.currentUser) {
-        console.log('No authenticated user found');
-        setError("User not authenticated");
-        return;
-      }
-
       setIsLoading(true);
-      setError(null);
-
-      // Fetch only user's news for editors
-      const allNews = await fetchNews(true); // true for userOnly
-      setNews(allNews);
+      const fetchedNews = await fetchNews();
+      // Filter news to only show those created by the current user
+      const userNews = fetchedNews.filter(newsItem => newsItem.userId === user?.uid);
+      setNews(userNews);
     } catch (error: any) {
       console.error('Error loading news:', error);
-      setError(error.message || "Failed to load news");
       toast({
         title: "Error",
         description: error.message || "Failed to load news",
@@ -46,10 +37,10 @@ export function EditorNewsTab() {
   };
 
   useEffect(() => {
-    if (auth.currentUser) {
+    if (user) {
       loadNews();
     }
-  }, [auth.currentUser]);
+  }, [user]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -65,6 +56,16 @@ export function EditorNewsTab() {
       // Find the news and check permissions
       const newsItem = news.find(n => n.id === id);
       if (!newsItem) return;
+
+      // Only allow deletion of own news
+      if (newsItem.userId !== auth.currentUser.uid) {
+        toast({
+          title: "Permission Denied",
+          description: "You can only delete your own news articles",
+          variant: "destructive"
+        });
+        return;
+      }
 
       if (!window.confirm('Are you sure you want to delete this news article? This action cannot be undone.')) {
         return;
@@ -87,6 +88,13 @@ export function EditorNewsTab() {
     }
   };
 
+  const formatUserName = (userInfo: UserInfo) => {
+    if (userInfo.firstName && userInfo.lastName) {
+      return `${userInfo.firstName} ${userInfo.lastName}`;
+    }
+    return userInfo.email;
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <Card className="col-span-1">
@@ -102,8 +110,9 @@ export function EditorNewsTab() {
                   setEditingNews(null);
                   setIsModalOpen(true);
                 }}
-                className="bg-[#003c71] hover:bg-[#002c51] text-white"
+                className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
               >
+                <Plus className="h-4 w-4" />
                 Create News Article
               </Button>
             )}
@@ -115,10 +124,6 @@ export function EditorNewsTab() {
               <Card className="p-4">
                 <p className="text-gray-600">Loading news...</p>
               </Card>
-            ) : error ? (
-              <Card className="p-4">
-                <p className="text-red-600">Error: {error}</p>
-              </Card>
             ) : news.length === 0 ? (
               <Card className="p-4">
                 <p className="text-gray-600">No news found</p>
@@ -127,17 +132,15 @@ export function EditorNewsTab() {
               <Card key={newsItem.id} className="p-4 relative">
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{newsItem.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{newsItem.content}</p>
-                <p className="text-sm text-gray-500 mb-2">Author: {newsItem.author}</p>
+                <p className="text-sm text-gray-500 mb-2">By: {formatUserName(newsItem.createdBy)}</p>
                 <p className="text-sm text-gray-500 mb-2">Date: {new Date(newsItem.date).toLocaleDateString()}</p>
                 {newsItem.tags && newsItem.tags.length > 0 && (
                   <p className="text-sm text-gray-500 mb-2">Tags: {newsItem.tags.join(', ')}</p>
                 )}
-                <p className="text-sm text-gray-500 mb-2">Created at: {new Date(newsItem.createdAt).toLocaleString()}</p>
-                {newsItem.updatedAt && (
-                  <p className="text-sm text-gray-500 mb-2">Last updated: {new Date(newsItem.updatedAt).toLocaleString()} by {newsItem.updatedBy}</p>
-                )}
+                <p className="text-sm text-gray-500 mb-2">Created: {new Date(newsItem.createdAt).toLocaleString()} by {formatUserName(newsItem.createdBy)}</p>
+                <p className="text-sm text-gray-500 mb-2">Last updated: {new Date(newsItem.updatedAt).toLocaleString()} by {formatUserName(newsItem.updatedBy)}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {user && (user.role === 'admin' || newsItem.userId === auth.currentUser?.uid) && (
+                  {user && newsItem.userId === auth.currentUser?.uid && (
                     <>
                       <Button 
                         variant="outline" 
@@ -178,7 +181,7 @@ export function EditorNewsTab() {
         news={editingNews}
         onSave={async (newsData) => {
           try {
-            if (!auth.currentUser) {
+            if (!auth.currentUser || !user) {
               throw new Error('You must be logged in to save news');
             }
 
@@ -187,19 +190,14 @@ export function EditorNewsTab() {
               await updateNews({
                 ...editingNews,
                 ...newsData,
-                updatedAt: new Date().toISOString(),
-                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
+                updatedAt: new Date().toISOString()
               });
             } else {
               // Create new news
+              const { createdBy, createdAt, updatedBy, updatedAt, ...newNewsData } = newsData;
               await createNews({
-                ...newsData as FirebaseNews,
-                date: newsData.date || new Date().toISOString(),
+                ...newNewsData,
                 userId: auth.currentUser.uid,
-                userCreated: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user',
                 isPublished: false
               });
             }

@@ -7,6 +7,7 @@ import { auth } from "@/lib/firebase/firebase-config";
 import { deleteEvent, type FirebaseEvent } from "@/lib/firebase/events";
 import { updateEventInFirebase } from "@/lib/firebase/eventUpdates";
 import { EditModal } from "@/components/admin/EditModal";
+import { formatTime } from "@/lib/utils/time";
 
 type EventDetails = FirebaseEvent & {
   id: string;
@@ -212,7 +213,7 @@ export function EventPage() {
                 </div>
                 <div className="flex items-center text-gray-600">
                   <Clock className="mr-2 h-5 w-5" />
-                  <span>{event.time}</span>
+                  <span>{formatTime(event.time)}</span>
                 </div>
                 <div className="flex items-center text-gray-600">
                   <MapPin className="mr-2 h-5 w-5" />

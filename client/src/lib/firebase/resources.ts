@@ -1,51 +1,61 @@
 import { collection, addDoc, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
-import { type FirebaseResource } from './types';
+import { type FirebaseResource, type UserInfo } from './types';
 
 export type { FirebaseResource };
 
-// Define interfaces for type safety
-interface UserData {
-  firstName?: string;
-  lastName?: string;
-  role?: string;
-}
-
-// Helper function to get creator name from user data
-const getCreatorName = async (userId: string): Promise<string> => {
+// Helper function to get user info
+const getUserInfo = async (userId: string): Promise<UserInfo> => {
   try {
-    if (!userId) return 'Unknown User';
+    if (!userId) {
+      return {
+        firstName: '',
+        lastName: '',
+        email: 'Unknown User'
+      };
+    }
     
     const snapshot = await getDoc(doc(db, 'users', userId));
-    if (!snapshot.exists()) return 'Unknown User';
+    if (!snapshot.exists()) {
+      return {
+        firstName: '',
+        lastName: '',
+        email: 'Unknown User'
+      };
+    }
     
-    const data = snapshot.data() as UserData;
-    return data.firstName && data.lastName
-      ? `${data.firstName} ${data.lastName}`
-      : auth.currentUser?.email || 'Unknown User';
+    const data = snapshot.data();
+    return {
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      email: data.email || 'Unknown User'
+    };
   } catch (error) {
-    console.error('Error getting creator name:', error);
-    return auth.currentUser?.email || 'Unknown User';
+    console.error('Error getting user info:', error);
+    return {
+      firstName: '',
+      lastName: '',
+      email: 'Unknown User'
+    };
   }
 };
 
-export const createResource = async (resourceData: Omit<FirebaseResource, 'id'>): Promise<FirebaseResource> => {
+export const createResource = async (resourceData: Omit<FirebaseResource, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy'>): Promise<FirebaseResource> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to create resource');
     }
 
     const currentUserId = auth.currentUser.uid;
-    const creatorName = await getCreatorName(currentUserId);
+    const userInfo = await getUserInfo(currentUserId);
 
     const newResource = {
       ...resourceData,
       userId: currentUserId,
-      userCreated: currentUserId,
-      creatorName,
+      createdBy: userInfo,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      updatedBy: currentUserId
+      updatedBy: userInfo,
+      updatedAt: new Date().toISOString()
     };
 
     const docRef = await addDoc(collection(db, 'resources'), newResource);
@@ -72,7 +82,7 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
 
     const currentUserId = auth.currentUser.uid;
     const snapshot = await getDoc(doc(db, 'users', currentUserId));
-    const userData = snapshot.exists() ? snapshot.data() as UserData : null;
+    const userData = snapshot.exists() ? snapshot.data() : null;
     
     const resourceSnapshot = await getDoc(doc(db, 'resources', resourceData.id));
     
@@ -88,11 +98,12 @@ export const updateResource = async (resourceData: FirebaseResource): Promise<Fi
       throw new Error('You do not have permission to update this resource');
     }
 
+    const userInfo = await getUserInfo(currentUserId);
+
     const updateData = {
       ...resourceData,
-      updatedAt: new Date().toISOString(),
-      updatedBy: currentUserId,
-      creatorName: await getCreatorName(resourceData.userCreated)
+      updatedBy: userInfo,
+      updatedAt: new Date().toISOString()
     };
 
     await updateDoc(doc(db, 'resources', resourceData.id), updateData);
@@ -115,7 +126,7 @@ export const deleteResource = async (resourceId: string): Promise<void> => {
 
     const currentUserId = auth.currentUser.uid;
     const snapshot = await getDoc(doc(db, 'users', currentUserId));
-    const userData = snapshot.exists() ? snapshot.data() as UserData : null;
+    const userData = snapshot.exists() ? snapshot.data() : null;
     
     const resourceSnapshot = await getDoc(doc(db, 'resources', resourceId));
     
@@ -140,19 +151,15 @@ export const deleteResource = async (resourceId: string): Promise<void> => {
 
 export const fetchResources = async (userOnly: boolean = false): Promise<FirebaseResource[]> => {
   try {
-    if (!auth.currentUser) {
-      throw new Error('Authentication required to fetch resources');
-    }
-
     const resourcesSnapshot = await getDocs(collection(db, 'resources'));
     let resources = resourcesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as FirebaseResource));
 
-    // Filter for user's resources if requested
-    if (userOnly) {
-      resources = resources.filter(resource => resource.userCreated === auth.currentUser?.uid);
+    // Filter for user's resources if requested and user is authenticated
+    if (userOnly && auth.currentUser) {
+      resources = resources.filter(resource => resource.userId === auth.currentUser?.uid);
     }
 
     // Sort by creation date, newest first

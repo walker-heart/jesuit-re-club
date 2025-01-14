@@ -1,19 +1,59 @@
-import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
-import type { FirebaseEvent } from './types';
+import type { FirebaseEvent, UserInfo } from './types';
 
-export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'createdAt' | 'userCreated'>): Promise<FirebaseEvent> => {
+// Helper function to get user info
+const getUserInfo = async (userId: string): Promise<UserInfo> => {
+  try {
+    if (!userId) {
+      return {
+        firstName: '',
+        lastName: '',
+        email: 'Unknown User'
+      };
+    }
+    
+    const snapshot = await getDoc(doc(db, 'users', userId));
+    if (!snapshot.exists()) {
+      return {
+        firstName: '',
+        lastName: '',
+        email: 'Unknown User'
+      };
+    }
+    
+    const data = snapshot.data();
+    return {
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      email: data.email || 'Unknown User'
+    };
+  } catch (error) {
+    console.error('Error getting user info:', error);
+    return {
+      firstName: '',
+      lastName: '',
+      email: 'Unknown User'
+    };
+  }
+};
+
+export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy'>): Promise<FirebaseEvent> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to create event');
     }
 
+    const currentUserId = auth.currentUser.uid;
+    const userInfo = await getUserInfo(currentUserId);
+
     const newEvent = {
       ...eventData,
+      userId: currentUserId,
+      createdBy: userInfo,
       createdAt: new Date().toISOString(),
-      userCreated: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user',
-      updatedAt: new Date().toISOString(),
-      updatedBy: auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown user'
+      updatedBy: userInfo,
+      updatedAt: new Date().toISOString()
     };
 
     const docRef = await addDoc(collection(db, 'events'), newEvent);
@@ -49,16 +89,18 @@ export const updateEvent = async (eventData: FirebaseEvent): Promise<FirebaseEve
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
+    const currentUserId = auth.currentUser.uid;
+    const userInfo = await getUserInfo(currentUserId);
+
     const eventRef = doc(db, 'events', eventData.id);
     const updateData = {
       ...eventData,
-      updatedAt: new Date().toISOString(),
-      updatedBy: auth.currentUser.displayName || auth.currentUser.email || 'Unknown user'
+      updatedBy: userInfo,
+      updatedAt: new Date().toISOString()
     };
 
     await updateDoc(eventRef, updateData);
     
-    // Return the updated event data
     return {
       ...updateData,
       id: eventData.id

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Newspaper, Edit, Trash2 } from 'lucide-react'
+import { Newspaper, Edit, Trash2, Plus } from 'lucide-react'
 import { NewsModal } from './NewsModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
@@ -93,8 +93,9 @@ export function NewsTab() {
                 setEditingNews(null);
                 setIsModalOpen(true);
               }}
-              className="bg-[#003c71] hover:bg-[#002c51] text-white"
+              className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
             >
+              <Plus className="h-4 w-4" />
               Create News Article
             </Button>
           </CardTitle>

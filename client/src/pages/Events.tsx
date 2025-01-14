@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   Calendar,
@@ -9,51 +9,52 @@ import {
   ChevronRight,
   Edit,
   Trash2,
+  Plus
 } from "lucide-react";
-import { EditModal } from "@/components/admin/EditModal";
-import { deleteEvent, fetchEvents, updateEvent, type FirebaseEvent } from "@/lib/firebase/events";
-import { auth } from "@/lib/firebase/firebase-config";
-import { useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { EventModal } from "@/components/admin/EventModal";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { fetchEvents, deleteEvent, updateEvent, createEvent, type FirebaseEvent } from "@/lib/firebase/events";
 
 // Use the FirebaseEvent type from firebase/events
-type Event = FirebaseEvent & {
-  description?: string; // Optional since we map speakerDescription to this
-};
+type Event = FirebaseEvent;
 
 export function Events() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [pastPage, setPastPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const upcomingRef = useRef<HTMLDivElement | null>(null);
   const pastRef = useRef<HTMLDivElement | null>(null);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
   const canModifyEvent = (event: Event) => {
-    if (!auth.currentUser) return false;
-    
-    const userRole = localStorage.getItem('userRole');
+    if (!user) return false;
     
     // Admins can modify all events
-    if (userRole === 'admin') return true;
+    if (user.role === 'admin') return true;
     
     // Editors can only modify their own events
-    if (userRole === 'editor') {
-      return event.userCreated === (auth.currentUser.displayName || auth.currentUser.email);
+    if (user.role === 'editor') {
+      return event.userId === user.uid;
     }
     
     return false;
   };
 
   const handleDelete = async (event: Event) => {
-    if (!event.id || !canModifyEvent(event)) return;
+    if (!event.id || !canModifyEvent(event)) {
+      toast({
+        title: "Permission Denied",
+        description: "You don't have permission to delete this event",
+        variant: "destructive"
+      });
+      return;
+    }
 
     if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
       return;
@@ -62,14 +63,14 @@ export function Events() {
     try {
       await deleteEvent(event.id);
       
+      // Refresh the events list
+      const fetchedEvents = await fetchEvents();
+      setAllEvents(fetchedEvents);
+      
       toast({
         title: "Success",
         description: "Event deleted successfully"
       });
-      
-      // Refresh the events list
-      const fetchedEvents = await fetchEvents();
-      setAllEvents(fetchedEvents);
     } catch (error: any) {
       console.error('Error deleting event:', error);
       toast({
@@ -80,56 +81,13 @@ export function Events() {
     }
   };
 
-  const handleEventUpdated = async (updatedEvent: FirebaseEvent) => {
-    try {
-      // Update the event in Firebase
-      await updateEvent(updatedEvent);
-      
-      // Refresh the events list
-      const fetchedEvents = await fetchEvents();
-      setAllEvents(fetchedEvents.map(event => ({
-        ...event,
-        description: event.speakerDescription
-      })));
-      
-      setIsEditModalOpen(false);
-      setEditingEvent(null);
-      
-      toast({
-        title: "Success",
-        description: "Event updated successfully"
-      });
-    } catch (error: any) {
-      console.error('Error updating event:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update event",
-        variant: "destructive"
-      });
-    }
-  };
-  const [newEvent, setNewEvent] = useState({
-    title: "",
-    description: "",
-    date: "",
-    time: "",
-    location: "",
-  });
-  const [allEvents, setAllEvents] = useState<Event[]>([]);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
-
   useEffect(() => {
     const loadEvents = async () => {
       try {
         setIsLoadingEvents(true);
         const events = await fetchEvents();
-        const formattedEvents = events.map((event: FirebaseEvent) => ({
-          ...event,
-          description: event.speakerDescription // Map speakerDescription to description for display
-        }));
-
-        setAllEvents(formattedEvents);
-      } catch (error) {
+        setAllEvents(events);
+      } catch (error: any) {
         console.error('Error fetching events:', error);
         toast({
           title: "Error",
@@ -142,7 +100,7 @@ export function Events() {
     };
 
     loadEvents();
-  }, [user]);
+  }, []);
 
   // Split events into upcoming and past based on date
   const currentDate = new Date();
@@ -171,39 +129,20 @@ export function Events() {
     indexOfLastPast,
   );
 
-  const totalUpcomingPages = Math.ceil(
-    allUpcomingEvents.length / eventsPerPage,
-  );
+  const totalUpcomingPages = Math.ceil(allUpcomingEvents.length / eventsPerPage);
   const totalPastPages = Math.ceil(allPastEvents.length / eventsPerPage);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      // TODO: Implement event creation logic
-      toast({
-        title: "Success",
-        description: "Event created successfully",
-      });
-      setNewEvent({
-        title: "",
-        description: "",
-        date: "",
-        time: "",
-        location: "",
-      });
-      setIsDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create event",
-        variant: "destructive",
-      });
-    }
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
   };
 
   const EventCard = ({ event, index }: { event: Event; index: number }) => (
     <Card
-      className="animate-fade-in card-hover"
+      className="overflow-hidden transition-all duration-300 hover:shadow-lg animate-fade-in card-hover relative"
       style={{ animationDelay: `${index * 100}ms` }}
     >
       <CardContent className="p-6">
@@ -219,31 +158,30 @@ export function Events() {
               </div>
               <div className="flex items-center">
                 <Clock className="mr-2 h-4 w-4" />
-                <span>{event.time}</span>
+                <span>{formatTime(event.time)}</span>
               </div>
               <div className="flex items-center">
                 <MapPin className="mr-2 h-4 w-4" />
                 <span>{event.location}</span>
               </div>
             </div>
-            <p className="text-gray-600">{event.description}</p>
+            <p className="text-gray-600">{event.speakerDescription}</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
               asChild
-              className="bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90 button-hover shrink-0"
+              className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
             >
-              <Link href={`/events/${event.id}`}>View Details →</Link>
+              <Link href={`/events/${event.id}`}>View Details</Link>
             </Button>
             {canModifyEvent(event) && (
               <>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={() => {
                     setEditingEvent(event);
-                    setIsEditModalOpen(true);
+                    setIsDialogOpen(true);
                   }}
                   className="flex items-center gap-2"
                 >
@@ -253,10 +191,7 @@ export function Events() {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleDelete(event);
-                  }}
+                  onClick={() => handleDelete(event)}
                   className="flex items-center gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -322,45 +257,26 @@ export function Events() {
   };
 
   return (
-    <div className="w-full py-4">
-      <div className="container px-4 mx-auto">
-        <div className="w-full flex justify-end mb-4">
-          {(['admin', 'editor'].includes(user?.role || '')) && (
-            <>
-              <EventModal 
-                isOpen={isDialogOpen}
-                onClose={() => setIsDialogOpen(false)}
-                onEventCreated={async (event) => {
-                  try {
-                    // Refresh the events list
-                    const fetchedEvents = await fetchEvents();
-                    setAllEvents(fetchedEvents.map(event => ({
-                      ...event,
-                      description: event.speakerDescription
-                    })));
-                    
-                    toast({
-                      title: "Success",
-                      description: "Event created successfully"
-                    });
-                    setIsDialogOpen(false);
-                  } catch (error: any) {
-                    console.error('Error refreshing events:', error);
-                    toast({
-                      title: "Error",
-                      description: "Event created but failed to refresh list",
-                      variant: "destructive"
-                    });
-                  }
-                }}
-              />
-              <Button 
-                onClick={() => setIsDialogOpen(true)}
-                className="bg-[#003c71] text-white hover:bg-[#002c61]"
-              >
-                Create New Event
-              </Button>
-            </>
+    <div className="w-full py-8 md:py-12 lg:py-8">
+      <div className="container px-4 md:px-6 mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-[#003c71] mb-2 animate-fade-in">Events</h1>
+            <p className="text-gray-600 animate-slide-up">
+              Stay updated with our upcoming and past events
+            </p>
+          </div>
+          {user && (user.role === 'admin' || user.role === 'editor') && (
+            <Button 
+              onClick={() => {
+                setEditingEvent(null);
+                setIsDialogOpen(true);
+              }}
+              className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Create Event
+            </Button>
           )}
         </div>
 
@@ -405,20 +321,68 @@ export function Events() {
             )}
           </section>
         </div>
-      </div>
 
-      {/* Edit Modal */}
-      {editingEvent && (
         <EventModal
-          isOpen={isEditModalOpen}
+          isOpen={isDialogOpen}
           onClose={() => {
-            setIsEditModalOpen(false);
+            setIsDialogOpen(false);
             setEditingEvent(null);
           }}
-          onEventCreated={handleEventUpdated}
           event={editingEvent}
+          onEventCreated={async (eventData) => {
+            try {
+              if (!user) {
+                throw new Error('You must be logged in to manage events');
+              }
+
+              if (editingEvent) {
+                // Update existing event
+                await updateEvent({
+                  ...editingEvent,
+                  ...eventData,
+                  updatedAt: new Date().toISOString(),
+                  updatedBy: user.firstName && user.lastName 
+                    ? `${user.firstName} ${user.lastName}`
+                    : user.email || 'Unknown user'
+                });
+              } else {
+                // Create new event
+                await createEvent({
+                  ...eventData,
+                  userId: user.uid,
+                  userCreated: user.firstName && user.lastName 
+                    ? `${user.firstName} ${user.lastName}`
+                    : user.email || 'Unknown user',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  updatedBy: user.firstName && user.lastName 
+                    ? `${user.firstName} ${user.lastName}`
+                    : user.email || 'Unknown user'
+                });
+              }
+
+              // Refresh the events list
+              const fetchedEvents = await fetchEvents();
+              setAllEvents(fetchedEvents);
+              
+              toast({
+                title: "Success",
+                description: editingEvent ? "Event updated successfully" : "Event created successfully"
+              });
+              
+              setIsDialogOpen(false);
+              setEditingEvent(null);
+            } catch (error: any) {
+              console.error('Error saving event:', error);
+              toast({
+                title: "Error",
+                description: error.message || "Failed to save event",
+                variant: "destructive"
+              });
+            }
+          }}
         />
-      )}
+      </div>
     </div>
   );
 }

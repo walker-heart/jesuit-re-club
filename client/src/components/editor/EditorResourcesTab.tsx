@@ -1,56 +1,31 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Edit, Trash2 } from 'lucide-react'
+import { BookOpen, Edit, Trash2, Plus } from 'lucide-react'
 import { ResourceModal } from '../admin/ResourceModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/firebase-config'
-import { fetchResources, deleteResource, createResource, updateResource, fetchUser, type FirebaseResource } from '@/lib/firebase/resources'
+import { fetchResources, deleteResource, createResource, updateResource } from '@/lib/firebase/resources'
+import type { FirebaseResource, UserInfo } from '@/lib/firebase/types'
 
 export function EditorResourcesTab() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [resources, setResources] = useState<FirebaseResource[]>([]);
-  const [users, setUsers] = useState<{ [key: string]: any }>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<FirebaseResource | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const loadResources = async () => {
     try {
-      if (!auth.currentUser) {
-        console.log('No authenticated user found');
-        setError("User not authenticated");
-        return;
-      }
-
       setIsLoading(true);
-      setError(null);
-
-      // Fetch only user's resources for editors, all resources for admins
-      const isAdmin = user?.role === 'admin';
-      const allResources = await fetchResources(!isAdmin);
-      
-      // Fetch user data for each unique creator
-      const uniqueCreatorIds = Array.from(new Set(allResources.map(r => r.userId)));
-      const usersData: { [key: string]: any } = {};
-      
-      for (const userId of uniqueCreatorIds) {
-        if (userId) {
-          const userData = await fetchUser(userId);
-          if (userData) {
-            usersData[userId] = userData;
-          }
-        }
-      }
-      
-      setUsers(usersData);
-      setResources(allResources);
+      const fetchedResources = await fetchResources();
+      // Filter resources to only show those created by the current user
+      const userResources = fetchedResources.filter(resource => resource.userId === user?.uid);
+      setResources(userResources);
     } catch (error: any) {
       console.error('Error loading resources:', error);
-      setError(error.message || "Failed to load resources");
       toast({
         title: "Error",
         description: error.message || "Failed to load resources",
@@ -62,14 +37,14 @@ export function EditorResourcesTab() {
   };
 
   useEffect(() => {
-    if (auth.currentUser) {
+    if (user) {
       loadResources();
     }
-  }, [auth.currentUser]);
+  }, [user]);
 
   const handleDelete = async (id: string) => {
     try {
-      if (!auth.currentUser || !user) {
+      if (!auth.currentUser) {
         toast({
           title: "Error",
           description: "You must be logged in to delete resources",
@@ -81,6 +56,16 @@ export function EditorResourcesTab() {
       // Find the resource and check permissions
       const resource = resources.find(r => r.id === id);
       if (!resource) return;
+
+      // Only allow deletion of own resources
+      if (resource.userId !== auth.currentUser.uid) {
+        toast({
+          title: "Permission Denied",
+          description: "You can only delete your own resources",
+          variant: "destructive"
+        });
+        return;
+      }
 
       if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
         return;
@@ -103,6 +88,13 @@ export function EditorResourcesTab() {
     }
   };
 
+  const formatUserName = (userInfo: UserInfo) => {
+    if (userInfo.firstName && userInfo.lastName) {
+      return `${userInfo.firstName} ${userInfo.lastName}`;
+    }
+    return userInfo.email;
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <Card className="col-span-1">
@@ -118,8 +110,9 @@ export function EditorResourcesTab() {
                   setEditingResource(null);
                   setIsModalOpen(true);
                 }}
-                className="bg-[#003c71] hover:bg-[#002c51] text-white"
+                className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
               >
+                <Plus className="h-4 w-4" />
                 Create Resource
               </Button>
             )}
@@ -131,10 +124,6 @@ export function EditorResourcesTab() {
               <Card className="p-4">
                 <p className="text-gray-600">Loading resources...</p>
               </Card>
-            ) : error ? (
-              <Card className="p-4">
-                <p className="text-red-600">Error: {error}</p>
-              </Card>
             ) : resources.length === 0 ? (
               <Card className="p-4">
                 <p className="text-gray-600">No resources found</p>
@@ -144,9 +133,10 @@ export function EditorResourcesTab() {
                 <h3 className="text-lg font-semibold text-[#003c71] mb-2">{resource.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
                 <p className="text-sm text-gray-500 mb-2">Number of sections: {resource.numberOfTexts}</p>
-                <p className="text-sm text-gray-500 mb-2">Created by: {users[resource.userId] ? `${users[resource.userId].firstName || ''} ${users[resource.userId].lastName || ''}`.trim() || 'Unknown User' : 'Unknown User'}</p>
+                <p className="text-sm text-gray-500 mb-2">Created: {new Date(resource.createdAt).toLocaleString()} by {formatUserName(resource.createdBy)}</p>
+                <p className="text-sm text-gray-500 mb-2">Last updated: {new Date(resource.updatedAt).toLocaleString()} by {formatUserName(resource.updatedBy)}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  {user && (user.role === 'admin' || (user.role === 'editor' && resource.userId === auth.currentUser?.uid)) && (
+                  {user && resource.userId === auth.currentUser?.uid && (
                     <>
                       <Button 
                         variant="outline" 
@@ -187,50 +177,36 @@ export function EditorResourcesTab() {
         resource={editingResource}
         onSave={async (resourceData) => {
           try {
-            if (!auth.currentUser) {
+            if (!auth.currentUser || !user) {
               throw new Error('You must be logged in to save resources');
             }
 
-            if (!user || !['admin', 'editor'].includes(user.role)) {
-              throw new Error('You do not have permission to save resources');
-            }
-
-            // Ensure required fields are present
-            const requiredFields = ['title', 'description', 'numberOfTexts', 'textFields'];
-            const missingFields = requiredFields.filter(field => !resourceData[field as keyof typeof resourceData]);
-
-            if (missingFields.length > 0) {
-              throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-            }
-
             if (editingResource) {
+              // Update existing resource
               await updateResource({
                 ...editingResource,
                 ...resourceData,
-                userId: auth.currentUser.uid,
-                userCreated: auth.currentUser.uid
+                updatedAt: new Date().toISOString()
               });
             } else {
+              // Create new resource
+              const { createdBy, createdAt, updatedBy, updatedAt, ...newResourceData } = resourceData;
               await createResource({
-                ...resourceData,
+                ...newResourceData,
                 userId: auth.currentUser.uid,
-                userCreated: auth.currentUser.uid,
                 numberOfTexts: resourceData.numberOfTexts || 0,
-                textFields: resourceData.textFields || [],
-                creatorName: user?.firstName && user?.lastName 
-                  ? `${user.firstName} ${user.lastName}`
-                  : auth.currentUser.email || 'Unknown User'
+                textFields: resourceData.textFields || []
               });
             }
 
-            // Refresh resources list
+            // Refresh the resources list
             await loadResources();
 
             toast({
               title: "Success",
               description: editingResource ? "Resource updated successfully" : "Resource created successfully"
             });
-
+            
             setIsModalOpen(false);
             setEditingResource(null);
           } catch (error: any) {

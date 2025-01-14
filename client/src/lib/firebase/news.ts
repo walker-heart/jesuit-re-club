@@ -1,42 +1,59 @@
 import { collection, addDoc, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
-import { type FirebaseNews } from './types';
+import { type FirebaseNews, type UserInfo } from './types';
 
-// Helper function to get creator name from user data
-const getCreatorName = async (userId: string): Promise<string> => {
+// Helper function to get user info
+const getUserInfo = async (userId: string): Promise<UserInfo> => {
   try {
-    if (!userId) return 'Unknown User';
+    if (!userId) {
+      return {
+        firstName: '',
+        lastName: '',
+        email: 'Unknown User'
+      };
+    }
     
     const snapshot = await getDoc(doc(db, 'users', userId));
-    if (!snapshot.exists()) return 'Unknown User';
+    if (!snapshot.exists()) {
+      return {
+        firstName: '',
+        lastName: '',
+        email: 'Unknown User'
+      };
+    }
     
     const data = snapshot.data();
-    return data.firstName && data.lastName
-      ? `${data.firstName} ${data.lastName}`
-      : auth.currentUser?.email || 'Unknown User';
+    return {
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      email: data.email || 'Unknown User'
+    };
   } catch (error) {
-    console.error('Error getting creator name:', error);
-    return auth.currentUser?.email || 'Unknown User';
+    console.error('Error getting user info:', error);
+    return {
+      firstName: '',
+      lastName: '',
+      email: 'Unknown User'
+    };
   }
 };
 
-export const createNews = async (newsData: Omit<FirebaseNews, 'id'>): Promise<FirebaseNews> => {
+export const createNews = async (newsData: Omit<FirebaseNews, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy'>): Promise<FirebaseNews> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to create news');
     }
 
     const currentUserId = auth.currentUser.uid;
-    const creatorName = await getCreatorName(currentUserId);
+    const userInfo = await getUserInfo(currentUserId);
 
     const newNews = {
       ...newsData,
       userId: currentUserId,
-      userCreated: currentUserId,
-      creatorName,
+      createdBy: userInfo,
       createdAt: new Date().toISOString(),
+      updatedBy: userInfo,
       updatedAt: new Date().toISOString(),
-      updatedBy: currentUserId,
       isPublished: false // Default to unpublished
     };
 
@@ -80,11 +97,12 @@ export const updateNews = async (newsData: FirebaseNews): Promise<FirebaseNews> 
       throw new Error('You do not have permission to update this news');
     }
 
+    const userInfo = await getUserInfo(currentUserId);
+
     const updateData = {
       ...newsData,
-      updatedAt: new Date().toISOString(),
-      updatedBy: currentUserId,
-      creatorName: await getCreatorName(newsData.userCreated)
+      updatedBy: userInfo,
+      updatedAt: new Date().toISOString()
     };
 
     await updateDoc(doc(db, 'news', newsData.id), updateData);
@@ -132,19 +150,15 @@ export const deleteNews = async (newsId: string): Promise<void> => {
 
 export const fetchNews = async (userOnly: boolean = false): Promise<FirebaseNews[]> => {
   try {
-    if (!auth.currentUser) {
-      throw new Error('Authentication required to fetch news');
-    }
-
     const newsSnapshot = await getDocs(collection(db, 'news'));
     let news = newsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as FirebaseNews));
 
-    // Filter for user's news if requested
-    if (userOnly) {
-      news = news.filter(newsItem => newsItem.userCreated === auth.currentUser?.uid);
+    // Filter for user's news if requested and user is authenticated
+    if (userOnly && auth.currentUser) {
+      news = news.filter(newsItem => newsItem.userId === auth.currentUser?.uid);
     }
 
     // Sort by date, newest first

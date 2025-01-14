@@ -4,6 +4,10 @@ import { PhotoGallery } from "@/components/PhotoGallery";
 import { ArrowDown, ArrowRight, Calendar, Newspaper, UserPlus } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
+import { fetchNews } from "@/lib/firebase/news";
+import { fetchEvents } from "@/lib/firebase/events";
+import type { FirebaseNews, FirebaseEvent } from "@/lib/firebase/types";
 
 interface OfferCardProps {
   title: string;
@@ -17,11 +21,45 @@ interface OfferCardProps {
 
 export function Home() {
   const { user } = useAuth();
+  const [latestNews, setLatestNews] = useState<FirebaseNews | null>(null);
+  const [upcomingEvent, setUpcomingEvent] = useState<FirebaseEvent | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Fetch latest news
+        const news = await fetchNews();
+        if (news.length > 0) {
+          setLatestNews(news[0]); // news is already sorted by date, newest first
+        }
+
+        // Fetch upcoming events
+        const events = await fetchEvents();
+        const now = new Date();
+        const futureEvents = events.filter(event => new Date(event.date) > now);
+        if (futureEvents.length > 0) {
+          // Sort by date and get the closest upcoming event
+          futureEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          setUpcomingEvent(futureEvents[0]);
+        }
+      } catch (error) {
+        console.error('Error loading home page data:', error);
+      }
+    };
+
+    loadData();
+  }, []);
+
   const scrollToContent = () => {
     window.scrollTo({
       top: window.innerHeight,
       behavior: 'smooth'
     });
+  };
+
+  const formatEventDate = (date: string) => {
+    const eventDate = new Date(date);
+    return `${eventDate.toLocaleDateString()} | ${eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   };
 
   return (
@@ -60,9 +98,32 @@ export function Home() {
               What We Offer
             </h2>
             {([
-              { title: "Upcoming Event", content: "Guest Speaker: John Doe", date: "May 15, 2024 | 4:00 PM", description: "Join us for an insightful talk on commercial real estate trends with industry expert John Doe.", link: "/events/1", linkText: "Info", icon: Calendar },
-              { title: "Latest News", content: "Club Wins National Competition", date: "April 30, 2024", description: "Our Real Estate Club team took first place in the National Real Estate Challenge. Congratulations to all participants!", link: "/news", linkText: "Read Full Story", icon: Newspaper },
-              { title: "Membership", content: "Join Our Community", description: "Become a member of the Real Estate Club and gain access to exclusive events, networking opportunities, and hands-on experiences in the real estate industry.", link: "/membership", linkText: "Learn More", icon: UserPlus }
+              { 
+                title: "Upcoming Event", 
+                content: upcomingEvent ? upcomingEvent.title : "No upcoming events", 
+                date: upcomingEvent ? formatEventDate(upcomingEvent.date) : undefined, 
+                description: upcomingEvent ? `${upcomingEvent.speaker} - ${upcomingEvent.speakerDescription}` : "Stay tuned for future events!", 
+                link: upcomingEvent ? `/events/${upcomingEvent.id}` : "/events", 
+                linkText: "Info", 
+                icon: Calendar 
+              },
+              { 
+                title: "Latest News", 
+                content: latestNews ? latestNews.title : "No news available", 
+                date: latestNews ? new Date(latestNews.createdAt).toLocaleDateString() : undefined, 
+                description: latestNews ? latestNews.content : "Check back soon for updates!", 
+                link: latestNews ? `/news/${latestNews.id}` : "/news", 
+                linkText: "Read Full Story", 
+                icon: Newspaper 
+              },
+              { 
+                title: "Membership", 
+                content: "Join Our Community", 
+                description: "Become a member of the Real Estate Club and gain access to exclusive events, networking opportunities, and hands-on experiences in the real estate industry.", 
+                link: "/membership", 
+                linkText: "Learn More", 
+                icon: UserPlus 
+              }
             ] as OfferCardProps[]).map((item, index) => (
               <Card key={index} className="flex flex-col transition-all duration-300 hover:shadow-lg animate-fade-in">
                 <CardHeader>
@@ -87,8 +148,6 @@ export function Home() {
           </div>
         </div>
       </section>
-
-      
 
       {/* Photo Gallery Section */}
       <section className="w-full py-24 lg:py-12 bg-gray-50">

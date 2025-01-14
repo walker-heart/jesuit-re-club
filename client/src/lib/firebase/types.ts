@@ -1,3 +1,9 @@
+export interface UserInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
 export interface FirebaseEvent {
   id?: string;
   title: string;
@@ -7,10 +13,11 @@ export interface FirebaseEvent {
   speaker: string;
   speakerDescription: string;
   agenda: string;
-  userCreated: string;
+  userId: string;
+  createdBy: UserInfo;
   createdAt: string;
-  updatedAt?: string;
-  updatedBy?: string;
+  updatedBy: UserInfo;
+  updatedAt: string;
 }
 
 export interface FirebaseResource {
@@ -20,11 +27,10 @@ export interface FirebaseResource {
   numberOfTexts: number;
   textFields: string[];
   userId: string;
-  creatorName?: string;
-  userCreated: string;
+  createdBy: UserInfo;
   createdAt: string;
-  updatedAt?: string;
-  updatedBy?: string;
+  updatedBy: UserInfo;
+  updatedAt: string;
 }
 
 export interface FirebaseNews {
@@ -32,14 +38,12 @@ export interface FirebaseNews {
   title: string;
   content: string;
   date: string;
-  author: string;
-  userId: string;
-  creatorName?: string;
-  userCreated: string;
-  createdAt: string;
-  updatedAt?: string;
-  updatedBy?: string;
   imageUrl?: string;
   tags?: string[];
   isPublished: boolean;
+  userId: string;
+  createdBy: UserInfo;
+  createdAt: string;
+  updatedBy: UserInfo;
+  updatedAt: string;
 }
