@@ -13,8 +13,7 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
-  deleteDoc,
-  enableIndexedDbPersistence
+  deleteDoc
 } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 
@@ -22,6 +21,7 @@ import type { User } from '@/lib/types';
 const requiredEnvVars = [
   'VITE_FIREBASE_API_KEY',
   'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
   'VITE_FIREBASE_APP_ID'
 ];
 
@@ -30,49 +30,27 @@ if (missingVars.length > 0) {
   throw new Error(`Missing required Firebase configuration: ${missingVars.join(', ')}`);
 }
 
-const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${projectId}.firebaseapp.com`,
-  projectId: projectId,
-  storageBucket: `${projectId}.appspot.com`,
+  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
 let app;
-let auth;
-let db;
-
 try {
-  // Only initialize if no apps exist
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-    console.log('Firebase initialized successfully');
-  } else {
-    app = getApps()[0];
-  }
-
-  auth = getAuth(app);
-  db = getFirestore(app);
-
-  // Enable offline persistence
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-    } else if (err.code === 'unimplemented') {
-      console.warn('The current browser does not support persistence.');
-    }
-  });
+  app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  console.log('Firebase initialized successfully');
 } catch (error) {
   console.error('Error initializing Firebase:', error);
   throw error;
 }
 
-// Export initialized instances
-export { auth, db };
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 // Auth functions
 export const loginWithEmail = async (email: string, password: string): Promise<User> => {

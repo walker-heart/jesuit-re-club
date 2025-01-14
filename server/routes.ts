@@ -28,7 +28,6 @@ const initializeFirebaseAdmin = () => {
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
         }),
-        databaseURL: `https://${process.env.VITE_FIREBASE_PROJECT_ID}.firebaseio.com`
       };
 
       admin.initializeApp(firebaseConfig);
@@ -39,7 +38,7 @@ const initializeFirebaseAdmin = () => {
   } catch (error: any) {
     console.error('Firebase Admin initialization error:', error);
     console.error('Please check your Firebase credentials and environment variables');
-    throw error;
+    throw error; // Let the calling code handle the error
   }
 };
 
