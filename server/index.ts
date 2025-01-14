@@ -86,13 +86,21 @@ console.log('Starting server initialization...');
 
     // Start server
     const PORT = Number(process.env.PORT || 5000);
-    server.listen(PORT, '0.0.0.0', () => {
-      log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+    const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+    
+    server.listen(PORT, HOST, () => {
+      log(`Server running on ${HOST}:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     }).on('error', (error) => {
       console.error('Failed to start server:', error);
       if (error.code === 'EADDRINUSE') {
         log(`Port ${PORT} is already in use. Please try a different port or kill the process using this port.`);
+        process.exit(1);
       }
+      if (error.code === 'EACCES') {
+        log(`Port ${PORT} requires elevated privileges`);
+        process.exit(1);
+      }
+      process.exit(1);
     });
   } catch (error) {
     console.error("Failed to start server:", error);
