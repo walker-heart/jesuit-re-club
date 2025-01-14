@@ -3,9 +3,17 @@
   "include": ["./**/*"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
+    "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "outDir": "./dist",
-    "noEmit": false
+    "outDir": "../dist/server",
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "isolatedModules": true,
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["../node_modules/*"]
+    }
   }
 } 
