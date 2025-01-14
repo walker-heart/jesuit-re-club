@@ -88,6 +88,11 @@ console.log('Starting server initialization...');
     const PORT = Number(process.env.PORT || 5000);
     server.listen(PORT, '0.0.0.0', () => {
       log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+    }).on('error', (error) => {
+      console.error('Failed to start server:', error);
+      if (error.code === 'EADDRINUSE') {
+        log(`Port ${PORT} is already in use. Please try a different port or kill the process using this port.`);
+      }
     });
   } catch (error) {
     console.error("Failed to start server:", error);
