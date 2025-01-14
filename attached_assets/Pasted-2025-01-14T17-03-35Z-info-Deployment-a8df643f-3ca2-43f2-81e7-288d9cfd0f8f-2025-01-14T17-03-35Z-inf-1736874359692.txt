@@ -1,0 +1,238 @@
+2025-01-14T17:03:35Z info: Deployment: a8df643f-3ca2-43f2-81e7-288d9cfd0f8f
+2025-01-14T17:03:35Z info: Build: b9abff61-18a8-4569-b5ab-46817ce90633
+2025-01-14T17:03:35Z info: Connecting to builder
+2025-01-14T17:03:39Z info: Builder connected
+2025-01-14T17:03:39Z info: Installing packages
+--> npm install
+
+npm warn ERESOLVE overriding peer dependency
+
+npm warn While resolving: use-callback-ref@1.3.2
+npm warn Found: @types/react@19.0.1
+npm warn node_modules/@types/react
+npm warn   @types/react@"^19.0.1" from the root project
+npm warn   33 more (@radix-ui/react-arrow, @radix-ui/react-collection, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peerOptional @types/react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-callback-ref@1.3.2
+npm warn node_modules/react-remove-scroll/node_modules/use-callback-ref
+npm warn   use-callback-ref@"^1.3.0" from react-remove-scroll@2.6.1
+npm warn   node_modules/react-remove-scroll
+npm warn
+npm warn Conflicting peer dependency: @types/react@18.3.18
+npm warn node_modules/@types/react
+npm warn   peerOptional @types/react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-callback-ref@1.3.2
+npm warn   node_modules/react-remove-scroll/node_modules/use-callback-ref
+npm warn     use-callback-ref@"^1.3.0" from react-remove-scroll@2.6.1
+npm warn     node_modules/react-remove-scroll
+
+npm warn ERESOLVE overriding peer dependency
+
+npm warn While resolving: use-callback-ref@1.3.2
+npm warn Found: react@19.0.0
+npm warn node_modules/react
+npm warn   react@"^19.0.0" from the root project
+npm warn   39 more (@floating-ui/react-dom, @radix-ui/react-arrow, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-callback-ref@1.3.2
+npm warn node_modules/react-remove-scroll/node_modules/use-callback-ref
+npm warn   use-callback-ref@"^1.3.0" from react-remove-scroll@2.6.1
+npm warn   node_modules/react-remove-scroll
+npm warn
+npm warn Conflicting peer dependency: react@18.3.1
+npm warn node_modules/react
+npm warn   peer react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-callback-ref@1.3.2
+npm warn   node_modules/react-remove-scroll/node_modules/use-callback-ref
+npm warn     use-callback-ref@"^1.3.0" from react-remove-scroll@2.6.1
+npm warn     node_modules/react-remove-scroll
+
+
+up to date, audited 699 packages in 4s
+
+95 packages are looking for funding
+
+  run `npm fund` for details
+
+
+1 moderate severity vulnerability
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.0.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.0.0
+npm notice To update run: npm install -g npm@11.0.0
+npm notice
+
+2025-01-14T17:03:45Z info: Starting Build
+
+> rest-express@1.0.0 build
+> vite build --outDir dist/client && tsc server/*.ts --outDir dist/server && cp -r server/public dist/
+
+
+vite v5.4.10 building for production...
+
+transforming...
+
+✓ 1783 modules transformed.
+
+rendering chunks...
+
+computing gzip size...
+
+dist/client/index.html                     1.59 kB │ gzip:   0.62 kB
+
+dist/client/assets/index-C-TEO1nA.css     57.92 kB │ gzip:  10.16 kB
+
+dist/client/assets/index-DwC1qAvk.js   1,009.23 kB │ gzip: 269.56 kB
+
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+✓ built in 14.34s
+
+2025-01-14T17:03:35Z info: Deployment: a8df643f-3ca2-43f2-81e7-288d9cfd0f8f
+2025-01-14T17:03:35Z info: Build: b9abff61-18a8-4569-b5ab-46817ce90633
+2025-01-14T17:03:35Z info: Connecting to builder
+2025-01-14T17:03:39Z info: Builder connected
+2025-01-14T17:03:39Z info: Installing packages
+--> npm install
+
+npm warn ERESOLVE overriding peer dependency
+
+npm warn While resolving: use-callback-ref@1.3.2
+npm warn Found: @types/react@19.0.1
+npm warn node_modules/@types/react
+npm warn   @types/react@"^19.0.1" from the root project
+npm warn   33 more (@radix-ui/react-arrow, @radix-ui/react-collection, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peerOptional @types/react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-callback-ref@1.3.2
+npm warn node_modules/react-remove-scroll/node_modules/use-callback-ref
+npm warn   use-callback-ref@"^1.3.0" from react-remove-scroll@2.6.1
+npm warn   node_modules/react-remove-scroll
+npm warn
+npm warn Conflicting peer dependency: @types/react@18.3.18
+npm warn node_modules/@types/react
+npm warn   peerOptional @types/react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-callback-ref@1.3.2
+npm warn   node_modules/react-remove-scroll/node_modules/use-callback-ref
+npm warn     use-callback-ref@"^1.3.0" from react-remove-scroll@2.6.1
+npm warn     node_modules/react-remove-scroll
+
+npm warn ERESOLVE overriding peer dependency
+
+npm warn While resolving: use-callback-ref@1.3.2
+npm warn Found: react@19.0.0
+npm warn node_modules/react
+npm warn   react@"^19.0.0" from the root project
+npm warn   39 more (@floating-ui/react-dom, @radix-ui/react-arrow, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-callback-ref@1.3.2
+npm warn node_modules/react-remove-scroll/node_modules/use-callback-ref
+npm warn   use-callback-ref@"^1.3.0" from react-remove-scroll@2.6.1
+npm warn   node_modules/react-remove-scroll
+npm warn
+npm warn Conflicting peer dependency: react@18.3.1
+npm warn node_modules/react
+npm warn   peer react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-callback-ref@1.3.2
+npm warn   node_modules/react-remove-scroll/node_modules/use-callback-ref
+npm warn     use-callback-ref@"^1.3.0" from react-remove-scroll@2.6.1
+npm warn     node_modules/react-remove-scroll
+
+
+up to date, audited 699 packages in 4s
+
+95 packages are looking for funding
+
+  run `npm fund` for details
+
+
+1 moderate severity vulnerability
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.0.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.0.0
+npm notice To update run: npm install -g npm@11.0.0
+npm notice
+
+2025-01-14T17:03:45Z info: Starting Build
+
+> rest-express@1.0.0 build
+> vite build --outDir dist/client && tsc server/*.ts --outDir dist/server && cp -r server/public dist/
+
+
+vite v5.4.10 building for production...
+
+transforming...
+
+✓ 1783 modules transformed.
+
+rendering chunks...
+
+computing gzip size...
+
+dist/client/index.html                     1.59 kB │ gzip:   0.62 kB
+
+dist/client/assets/index-C-TEO1nA.css     57.92 kB │ gzip:  10.16 kB
+
+dist/client/assets/index-DwC1qAvk.js   1,009.23 kB │ gzip: 269.56 kB
+
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+✓ built in 14.34s
+
+node_modules/@google-cloud/storage/build/cjs/src/crc32c.d.ts(66,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/@google-cloud/storage/build/cjs/src/file.d.ts(323,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/@google-cloud/storage/build/cjs/src/hash-stream-validator.d.ts(20,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/@google-cloud/storage/build/cjs/src/resumable-upload.d.ts(200,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/gaxios/build/src/gaxios.d.ts(6,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/google-auth-library/build/src/auth/awsclient.d.ts(84,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/google-auth-library/build/src/auth/baseexternalclient.d.ts(176,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/google-auth-library/build/src/auth/googleauth.d.ts(86,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/google-auth-library/build/src/util.d.ts(134,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/gtoken/build/src/index.d.ts(38,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+
+node_modules/vite/dist/node/index.d.ts(5,41): error TS2307: Cannot find module 'rollup/parseAst' or its corresponding type declarations.
+  There are types at '/home/runner/workspace/node_modules/rollup/dist/parseAst.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+
+server/index.ts(1,8): error TS1259: Module '"/home/runner/workspace/node_modules/@types/express/index"' can only be default-imported using the 'esModuleInterop' flag
+
+server/routes.ts(2,8): error TS1259: Module '"/home/runner/workspace/node_modules/firebase-admin/lib/index"' can only be default-imported using the 'esModuleInterop' flag
+
+server/vite.ts(1,8): error TS1259: Module '"/home/runner/workspace/node_modules/@types/express/index"' can only be default-imported using the 'esModuleInterop' flag
+
+server/vite.ts(2,8): error TS1192: Module '"fs"' has no default export.
+
+server/vite.ts(3,8): error TS1259: Module '"path"' can only be default-imported using the 'esModuleInterop' flag
+
+server/vite.ts(6,34): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', or 'nodenext'.
+
+vite.config.ts(4,8): error TS1259: Module '"path"' can only be default-imported using the 'esModuleInterop' flag
+
+vite.config.ts(8,34): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', or 'nodenext'.
