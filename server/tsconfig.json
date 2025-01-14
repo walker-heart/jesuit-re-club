@@ -12,6 +12,8 @@
     "isolatedModules": true,
     "rootDir": ".",
     "baseUrl": ".",
+    "resolveJsonModule": true,
+    "allowJs": true,
     "paths": {
       "*": ["../node_modules/*"]
     }
