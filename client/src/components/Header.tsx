@@ -14,17 +14,19 @@ export function Header() {
     const handleScroll = () => {
       const isHome = location === "/";
       const currentScrollY = window.scrollY;
-
+      
       if (isHome) {
+        // Show header after minimal scroll
         setIsVisible(currentScrollY > 50);
       } else {
+        // On other pages, always show header
         setIsVisible(true);
       }
       setLastScrollY(currentScrollY);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
+    handleScroll(); // Initial check
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
@@ -39,29 +41,17 @@ export function Header() {
     <header className={headerClasses}>
       <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/">
-          <span className="text-2xl font-bold cursor-pointer">Real Estate Club</span>
+          <a className="text-2xl font-bold">Real Estate Club</a>
         </Link>
 
         <div className="flex gap-6 items-center">
-          <Link href="/">
-            <span className="nav-link-hover cursor-pointer">Home</span>
-          </Link>
-          <Link href="/about">
-            <span className="nav-link-hover cursor-pointer">About Us</span>
-          </Link>
-          <Link href="/events">
-            <span className="nav-link-hover cursor-pointer">Events</span>
-          </Link>
-          <Link href="/membership">
-            <span className="nav-link-hover cursor-pointer">Membership</span>
-          </Link>
-          <Link href="/resources">
-            <span className="nav-link-hover cursor-pointer">Resources</span>
-          </Link>
-          <Link href="/news">
-            <span className="nav-link-hover cursor-pointer">News</span>
-          </Link>
-
+          <Link href="/" className="nav-link-hover">Home</Link>
+          <Link href="/about" className="nav-link-hover">About Us</Link>
+          <Link href="/events" className="nav-link-hover">Events</Link>
+          <Link href="/membership" className="nav-link-hover">Membership</Link>
+          <Link href="/resources" className="nav-link-hover">Resources</Link>
+          <Link href="/news" className="nav-link-hover">News</Link>
+          
           {user?.role === 'admin' && (
             <Link href="/admin">
               <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-[#003c71] button-hover">

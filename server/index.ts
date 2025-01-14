@@ -1,24 +1,12 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes.js";
-import { setupVite, log } from "./vite.js";
-import path, { dirname } from "path";
-import { fileURLToPath } from "url";
-import cors from "cors";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-
-// Essential middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// CORS configuration
-app.use(cors());
-
-// Logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -35,9 +23,13 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        const logJson = JSON.stringify(capturedJsonResponse);
-        logLine += ` :: ${logJson.length > 100 ? logJson.slice(0, 100) + '...' : logJson}`;
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
+
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+
       log(logLine);
     }
   });
@@ -45,57 +37,32 @@ app.use((req, res, next) => {
   next();
 });
 
-console.log('Starting server initialization...');
-
 (async () => {
   try {
-    console.log('Registering routes...');
-    // Register API routes
     const server = registerRoutes(app);
 
-    // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('Server error:', err);
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
-      res.status(status).json({ 
-        success: false,
-        message,
-        error: process.env.NODE_ENV === 'development' ? err.stack : undefined 
-      });
+      res.status(status).json({ message });
     });
 
-    console.log('Setting up Vite or static file serving...');
-    // Setup Vite or serve static files based on environment
-    if (process.env.NODE_ENV === "development") {
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
-      // In production, serve static files from the client/dist directory
-      const clientDistPath = path.join(__dirname, '../client/dist');
-      console.log('Serving static files from:', clientDistPath);
-      app.use(express.static(clientDistPath));
-
-      // Handle client-side routing by serving index.html for all non-API routes
-      app.get('*', (req, res, next) => {
-        if (req.path.startsWith('/api')) {
-          return next();
-        }
-        res.sendFile(path.join(clientDistPath, 'index.html'));
-      });
+      serveStatic(app);
     }
 
-    // Start server
-    const PORT = Number(process.env.PORT || 5000);
-    
-    server.listen(PORT, '0.0.0.0', () => {
-      log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-      log(`Server is ready to accept connections`);
-    }).on('error', (error) => {
-      console.error('Failed to start server:', error);
-      process.exit(1);
+    // ALWAYS serve the app on port 5000
+    // this serves both the API and the client
+    const PORT = 5000;
+    server.listen(PORT, "0.0.0.0", () => {
+      log(`serving on port ${PORT}`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);
-    process.exit(1);
   }
 })();

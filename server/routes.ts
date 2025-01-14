@@ -3,17 +3,11 @@ import admin from "firebase-admin";
 import { createServer, type Server } from "http";
 import * as dotenv from "dotenv";
 
-console.log('Loading environment variables...');
 dotenv.config();
 
 // Initialize Firebase Admin with better error handling and credential verification
 const initializeFirebaseAdmin = () => {
-  console.log('Initializing Firebase Admin...');
   try {
-    if (admin.apps.length) {
-      return admin.firestore();
-    }
-
     // Check if required environment variables are present
     const requiredEnvVars = [
       'VITE_FIREBASE_PROJECT_ID',
@@ -23,13 +17,11 @@ const initializeFirebaseAdmin = () => {
 
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
     if (missingVars.length > 0) {
-      console.warn(`Missing Firebase environment variables: ${missingVars.join(', ')}`);
-      return null;
+      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
     }
 
     // Only initialize if not already initialized
     if (!admin.apps.length) {
-      console.log('Setting up Firebase Admin configuration...');
       const firebaseConfig = {
         credential: admin.credential.cert({
           projectId: process.env.VITE_FIREBASE_PROJECT_ID,
@@ -46,31 +38,21 @@ const initializeFirebaseAdmin = () => {
   } catch (error: any) {
     console.error('Firebase Admin initialization error:', error);
     console.error('Please check your Firebase credentials and environment variables');
-    return null;
+    throw error; // Let the calling code handle the error
   }
 };
 
 // Initialize Firebase and get Firestore instance
-let db: admin.firestore.Firestore | null;
+let db: admin.firestore.Firestore;
 try {
   db = initializeFirebaseAdmin();
-  if (!db) {
-    console.warn('Firebase initialization skipped due to missing configuration');
-  }
 } catch (error) {
   console.error('Failed to initialize Firebase:', error);
-  db = null;
+  process.exit(1);
 }
 
 // Middleware to verify Firebase token and add user data
 async function verifyFirebaseToken(req: Request, res: Response, next: NextFunction) {
-  if (!db) {
-    return res.status(503).json({ 
-      success: false,
-      message: 'Authentication service unavailable' 
-    });
-  }
-
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -84,14 +66,14 @@ async function verifyFirebaseToken(req: Request, res: Response, next: NextFuncti
     const decodedToken = await admin.auth().verifyIdToken(token);
     const userDoc = await db.collection('users').doc(decodedToken.uid).get();
     const userData = userDoc.data();
-
+    
     req.user = {
       uid: decodedToken.uid,
       email: decodedToken.email || null,
       role: userData?.role || 'user',
       username: userData?.username || decodedToken.email?.split('@')[0] || 'user'
     };
-
+    
     next();
   } catch (error: any) {
     console.error('Error verifying token:', error);
@@ -105,34 +87,12 @@ async function verifyFirebaseToken(req: Request, res: Response, next: NextFuncti
 
 export function registerRoutes(app: Express): Server {
   const server = createServer(app);
-
+  
   // Register routes
-  // Health check endpoint (does not require Firebase)
+  // All routes should be prefixed with /api
+  // Health check endpoint
   app.get("/api/health", (_req, res) => {
-    res.json({ 
-      status: "ok", 
-      timestamp: new Date().toISOString(),
-      services: {
-        firebase: db ? 'available' : 'unavailable'
-      }
-    });
-  });
-
-  // Skip protected routes if Firebase is not initialized
-  if (!db) {
-    console.warn('Protected routes disabled due to missing Firebase configuration');
-    return server;
-  }
-
-  // Protected routes below this point
-  app.use('/api/((?!health).)*', (req, res, next) => {
-    if (!db) {
-      return res.status(503).json({
-        success: false,
-        message: 'API services temporarily unavailable'
-      });
-    }
-    next();
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
   // Auth routes
@@ -152,7 +112,7 @@ export function registerRoutes(app: Express): Server {
           message: 'User not found' 
         });
       }
-      
+
       res.json({ 
         success: true,
         user: userDoc.data() 
@@ -177,7 +137,7 @@ export function registerRoutes(app: Express): Server {
       const resources = await Promise.all(resourcesSnapshot.docs.map(async doc => {
         const data = doc.data();
         let createdBy = 'Unknown User';
-        
+
         try {
           // Only attempt to get user data if userCreated exists and is a string
           if (data.userCreated && typeof data.userCreated === 'string') {
@@ -201,7 +161,7 @@ export function registerRoutes(app: Express): Server {
           console.error(`Error fetching user data for resource ${doc.id}:`, error);
           // Keep default "Unknown User" on error
         }
-        
+
         // Return resource data with consistent naming
         return {
           id: doc.id,
@@ -217,7 +177,7 @@ export function registerRoutes(app: Express): Server {
         const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA;
       });
-      
+
       console.log('Returning resources:', resources);
       return res.json({
         success: true,
@@ -241,22 +201,22 @@ export function registerRoutes(app: Express): Server {
           message: 'Unauthorized - Admin or Editor access required' 
         });
       }
-      
+
       const { title, description, numberOfTexts, textFields } = req.body;
-      
+
       // Validate required fields
       const requiredFields = { title, description, numberOfTexts, textFields };
       const missingFields = Object.entries(requiredFields)
         .filter(([_, value]) => !value)
         .map(([field]) => field);
-      
+
       if (missingFields.length > 0) {
         return res.status(400).json({ 
           success: false,
           message: `Missing required fields: ${missingFields.join(', ')}` 
         });
       }
-      
+
       // Create resource document in Firestore
       const resourceDoc = {
         title,
@@ -268,11 +228,11 @@ export function registerRoutes(app: Express): Server {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedBy: req.user?.username || 'Unknown'
       };
-      
+
       // Use title + timestamp as document ID for better organization
       const docId = `${title}-${Date.now()}`.replace(/[/:\\]/g, '-');
       await db.collection('resources').doc(docId).set(resourceDoc);
-      
+
       return res.status(201).json({
         success: true,
         message: 'Resource created successfully',
@@ -325,7 +285,7 @@ export function registerRoutes(app: Express): Server {
           message: 'Resource not found'
         });
       }
-      
+
       return res.json({
         success: true,
         resource: {
@@ -353,22 +313,22 @@ export function registerRoutes(app: Express): Server {
           message: 'Unauthorized - Admin or Editor access required' 
         });
       }
-      
+
       const { title, date, time, location, speaker, speakerDescription, agenda } = req.body;
-      
+
       // Validate required fields
       const requiredFields = { title, date, time, location, speaker, speakerDescription, agenda };
       const missingFields = Object.entries(requiredFields)
         .filter(([_, value]) => !value)
         .map(([field]) => field);
-      
+
       if (missingFields.length > 0) {
         return res.status(400).json({ 
           success: false,
           message: `Missing required fields: ${missingFields.join(', ')}` 
         });
       }
-      
+
       // Create event document in Firestore
       const eventDoc = {
         title,
@@ -381,11 +341,11 @@ export function registerRoutes(app: Express): Server {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         userCreated: req.user?.username || req.user?.email || 'Unknown'
       };
-      
+
       // Use Speaker + Date as document ID
       const docId = `${speaker} ${date} - ${time}`.replace(/[/:\\]/g, '-');
       await db.collection('events').doc(docId).set(eventDoc);
-      
+
       return res.status(201).json({
         success: true,
         message: 'Event created successfully',
@@ -406,7 +366,7 @@ export function registerRoutes(app: Express): Server {
 
   app.get("/api/events", async (req: Request, res: Response) => {
     try {
-      const eventsRef = db.collection('events');
+      const eventsRef = admin.firestore().collection('events');
       const eventsSnapshot = await eventsRef.get();
       const events = eventsSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -428,7 +388,7 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/events/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const eventDoc = await db.collection('events').doc(id).get();
+      const eventDoc = await admin.firestore().collection('events').doc(id).get();
       
       if (!eventDoc.exists) {
         return res.status(404).json({ 
@@ -436,7 +396,7 @@ export function registerRoutes(app: Express): Server {
           message: 'Event not found'
         });
       }
-      
+
       return res.json({
         success: true,
         event: {
@@ -460,13 +420,13 @@ export function registerRoutes(app: Express): Server {
           message: 'Unauthorized - Admin access required' 
         });
       }
-      
+
       const usersSnapshot = await db.collection('users').get();
       const users = usersSnapshot.docs.map(doc => ({
         uid: doc.id,
         ...doc.data()
       }));
-      
+
       res.json({ 
         success: true,
         users 
@@ -491,10 +451,10 @@ export function registerRoutes(app: Express): Server {
           message: 'Unauthorized - Admin access required' 
         });
       }
-      
+
       const { uid } = req.params;
       const { firstName, lastName, username, email, role, password } = req.body;
-      
+
       // Validate role
       if (role && !['admin', 'editor', 'user'].includes(role)) {
         return res.status(400).json({ 
@@ -502,14 +462,14 @@ export function registerRoutes(app: Express): Server {
           message: 'Invalid role' 
         });
       }
-      
+
       // Update user in Firebase Auth
       const updateAuthData: any = {
         displayName: `${firstName} ${lastName}`
       };
       if (email) updateAuthData.email = email;
       if (password) updateAuthData.password = password;
-      
+
       try {
         await admin.auth().updateUser(uid, updateAuthData);
       } catch (error: any) {
@@ -519,7 +479,7 @@ export function registerRoutes(app: Express): Server {
           message: error.message 
         });
       }
-      
+
       // Update user document in Firestore
       const updateData = {
         firstName,
@@ -530,9 +490,9 @@ export function registerRoutes(app: Express): Server {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedBy: req.user.uid
       };
-      
+
       await db.collection('users').doc(uid).update(updateData);
-      
+
       // Return success response
       return res.json({
         success: true,
@@ -543,7 +503,7 @@ export function registerRoutes(app: Express): Server {
           updatedAt: new Date().toISOString()
         }
       });
-      
+
     } catch (error: any) {
       console.error('Error updating user:', error);
       return res.status(500).json({ 
@@ -562,9 +522,9 @@ export function registerRoutes(app: Express): Server {
           message: 'Unauthorized - Admin access required' 
         });
       }
-      
+
       const { uid } = req.params;
-      
+
       // Delete user from Firebase Auth
       try {
         await admin.auth().deleteUser(uid);
@@ -575,7 +535,7 @@ export function registerRoutes(app: Express): Server {
           message: error.message || 'Failed to delete user from Firebase Auth'
         });
       }
-      
+
       // Delete user document from Firestore
       try {
         await db.collection('users').doc(uid).delete();
@@ -587,7 +547,7 @@ export function registerRoutes(app: Express): Server {
           message: 'User deleted from Auth but failed to delete from Firestore'
         });
       }
-      
+
       return res.json({
         success: true,
         message: 'User successfully deleted from both Auth and Firestore'
@@ -613,10 +573,10 @@ export function registerRoutes(app: Express): Server {
           message: 'Unauthorized - Admin access required' 
         });
       }
-      
+
       const { email, password, username, role, firstName, lastName } = req.body;
       console.log('Parsed request data:', { email, username, firstName, lastName, role });
-      
+
       // Validate required fields
       const requiredFields = {
         firstName,
@@ -626,11 +586,11 @@ export function registerRoutes(app: Express): Server {
         password,
         role
       };
-      
+
       const missingFields = Object.entries(requiredFields)
         .filter(([_, value]) => !value)
         .map(([field]) => field);
-      
+
       if (missingFields.length > 0) {
         console.log('Missing fields:', missingFields);
         return res.status(400).json({ 
@@ -638,7 +598,7 @@ export function registerRoutes(app: Express): Server {
           message: `Missing required fields: ${missingFields.join(', ')}` 
         });
       }
-      
+
       // Validate role
       if (!['admin', 'editor', 'user', 'test'].includes(role)) {
         return res.status(400).json({ 
@@ -646,7 +606,7 @@ export function registerRoutes(app: Express): Server {
           message: 'Invalid role' 
         });
       }
-      
+
       let userRecord;
       try {
         console.log('Creating user in Firebase Auth...');
@@ -657,7 +617,7 @@ export function registerRoutes(app: Express): Server {
           displayName: `${firstName} ${lastName}`,
         });
         console.log('User created in Firebase Auth:', userRecord.uid);
-        
+
         console.log('Creating user document in Firestore...');
         const userData = {
           email,
@@ -673,7 +633,7 @@ export function registerRoutes(app: Express): Server {
         // Create user document in Firestore
         await db.collection('users').doc(userRecord.uid).set(userData);
         console.log('User document created in Firestore');
-        
+
         // Return success response
         return res.status(201)
           .set({ 'Content-Type': 'application/json' })
@@ -697,7 +657,7 @@ export function registerRoutes(app: Express): Server {
             console.error('Error during cleanup:', cleanupError);
           }
         }
-        
+
         // Return appropriate error message
         if (error.code === 'auth/email-already-exists') {
           return res.status(400).json({ 
