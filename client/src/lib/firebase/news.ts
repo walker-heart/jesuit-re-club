@@ -6,10 +6,10 @@ import { type FirebaseNews } from './types';
 const getCreatorName = async (userId: string): Promise<string> => {
   try {
     if (!userId) return 'Unknown User';
-    
+
     const snapshot = await getDoc(doc(db, 'users', userId));
     if (!snapshot.exists()) return 'Unknown User';
-    
+
     const data = snapshot.data();
     return data.firstName && data.lastName
       ? `${data.firstName} ${data.lastName}`
@@ -27,6 +27,21 @@ export const createNews = async (newsData: Omit<FirebaseNews, 'id'>): Promise<Fi
     }
 
     const currentUserId = auth.currentUser.uid;
+
+    // Get user role and verify permissions
+    const userDoc = await getDoc(doc(db, 'users', currentUserId));
+    if (!userDoc.exists()) {
+      throw new Error('User data not found');
+    }
+
+    const userData = userDoc.data();
+    const userRole = userData.role || 'user';
+
+    // Only admin and editor can create news
+    if (!['admin', 'editor'].includes(userRole)) {
+      throw new Error('Insufficient permissions to create news');
+    }
+
     const creatorName = await getCreatorName(currentUserId);
 
     const newNews = {
@@ -41,7 +56,7 @@ export const createNews = async (newsData: Omit<FirebaseNews, 'id'>): Promise<Fi
     };
 
     const docRef = await addDoc(collection(db, 'news'), newNews);
-    
+
     return {
       id: docRef.id,
       ...newNews
@@ -63,21 +78,24 @@ export const updateNews = async (newsData: FirebaseNews): Promise<FirebaseNews> 
     }
 
     const currentUserId = auth.currentUser.uid;
-    const snapshot = await getDoc(doc(db, 'users', currentUserId));
-    const userData = snapshot.exists() ? snapshot.data() : null;
-    
-    const newsSnapshot = await getDoc(doc(db, 'news', newsData.id));
-    
-    if (!newsSnapshot.exists()) {
+    const userDoc = await getDoc(doc(db, 'users', currentUserId));
+    if (!userDoc.exists()) {
+      throw new Error('User data not found');
+    }
+
+    const userData = userDoc.data();
+    const userRole = userData.role || 'user';
+
+    const newsDoc = await getDoc(doc(db, 'news', newsData.id));
+    if (!newsDoc.exists()) {
       throw new Error('News not found');
     }
 
-    const existingNews = newsSnapshot.data() as FirebaseNews;
+    const existingNews = newsDoc.data() as FirebaseNews;
 
-    // Check permissions
-    const isAdmin = userData?.role === 'admin';
-    if (!isAdmin && existingNews.userId !== currentUserId) {
-      throw new Error('You do not have permission to update this news');
+    // Check permissions: admin, editor, or original creator
+    if (!['admin', 'editor'].includes(userRole) && existingNews.userId !== currentUserId) {
+      throw new Error('Insufficient permissions to update news');
     }
 
     const updateData = {
@@ -88,7 +106,7 @@ export const updateNews = async (newsData: FirebaseNews): Promise<FirebaseNews> 
     };
 
     await updateDoc(doc(db, 'news', newsData.id), updateData);
-    
+
     return {
       ...existingNews,
       ...updateData
@@ -106,21 +124,24 @@ export const deleteNews = async (newsId: string): Promise<void> => {
     }
 
     const currentUserId = auth.currentUser.uid;
-    const snapshot = await getDoc(doc(db, 'users', currentUserId));
-    const userData = snapshot.exists() ? snapshot.data() : null;
-    
-    const newsSnapshot = await getDoc(doc(db, 'news', newsId));
-    
-    if (!newsSnapshot.exists()) {
+    const userDoc = await getDoc(doc(db, 'users', currentUserId));
+    if (!userDoc.exists()) {
+      throw new Error('User data not found');
+    }
+
+    const userData = userDoc.data();
+    const userRole = userData.role || 'user';
+
+    const newsDoc = await getDoc(doc(db, 'news', newsId));
+    if (!newsDoc.exists()) {
       throw new Error('News not found');
     }
 
-    const news = newsSnapshot.data() as FirebaseNews;
-    
-    // Check permissions
-    const isAdmin = userData?.role === 'admin';
-    if (!isAdmin && news.userId !== currentUserId) {
-      throw new Error('You do not have permission to delete this news');
+    const news = newsDoc.data() as FirebaseNews;
+
+    // Check permissions: admin, editor, or original creator
+    if (!['admin', 'editor'].includes(userRole) && news.userId !== currentUserId) {
+      throw new Error('Insufficient permissions to delete news');
     }
 
     await deleteDoc(doc(db, 'news', newsId));
@@ -147,7 +168,7 @@ export const fetchNews = async (userOnly: boolean = false): Promise<FirebaseNews
       news = news.filter(newsItem => newsItem.userCreated === auth.currentUser?.uid);
     }
 
-    // Sort by date, newest first
+    // Sort by creation date, newest first
     return news.sort((a, b) => {
       const dateA = new Date(a.createdAt).getTime();
       const dateB = new Date(b.createdAt).getTime();
