@@ -21,20 +21,31 @@ async function build() {
 
     // Build client
     console.log('Building client...');
-    await execAsync('vite build', {
+    await execAsync('npx vite build', {
       env: { ...process.env, NODE_ENV: 'production' }
     });
 
-    // Build server
+    // Build server with ESM support
     console.log('Building server...');
-    await execAsync('tsc --project tsconfig.json');
+    await execAsync('npx tsc --project tsconfig.json');
 
     // Copy necessary files
     console.log('Copying static files...');
     try {
+      // Copy client build to dist
       await fs.cp('client/dist', 'dist/client', { recursive: true });
+
+      // Copy public folder if it exists
+      await fs.cp('server/public', 'dist/server/public', { recursive: true }).catch(() => {
+        console.log('No public folder to copy, skipping...');
+      });
+
+      // Ensure schema file is copied
+      await fs.cp('db', 'dist/db', { recursive: true }).catch(() => {
+        console.log('No db folder to copy, skipping...');
+      });
     } catch (error) {
-      console.warn('Warning: No client/dist folder found, skipping client files copy');
+      console.warn('Warning: Error copying static files:', error);
     }
 
     // Create a production .env file if it doesn't exist

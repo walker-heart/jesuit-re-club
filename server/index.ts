@@ -1,12 +1,13 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
-import { setupVite, serveStatic, log } from "./vite.js";
-import path from "path";
+import { setupVite, log } from "./vite.js";
+import path, { dirname } from "path";
 import { fileURLToPath } from "url";
+import cors from "cors";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 
 const app = express();
 
@@ -14,18 +15,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// CORS configuration for development
-if (process.env.NODE_ENV === 'development') {
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-    next();
-  });
-}
+// CORS configuration
+app.use(cors());
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -82,8 +73,8 @@ app.use((req, res, next) => {
     }
 
     // Start server
-    const PORT = parseInt(process.env.PORT || '5000', 10);
-    server.listen(PORT, () => {
+    const PORT = Number(process.env.PORT || 5000);
+    server.listen(PORT, '0.0.0.0', () => {
       log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     });
   } catch (error) {

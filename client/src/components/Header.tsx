@@ -16,17 +16,15 @@ export function Header() {
       const currentScrollY = window.scrollY;
 
       if (isHome) {
-        // Show header after minimal scroll
         setIsVisible(currentScrollY > 50);
       } else {
-        // Always show header on other pages
         setIsVisible(true);
       }
       setLastScrollY(currentScrollY);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll(); // Initial check
+    handleScroll();
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
@@ -40,17 +38,29 @@ export function Header() {
   return (
     <header className={headerClasses}>
       <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-bold">
-          Real Estate Club
-        </Link>
+        <div className="text-2xl font-bold">
+          <Link href="/">Real Estate Club</Link>
+        </div>
 
         <div className="flex gap-6 items-center">
-          <Link href="/" className="nav-link-hover">Home</Link>
-          <Link href="/about" className="nav-link-hover">About Us</Link>
-          <Link href="/events" className="nav-link-hover">Events</Link>
-          <Link href="/membership" className="nav-link-hover">Membership</Link>
-          <Link href="/resources" className="nav-link-hover">Resources</Link>
-          <Link href="/news" className="nav-link-hover">News</Link>
+          <Link href="/">
+            <span className="nav-link-hover">Home</span>
+          </Link>
+          <Link href="/about">
+            <span className="nav-link-hover">About Us</span>
+          </Link>
+          <Link href="/events">
+            <span className="nav-link-hover">Events</span>
+          </Link>
+          <Link href="/membership">
+            <span className="nav-link-hover">Membership</span>
+          </Link>
+          <Link href="/resources">
+            <span className="nav-link-hover">Resources</span>
+          </Link>
+          <Link href="/news">
+            <span className="nav-link-hover">News</span>
+          </Link>
 
           {user?.role === 'admin' && (
             <Link href="/admin">
