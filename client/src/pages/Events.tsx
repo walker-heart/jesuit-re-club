@@ -36,6 +36,22 @@ export function Events() {
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
+  // Add scroll to section functionality
+  useEffect(() => {
+    // Check URL hash and scroll to appropriate section
+    if (window.location.hash && !isLoadingEvents) {
+      const targetRef = {
+        '#past': pastRef,
+        '#upcoming': upcomingRef
+      }[window.location.hash];
+
+      if (targetRef?.current) {
+        const yOffset = targetRef.current.getBoundingClientRect().top + window.pageYOffset - 100;
+        window.scrollTo({ top: yOffset, behavior: 'smooth' });
+      }
+    }
+  }, [isLoadingEvents]); // Run when loading is complete
+
   const canModifyEvent = (event: Event) => {
     if (!user) return false;
     

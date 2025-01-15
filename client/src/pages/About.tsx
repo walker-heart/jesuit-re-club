@@ -1,58 +1,98 @@
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Building2, Target, Trophy, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { EditInfoModal } from "@/components/modals/EditInfoModal";
+import { fetchInfo } from "@/lib/firebase/info";
+import type { FirebaseInfo } from "@/lib/firebase/types";
+
+const CARD_ICONS = {
+  building: Building2,
+  target: Target,
+  trophy: Trophy,
+};
 
 export function About() {
+  const { user } = useAuth();
+  const [infoCards, setInfoCards] = useState<FirebaseInfo[]>([]);
+  const [editingInfo, setEditingInfo] = useState<FirebaseInfo | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  useEffect(() => {
+    const loadInfo = async () => {
+      try {
+        const info = await fetchInfo('aboutus');
+        setInfoCards(info);
+      } catch (error) {
+        console.error('Error loading info:', error);
+      }
+    };
+
+    loadInfo();
+  }, []);
+
+  const handleEditSuccess = async () => {
+    // Reload info after successful edit
+    const info = await fetchInfo();
+    setInfoCards(info);
+  };
+
   return (
-    <>
-      <section className="w-full py-8 md:py-8 lg:py-16">
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-10 mx-auto max-w-[1000px]">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-[#003c71]">Our Story</h2>
-              <p className="text-gray-600">
-                The Real Estate Club at Jesuit Dallas was founded with the goal
-                of introducing students to the exciting world of real estate.
-                Our club provides a platform for students to explore various
-                aspects of the real estate industry, from residential and
-                commercial property management to investment strategies and
-                market analysis.
-              </p>
-            </div>
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-[#003c71]">Our Mission</h2>
-              <p className="text-gray-600">
-                Through guest speaker events, workshops, and hands-on projects,
-                we aim to equip our members with the knowledge and skills
-                necessary to succeed in the real estate field. Our club also
-                emphasizes the importance of ethical business practices and
-                community involvement, aligning with Jesuit Dallas's mission of
-                forming men for others.
-              </p>
-            </div>
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-[#003c71]">Our Goals</h2>
-              <ul className="list-disc list-inside text-gray-600 space-y-2">
-                <li>
-                  Educate students about various aspects of the real estate
-                  industry
-                </li>
-                <li>
-                  Provide networking opportunities with industry professionals
-                </li>
-                <li>
-                  Develop practical skills through hands-on projects and case
-                  studies
-                </li>
-                <li>
-                  Foster a community of students passionate about real estate
-                </li>
-                <li>
-                  Promote ethical business practices and community involvement
-                </li>
-              </ul>
-            </div>
-          </div>
+    <section className="w-full py-8 md:py-12">
+      <div className="container px-4 md:px-6 mx-auto">
+        <div className="grid gap-6 md:grid-cols-3 mx-auto max-w-[1400px] place-items-center">
+          {infoCards.map((info, index) => {
+            const IconComponent = CARD_ICONS[info.icon as keyof typeof CARD_ICONS] || Building2;
+            
+            return (
+              <Card 
+                key={info.id} 
+                className="flex flex-col transition-all duration-300 hover:shadow-lg animate-fade-in hover:-translate-y-1 w-full max-w-[400px]"
+                style={{animationDelay: `${index * 100}ms`}}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-2xl font-bold text-[#003c71] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <IconComponent className="h-6 w-6" />
+                      {info.title}
+                    </div>
+                    {user?.role === 'admin' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingInfo(info);
+                          setIsEditModalOpen(true);
+                        }}
+                        className="ml-2 hover:bg-[#003c71] hover:text-white"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div 
+                    className="text-gray-600"
+                    dangerouslySetInnerHTML={{ __html: info.text.replace(/\n/g, '<br>') }}
+                  />
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
-      </section>
-    </>
+      </div>
+
+      <EditInfoModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingInfo(null);
+        }}
+        info={editingInfo}
+        onSuccess={handleEditSuccess}
+      />
+    </section>
   );
 }

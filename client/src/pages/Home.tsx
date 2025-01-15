@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { fetchNews } from "@/lib/firebase/news";
 import { fetchEvents } from "@/lib/firebase/events";
 import type { FirebaseNews, FirebaseEvent } from "@/lib/firebase/types";
+import logo from "@/assets/images/RealEstate-emp-gold.png";
 
 interface OfferCardProps {
   title: string;
@@ -67,6 +68,11 @@ export function Home() {
       {/* Hero Section */}
       <section className="min-h-screen bg-[#003c71] text-white relative flex items-center justify-center pt-16">
         <div className="container mx-auto px-4 text-center py-12">
+          <img 
+            src={logo} 
+            alt="Jesuit Dallas Real Estate Club" 
+            className="h-64 w-auto mx-auto mb-1 animate-fade-in"
+          />
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
             Welcome to the Real Estate Club
           </h1>

@@ -64,3 +64,22 @@ export interface FirebaseNews {
   updatedBy: UserInfo;
   updatedAt: string;
 }
+
+export interface FirebaseInfo {
+  id: string;
+  title: string;
+  icon: string;
+  text: string;
+  page: 'aboutus' | 'membership';
+  sub?: 'top' | 'bottom';
+  texts?: string[];
+  url1Title?: string;
+  url1?: string;
+  url2Title?: string;
+  url2?: string;
+  userId: string;
+  createdBy: FirebaseUser;
+  createdAt: string;
+  updatedBy: FirebaseUser;
+  updatedAt: string;
+}

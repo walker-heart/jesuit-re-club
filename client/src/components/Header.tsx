@@ -4,6 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { auth } from "@/lib/firebase";
 import { useState, useEffect } from "react";
 
+// Import logo
+import logo from "@/assets/images/RealEstate-hor-2col.png";
+
 export function Header() {
   const { user } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
@@ -39,12 +42,18 @@ export function Header() {
 
   return (
     <header className={headerClasses}>
-      <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <nav className="container mx-auto px-8 py-4 flex items-center justify-between max-w-[1400px]">
         <Link href="/">
-          <a className="text-2xl font-bold">Real Estate Club</a>
+          <a className="flex items-center -ml-4">
+            <img 
+              src={logo} 
+              alt="Jesuit Dallas Real Estate Club" 
+              className="h-16 w-auto -my-6"
+            />
+          </a>
         </Link>
 
-        <div className="flex gap-6 items-center">
+        <div className="flex gap-8 items-center">
           <Link href="/" className="nav-link-hover">Home</Link>
           <Link href="/about" className="nav-link-hover">About Us</Link>
           <Link href="/events" className="nav-link-hover">Events</Link>
@@ -54,14 +63,14 @@ export function Header() {
           
           {user?.role === 'admin' && (
             <Link href="/admin">
-              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-[#003c71] button-hover">
+              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-[#003c71] button-hover ml-4">
                 Admin
               </Button>
             </Link>
           )}
           {user?.role === 'editor' && (
             <Link href="/editor">
-              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-[#003c71] button-hover">
+              <Button variant="secondary" className="bg-[#b3a369] hover:bg-[#a39359] text-[#003c71] button-hover ml-4">
                 Editor
               </Button>
             </Link>

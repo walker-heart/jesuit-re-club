@@ -8,26 +8,16 @@ import { EventModal } from "@/components/modals/EventModal"
 import { NewsModal } from "@/components/modals/NewsModal"
 import { ResourceModal } from "@/components/modals/ResourceModal"
 import { UserModal } from "@/components/modals/UserModal"
+import { EditInfoModal } from "@/components/modals/EditInfoModal"
 import { Card } from "@/components/ui/card"
 import { Plus, Edit2, Trash2 } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useToast } from "@/hooks/use-toast"
+import { FirebaseUser, FirebaseInfo } from "@/lib/firebase/types"
 
 export default function ModalShowcase() {
   const { user } = useAuth();
   const { toast } = useToast();
-
-  // Check for admin role
-  if (!user || user.role !== 'admin') {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="bg-red-100/80 rounded-lg p-8 max-w-md w-full mx-4">
-          <h2 className="text-3xl font-bold text-red-600 mb-4">Access Denied</h2>
-          <p className="text-red-600 text-lg">You must be an admin to view this page</p>
-        </div>
-      </div>
-    );
-  }
 
   // Base Modal State
   const [isBaseModalOpen, setIsBaseModalOpen] = useState(false)
@@ -56,6 +46,22 @@ export default function ModalShowcase() {
   // User Modal State
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
   const [isUserEditMode, setIsUserEditMode] = useState(false)
+
+  // Edit Info Modal State
+  const [isEditInfoModalOpen, setIsEditInfoModalOpen] = useState(false);
+  const [isEditInfoEditMode, setIsEditInfoEditMode] = useState(false);
+
+  // Check for admin role
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="bg-red-100/80 rounded-lg p-8 max-w-md w-full mx-4">
+          <h2 className="text-3xl font-bold text-red-600 mb-4">Access Denied</h2>
+          <p className="text-red-600 text-lg">You must be an admin to view this page</p>
+        </div>
+      </div>
+    );
+  }
 
   // Mock form submit handler
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -197,11 +203,69 @@ export default function ModalShowcase() {
     setIsFormModalOpen(true)
   }
 
+  const mockFirebaseUser: FirebaseUser = {
+    uid: 'user123',
+    email: 'user@example.com',
+    firstName: 'John',
+    lastName: 'Doe',
+    name: 'John Doe',
+    username: 'johndoe',
+    role: 'admin',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  const mockInfo: FirebaseInfo = {
+    id: '1',
+    title: 'Sample Info',
+    icon: 'building',
+    text: 'Sample text content',
+    userId: 'user123',
+    createdBy: mockFirebaseUser,
+    createdAt: new Date().toISOString(),
+    updatedBy: mockFirebaseUser,
+    updatedAt: new Date().toISOString()
+  };
+
+  const handleEditInfoOpen = (editMode: boolean) => {
+    setIsEditInfoEditMode(editMode);
+    setIsEditInfoModalOpen(true);
+  };
+
   return (
     <div className="container max-w-7xl py-10">
       <h1 className="text-4xl font-bold mb-8">Modal Showcase</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Edit Info Modal */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Edit Info Modal</h2>
+          <p className="text-gray-600 mb-4">A modal for editing information with title, icon, and text fields.</p>
+          <div className="flex gap-2">
+            <Button onClick={() => handleEditInfoOpen(false)} className="text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Info
+            </Button>
+            <Button 
+              onClick={() => handleEditInfoOpen(true)} 
+              variant="outline"
+              size="icon"
+              className="border-[#003c71] text-[#003c71] hover:bg-[#003c71] hover:text-white"
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+          </div>
+          <EditInfoModal
+            isOpen={isEditInfoModalOpen}
+            onClose={() => {
+              setIsEditInfoModalOpen(false);
+              setIsEditInfoEditMode(false);
+            }}
+            info={isEditInfoEditMode ? mockInfo : null}
+            onSuccess={handleSuccess}
+          />
+        </Card>
+
         {/* Base Modal */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">Base Modal</h2>

@@ -1,8 +1,32 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
+import { fetchEvents } from "@/lib/firebase/events";
+import type { FirebaseEvent } from "@/lib/firebase/types";
 
 export function Footer() {
   const { user } = useAuth();
+  const [nextEvent, setNextEvent] = useState<FirebaseEvent | null>(null);
+
+  useEffect(() => {
+    const loadNextEvent = async () => {
+      try {
+        const events = await fetchEvents();
+        const now = new Date();
+        const futureEvents = events.filter(event => new Date(event.date) > now);
+        if (futureEvents.length > 0) {
+          // Sort by date and get the closest upcoming event
+          futureEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          setNextEvent(futureEvents[0]);
+        }
+      } catch (error) {
+        console.error('Error loading next event:', error);
+      }
+    };
+
+    loadNextEvent();
+  }, []);
+
   return (
     <footer className="bg-[#003c71] text-white py-12">
       <div className="container mx-auto px-4">
@@ -21,8 +45,35 @@ export function Footer() {
             <ul className="space-y-2">
               <li><Link href="/events#upcoming" className="text-gray-300 hover:text-[#b3a369]">Upcoming Events</Link></li>
               <li><Link href="/events#past" className="text-gray-300 hover:text-[#b3a369]">Past Events</Link></li>
-              <li><Link href="/events#workshops" className="text-gray-300 hover:text-[#b3a369]">Workshops</Link></li>
-              <li><Link href="/events#speaker-series" className="text-gray-300 hover:text-[#b3a369]">Speaker Series</Link></li>
+              {nextEvent ? (
+                <li>
+                  <Link 
+                    href={`/events/${nextEvent.id}`} 
+                    className="text-gray-300 hover:text-[#b3a369]"
+                  >
+                    Next Speaker: {nextEvent.speaker}
+                  </Link>
+                </li>
+              ) : (
+                <li>
+                  <Link 
+                    href="/events#upcoming" 
+                    className="text-gray-300 hover:text-[#b3a369]"
+                  >
+                    Next Speaker: TBA
+                  </Link>
+                </li>
+              )}
+              <li>
+                <a 
+                  href="https://forms.gle/tfB5SnqqQHQbP31A9" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-gray-300 hover:text-[#b3a369]"
+                >
+                  Request a Speaker
+                </a>
+              </li>
             </ul>
           </div>
           <div className="space-y-4">
