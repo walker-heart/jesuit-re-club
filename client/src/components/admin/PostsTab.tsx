@@ -265,14 +265,13 @@ export function PostsTab() {
                 Resources
               </div>
               <Button 
-                variant="ghost"
-                size="icon"
                 onClick={() => {
                   setEditingResource(null);
                   setIsResourceModalOpen(true);
                 }}
+                className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
               >
-                <Plus className="h-4 w-4" />
+                Create Resource
               </Button>
             </div>
           </CardTitle>
