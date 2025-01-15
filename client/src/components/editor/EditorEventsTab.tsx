@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { EventModal } from '@/components/admin/EventModal'
-import { fetchEvents, deleteEvent, createEvent, updateEvent, type FirebaseEvent } from '@/lib/firebase/events'
+import { EventModal } from '@/components/modals/EventModal'
+import { DeleteModal } from '@/components/modals/DeleteModal'
+import { fetchEvents, deleteEvent, type FirebaseEvent } from '@/lib/firebase/events'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
-import { Edit, Trash2 } from 'lucide-react'
+import { Edit2, Trash2, Plus } from 'lucide-react'
 import { formatTime } from "@/lib/utils/time";
 
 export function EditorEventsTab() {
   const { user } = useAuth();
   const [events, setEvents] = useState<FirebaseEvent[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [editingEvent, setEditingEvent] = useState<FirebaseEvent | null>(null)
+  const [deletingEvent, setDeletingEvent] = useState<FirebaseEvent | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -45,7 +49,7 @@ export function EditorEventsTab() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (event: FirebaseEvent) => {
     try {
       if (!user) {
         toast({
@@ -56,10 +60,6 @@ export function EditorEventsTab() {
         return;
       }
 
-      // Find the event and check permissions
-      const event = events.find(e => e.id === id);
-      if (!event) return;
-
       if (event.userId !== user.uid) {
         toast({
           title: "Access Denied",
@@ -69,11 +69,24 @@ export function EditorEventsTab() {
         return;
       }
 
-      if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-        return;
-      }
+      setDeletingEvent(event);
+      setIsDeleteModalOpen(true);
+    } catch (error: any) {
+      console.error('Error preparing to delete event:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to prepare event deletion",
+        variant: "destructive"
+      });
+    }
+  };
 
-      await deleteEvent(id);
+  const handleConfirmDelete = async () => {
+    if (!deletingEvent?.id) return;
+
+    try {
+      setIsDeleting(true);
+      await deleteEvent(deletingEvent.id);
       await loadEvents(); // Refresh the list after deletion
 
       toast({
@@ -87,63 +100,10 @@ export function EditorEventsTab() {
         description: error.message || "Failed to delete event",
         variant: "destructive"
       });
-    }
-  };
-
-  const handleEventCreated = async (eventData: Partial<FirebaseEvent>) => {
-    try {
-      if (!user) {
-        throw new Error('You must be logged in to manage events');
-      }
-
-      // Validate required fields
-      const requiredFields = ['title', 'date', 'time', 'location', 'speaker', 'speakerDescription', 'agenda'] as const;
-      const missingFields = requiredFields.filter(field => {
-        const value = eventData[field];
-        return !value || value.toString().trim() === '';
-      });
-      
-      if (missingFields.length > 0) {
-        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      if (editingEvent) {
-        // Update existing event
-        await updateEvent({
-          ...editingEvent,
-          ...eventData
-        } as FirebaseEvent);
-      } else {
-        // Create new event
-        await createEvent({
-          title: eventData.title!,
-          date: eventData.date!,
-          time: eventData.time!,
-          location: eventData.location!,
-          speaker: eventData.speaker!,
-          speakerDescription: eventData.speakerDescription!,
-          agenda: eventData.agenda!,
-          userId: user.uid
-        });
-      }
-
-      // Refresh the events list
-      await loadEvents();
-
-      toast({
-        title: "Success",
-        description: editingEvent ? "Event updated successfully" : "Event created successfully"
-      });
-      
-      setIsModalOpen(false);
-      setEditingEvent(null);
-    } catch (error: any) {
-      console.error('Error saving event:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save event",
-        variant: "destructive"
-      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeletingEvent(null);
     }
   };
 
@@ -156,8 +116,9 @@ export function EditorEventsTab() {
             setEditingEvent(null);
             setIsModalOpen(true);
           }}
-          className="bg-[#003c71] hover:bg-[#002855] text-white"
+          className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
         >
+          <Plus className="h-4 w-4" />
           Create Event
         </Button>
       </div>
@@ -180,26 +141,22 @@ export function EditorEventsTab() {
               <p className="text-sm text-gray-600 mb-2">{event.location}</p>
               <p className="text-sm text-gray-600 mb-2">Speaker: {event.speaker}</p>
               <div className="absolute bottom-4 right-4 space-x-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={() => {
                     setEditingEvent(event);
                     setIsModalOpen(true);
                   }}
-                  className="flex items-center gap-2"
                 >
-                  <Edit className="h-4 w-4" />
-                  Edit
+                  <Edit2 className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={() => event.id && handleDelete(event.id)}
-                  className="flex items-center gap-2"
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleDelete(event)}
                 >
                   <Trash2 className="h-4 w-4" />
-                  Delete
                 </Button>
               </div>
             </Card>
@@ -213,8 +170,20 @@ export function EditorEventsTab() {
           setIsModalOpen(false);
           setEditingEvent(null);
         }}
-        onEventCreated={handleEventCreated}
         event={editingEvent}
+        onSuccess={loadEvents}
+      />
+
+      <DeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeletingEvent(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Event"
+        message="Are you sure you want to delete this event? This action cannot be undone."
+        isDeleting={isDeleting}
       />
     </div>
   )

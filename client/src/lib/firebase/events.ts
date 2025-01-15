@@ -1,6 +1,7 @@
 import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
 import type { FirebaseEvent, UserInfo } from './types';
+import { generateSlug, makeSlugUnique } from './utils';
 
 // Helper function to get user info
 const getUserInfo = async (userId: string): Promise<UserInfo> => {
@@ -38,7 +39,7 @@ const getUserInfo = async (userId: string): Promise<UserInfo> => {
   }
 };
 
-export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy'>): Promise<FirebaseEvent> => {
+export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy' | 'slug'>): Promise<FirebaseEvent> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to create event');
@@ -47,8 +48,22 @@ export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'created
     const currentUserId = auth.currentUser.uid;
     const userInfo = await getUserInfo(currentUserId);
 
+    // Generate base slug from title
+    let baseSlug = generateSlug(eventData.title);
+
+    // Get all existing events to check for slug uniqueness
+    const eventsSnapshot = await getDocs(collection(db, 'events'));
+    const existingSlugs = eventsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return data.slug || '';
+    });
+
+    // Make the slug unique
+    const uniqueSlug = makeSlugUnique(baseSlug, existingSlugs);
+
     const newEvent = {
       ...eventData,
+      slug: uniqueSlug,
       userId: currentUserId,
       createdBy: userInfo,
       createdAt: new Date().toISOString(),
@@ -68,48 +83,54 @@ export const createEvent = async (eventData: Omit<FirebaseEvent, 'id' | 'created
   }
 };
 
-export const updateEvent = async (eventData: FirebaseEvent): Promise<FirebaseEvent> => {
+export const updateEvent = async (eventId: string, eventData: Partial<FirebaseEvent>): Promise<FirebaseEvent> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to update event');
     }
 
-    if (!eventData.id) {
-      throw new Error('Event ID is required for update');
-    }
-
-    // Validate required fields
-    const requiredFields = ['title', 'date', 'time', 'location', 'speaker', 'speakerDescription', 'agenda'] as const;
-    const missingFields = requiredFields.filter(field => {
-      const value = eventData[field];
-      return !value || value.toString().trim() === '';
-    });
-    
-    if (missingFields.length > 0) {
-      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-    }
-
     const currentUserId = auth.currentUser.uid;
     const userInfo = await getUserInfo(currentUserId);
 
-    const eventRef = doc(db, 'events', eventData.id);
-    const updateData = {
+    // If title is being updated, generate new slug
+    let slugUpdate = {};
+    if (eventData.title) {
+      let baseSlug = generateSlug(eventData.title);
+      
+      // Get all existing events to check for slug uniqueness
+      const eventsSnapshot = await getDocs(collection(db, 'events'));
+      const existingSlugs = eventsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return doc.id !== eventId ? (data.slug || '') : ''; // Exclude current event's slug
+      }).filter(Boolean);
+
+      // Make the slug unique
+      const uniqueSlug = makeSlugUnique(baseSlug, existingSlugs);
+      slugUpdate = { slug: uniqueSlug };
+    }
+
+    const updatedEvent = {
       ...eventData,
+      ...slugUpdate,
       updatedBy: userInfo,
       updatedAt: new Date().toISOString()
     };
 
-    await updateDoc(eventRef, updateData);
-    
-    return {
-      ...updateData,
-      id: eventData.id
-    } as FirebaseEvent;
-  } catch (error: any) {
-    console.error('Error updating event:', error);
-    if (error.code === 'permission-denied') {
-      throw new Error('You do not have permission to update this event');
+    const eventRef = doc(db, 'events', eventId);
+    await updateDoc(eventRef, updatedEvent);
+
+    // Get the updated document
+    const updatedDoc = await getDoc(eventRef);
+    if (!updatedDoc.exists()) {
+      throw new Error('Event not found');
     }
+
+    return {
+      id: eventId,
+      ...updatedDoc.data()
+    } as FirebaseEvent;
+  } catch (error) {
+    console.error('Error updating event:', error);
     throw error;
   }
 };

@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { EventModal } from '@/components/admin/EventModal'
-import { fetchEvents, deleteEvent, createEvent, updateEvent, type FirebaseEvent } from '@/lib/firebase/events'
+import { EventModal } from '@/components/modals/EventModal'
+import { fetchEvents, deleteEvent, type FirebaseEvent } from '@/lib/firebase/events'
 import { useToast } from '@/hooks/use-toast'
 import { auth } from '@/lib/firebase/firebase-config'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { formatTime } from "@/lib/utils/time";
 
@@ -90,58 +90,6 @@ export function EventsTab() {
     }
   };
 
-  const handleEventCreated = async (eventData: Partial<FirebaseEvent>) => {
-    try {
-      if (!user) {
-        throw new Error('You must be logged in to manage events');
-      }
-
-      if (editingEvent) {
-        // Update existing event
-        await updateEvent({
-          ...editingEvent,
-          ...eventData,
-          updatedAt: new Date().toISOString(),
-          updatedBy: user.firstName && user.lastName 
-            ? `${user.firstName} ${user.lastName}`
-            : user.email || 'Unknown user'
-        } as FirebaseEvent);
-      } else {
-        // Create new event
-        await createEvent({
-          ...eventData,
-          userId: user.uid,
-          userCreated: user.firstName && user.lastName 
-            ? `${user.firstName} ${user.lastName}`
-            : user.email || 'Unknown user',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          updatedBy: user.firstName && user.lastName 
-            ? `${user.firstName} ${user.lastName}`
-            : user.email || 'Unknown user'
-        } as FirebaseEvent);
-      }
-
-      // Refresh the events list
-      await loadEvents();
-
-      toast({
-        title: "Success",
-        description: editingEvent ? "Event updated successfully" : "Event created successfully"
-      });
-      
-      setIsModalOpen(false);
-      setEditingEvent(null);
-    } catch (error: any) {
-      console.error('Error saving event:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save event",
-        variant: "destructive"
-      });
-    }
-  };
-
   const filteredEvents = events.filter(event => {
     const searchLower = searchTerm.toLowerCase();
     return event.title.toLowerCase().includes(searchLower) || 
@@ -209,7 +157,7 @@ export function EventsTab() {
                   <TableCell>{`${event.date} at ${formatTime(event.time)}`}</TableCell>
                   <TableCell>{event.location}</TableCell>
                   <TableCell>{event.speaker}</TableCell>
-                  <TableCell>{event.userCreated}</TableCell>
+                  <TableCell>{event.createdBy.displayName}</TableCell>
                   <TableCell>{event.createdAt}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -217,24 +165,20 @@ export function EventsTab() {
                         <>
                           <Button 
                             variant="outline" 
-                            size="sm" 
+                            size="icon"
                             onClick={() => {
                               setEditingEvent(event);
                               setIsModalOpen(true);
                             }}
-                            className="flex items-center gap-2"
                           >
-                            <Edit className="h-4 w-4" />
-                            Edit
+                            <Edit2 className="h-4 w-4" />
                           </Button>
                           <Button 
-                            variant="destructive" 
-                            size="sm" 
+                            variant="outline"
+                            size="icon"
                             onClick={() => event.id && handleDelete(event.id)}
-                            className="flex items-center gap-2"
                           >
                             <Trash2 className="h-4 w-4" />
-                            Delete
                           </Button>
                         </>
                       )}
@@ -253,8 +197,8 @@ export function EventsTab() {
           setIsModalOpen(false);
           setEditingEvent(null);
         }}
-        onEventCreated={handleEventCreated}
         event={editingEvent}
+        onSuccess={loadEvents}
       />
     </div>
   );

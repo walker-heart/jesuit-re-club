@@ -13,14 +13,11 @@ export function EditorDashboard() {
 
   if (!user || (user.role !== 'admin' && user.role !== 'editor')) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="p-6">
-            <Alert variant="destructive">
-              <AlertDescription>You must be an editor to access this page</AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="bg-red-100/80 rounded-lg p-8 max-w-md w-full mx-4">
+          <h2 className="text-3xl font-bold text-red-600 mb-4">Access Denied</h2>
+          <p className="text-red-600 text-lg">You must be an editor to view this page</p>
+        </div>
       </div>
     );
   }

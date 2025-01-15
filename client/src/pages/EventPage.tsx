@@ -1,25 +1,15 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Clock, ArrowLeft, Edit, Trash2 } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowLeft, Edit2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase/firebase-config";
-import { deleteEvent, type FirebaseEvent } from "@/lib/firebase/events";
-import { updateEventInFirebase } from "@/lib/firebase/eventUpdates";
-import { EditModal } from "@/components/admin/EditModal";
+import { EventModal } from "@/components/modals/EventModal";
+import { deleteEvent as deleteEventInFirebase, type FirebaseEvent } from "@/lib/firebase/events";
 import { formatTime } from "@/lib/utils/time";
 
-type EventDetails = FirebaseEvent & {
+interface EventDetails extends FirebaseEvent {
   id: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  speaker: string;
-  speakerDescription: string;
-  agenda: string;
-  createdAt: string;
-  userCreated: string;
 }
 
 export function EventPage() {
@@ -43,7 +33,7 @@ export function EventPage() {
     
     // Editors can only modify their own events
     if (userRole === 'editor') {
-      return event.userCreated === (user.displayName || user.email);
+      return event.userId === user.uid;
     }
     
     return false;
@@ -61,7 +51,7 @@ export function EventPage() {
         throw new Error('Event ID is required for deletion');
       }
       
-      await deleteEvent(event.id);
+      await deleteEventInFirebase(event.id);
       
       toast({
         title: "Success",
@@ -108,62 +98,6 @@ export function EventPage() {
     }
   };
 
-  const handleEventUpdated = async (eventData: FirebaseEvent) => {
-    try {
-      if (!event?.id) return;
-      
-      console.log('Starting event update in EventPage:', eventData);
-      
-      const updatedEvent: FirebaseEvent = {
-        ...eventData,
-        id: event.id,
-        userCreated: event.userCreated,
-        createdAt: event.createdAt,
-        updatedAt: new Date().toISOString()
-      };
-      
-      await updateEventInFirebase(updatedEvent);
-      
-      // Force refresh events data
-      console.log('Refreshing events data after update');
-      try {
-        // Update global events list
-        const eventsResponse = await fetch('/api/events', {
-          credentials: 'include'
-        });
-        
-        if (!eventsResponse.ok) {
-          throw new Error('Failed to refresh events list');
-        }
-        
-        // Refresh current event details
-        await fetchEvent();
-        
-        toast({
-          title: "Success",
-          description: "Event updated successfully"
-        });
-        
-        setIsEditModalOpen(false);
-      } catch (refreshError) {
-        console.error('Error refreshing data:', refreshError);
-        // Even if refresh fails, the update succeeded
-        toast({
-          title: "Partial Success",
-          description: "Event updated but please refresh the page to see changes",
-          variant: "default"
-        });
-      }
-    } catch (error: any) {
-      console.error('Error updating event:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update event",
-        variant: "destructive"
-      });
-    }
-  };
-
   useEffect(() => {
     if (slug) {
       fetchEvent();
@@ -202,7 +136,27 @@ export function EventPage() {
         </Button>
         
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-2xl font-bold text-[#003c71] mb-6">{event.title}</h1>
+          <div className="flex justify-between items-start mb-6">
+            <h1 className="text-2xl font-bold text-[#003c71]">{event.title}</h1>
+            {canModifyEvent() && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsEditModalOpen(true)}
+                >
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleDelete}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
           
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-6">
@@ -221,78 +175,32 @@ export function EventPage() {
                 </div>
               </div>
 
-              <p className="text-gray-700">{event.speakerDescription}</p>
-
               <div>
-              <h2 className="text-xl font-bold text-[#003c71]">Speaker</h2>
-              <p className="text-gray-700">{event.speaker}</p>
+                <h2 className="text-xl font-semibold text-[#003c71] mb-3">Speaker</h2>
+                <p className="text-gray-700 font-medium mb-2">{event.speaker}</p>
+                <p className="text-gray-600">{event.speakerDescription}</p>
+              </div>
             </div>
 
-            {/* Event management buttons for admins and editors */}
-            {canModifyEvent() && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Edit className="h-4 w-4" />
-                  Edit Event
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDelete}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete Event
-                </Button>
+            <div>
+              <h2 className="text-xl font-semibold text-[#003c71] mb-3">Agenda</h2>
+              <div className="space-y-2">
+                {agendaItems.map((item, index) => (
+                  <p key={index} className="text-gray-600">{item}</p>
+                ))}
               </div>
-            )}
-          </div>
-
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-[#003c71] mb-4">Agenda</h2>
-                <ul className="space-y-2 text-gray-700">
-                  {agendaItems.map((item, index) => (
-                    <li key={index} className="flex items-start">
-                      <span className="mr-2">•</span>
-                      <span>{item.trim()}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <Button className="w-full bg-[#b3a369] text-[#003c71] hover:bg-[#b3a369]/90">
-                Register Now
-              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Edit Modal */}
+      {/* Event Modal */}
       {event && (
-        <EditModal
+        <EventModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          onSave={async (updatedItem) => {
-            if (!event.id) return;
-            
-            const updatedEvent: FirebaseEvent = {
-              ...updatedItem as FirebaseEvent,
-              id: event.id,
-              userCreated: event.userCreated,
-              createdAt: event.createdAt
-            };
-            
-            await handleEventUpdated(updatedEvent);
-          }}
-          item={event}
-          type="event"
+          event={event}
+          onSuccess={fetchEvent}
         />
       )}
     </div>

@@ -3,14 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { ResourceModal } from "@/components/admin/ResourceModal";
-import { Edit, Trash2, Plus } from "lucide-react";
+import { ResourceModal } from "@/components/modals/ResourceModal";
+import { DeleteModal } from "@/components/modals/DeleteModal";
+import { Edit2, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   fetchResources, 
-  deleteResource, 
-  updateResource, 
-  createResource, 
+  deleteResource,
   type FirebaseResource 
 } from "@/lib/firebase/resources";
 
@@ -21,27 +20,31 @@ export function Resources() {
   const { toast } = useToast();
   const [resources, setResources] = useState<Resource[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadResources = async () => {
+    try {
+      setIsLoading(true);
+      const allResources = await fetchResources();
+      setResources(allResources);
+    } catch (error: any) {
+      console.error('Error loading resources:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load resources",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadResources = async () => {
-      try {
-        setIsLoading(true);
-        const allResources = await fetchResources();
-        setResources(allResources);
-      } catch (error: any) {
-        console.error('Error loading resources:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load resources",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadResources();
   }, []);
 
@@ -69,17 +72,17 @@ export function Resources() {
       return;
     }
 
-    if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
-      return;
-    }
+    setDeletingResource(resource);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingResource?.id) return;
 
     try {
-      await deleteResource(resource.id);
-      
-      // Refresh resources list
-      const updatedResources = await fetchResources();
-      setResources(updatedResources);
-
+      setIsDeleting(true);
+      await deleteResource(deletingResource.id);
+      await loadResources();
       toast({
         title: "Success",
         description: "Resource deleted successfully"
@@ -91,6 +94,10 @@ export function Resources() {
         description: error.message || "Failed to delete resource",
         variant: "destructive"
       });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeletingResource(null);
     }
   };
 
@@ -125,6 +132,12 @@ export function Resources() {
                 <p className="text-gray-600">Loading resources...</p>
               </CardContent>
             </Card>
+          ) : error ? (
+            <Card className="p-4">
+              <CardContent>
+                <p className="text-red-600">Error: {error}</p>
+              </CardContent>
+            </Card>
           ) : resources.length === 0 ? (
             <Card className="p-4">
               <CardContent>
@@ -133,55 +146,48 @@ export function Resources() {
             </Card>
           ) : (
             resources.map((resource, index) => (
-              <Card 
-                key={resource.id} 
-                className="overflow-hidden transition-all duration-300 hover:shadow-lg animate-fade-in card-hover relative"
-                style={{animationDelay: `${index * 100}ms`}}
-              >
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-[#003c71] mb-2">
-                        {resource.title}
-                      </h3>
-                      <p className="text-gray-600">{resource.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        asChild
-                        className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
-                      >
-                        <Link href={`/resources/${resource.id}`}>View Details</Link>
-                      </Button>
+              <Link key={resource.id} href={`/resources/${resource.id}`}>
+                <Card 
+                  className="overflow-hidden transition-all duration-300 hover:shadow-lg animate-fade-in cursor-pointer hover:scale-[1.02] relative"
+                  style={{animationDelay: `${index * 100}ms`}}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-[#003c71] mb-2">
+                          {resource.title}
+                        </h3>
+                        <p className="text-gray-600">{resource.description}</p>
+                      </div>
                       {canModifyResource(resource) && (
-                        <>
+                        <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
-                            size="sm"
-                            onClick={() => {
+                            size="icon"
+                            onClick={(e) => {
+                              e.preventDefault(); // Prevent navigation
                               setEditingResource(resource);
                               setIsModalOpen(true);
                             }}
-                            className="flex items-center gap-2"
                           >
-                            <Edit className="h-4 w-4" />
-                            Edit
+                            <Edit2 className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDelete(resource)}
-                            className="flex items-center gap-2"
+                            variant="outline"
+                            size="icon"
+                            onClick={(e) => {
+                              e.preventDefault(); // Prevent navigation
+                              handleDelete(resource);
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
-                            Delete
                           </Button>
-                        </>
+                        </div>
                       )}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             ))
           )}
         </div>
@@ -193,61 +199,19 @@ export function Resources() {
             setEditingResource(null);
           }}
           resource={editingResource}
-          onSave={async (resourceData) => {
-            try {
-              if (!user) {
-                throw new Error('You must be logged in to manage resources');
-              }
+          onSuccess={loadResources}
+        />
 
-              if (editingResource) {
-                // Update existing resource
-                await updateResource({
-                  ...editingResource,
-                  ...resourceData,
-                  updatedAt: new Date().toISOString(),
-                  updatedBy: user.firstName && user.lastName 
-                    ? `${user.firstName} ${user.lastName}`
-                    : user.email || 'Unknown user'
-                });
-              } else {
-                // Create new resource
-                await createResource({
-                  title: resourceData.title ?? '',
-                  description: resourceData.description ?? '',
-                  numberOfTexts: resourceData.numberOfTexts ?? 0,
-                  textFields: resourceData.textFields ?? [],
-                  userId: user.uid,
-                  userCreated: user.firstName && user.lastName 
-                    ? `${user.firstName} ${user.lastName}`
-                    : user.email || 'Unknown user',
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                  updatedBy: user.firstName && user.lastName 
-                    ? `${user.firstName} ${user.lastName}`
-                    : user.email || 'Unknown user'
-                });
-              }
-
-              // Refresh the resources list
-              const fetchedResources = await fetchResources();
-              setResources(fetchedResources);
-              
-              toast({
-                title: "Success",
-                description: editingResource ? "Resource updated successfully" : "Resource created successfully"
-              });
-              
-              setIsModalOpen(false);
-              setEditingResource(null);
-            } catch (error: any) {
-              console.error('Error saving resource:', error);
-              toast({
-                title: "Error",
-                description: error.message || "Failed to save resource",
-                variant: "destructive"
-              });
-            }
+        <DeleteModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setDeletingResource(null);
           }}
+          onConfirm={handleConfirmDelete}
+          title="Delete Resource"
+          message={`Are you sure you want to delete "${deletingResource?.title}"? This action cannot be undone.`}
+          isDeleting={isDeleting}
         />
       </div>
     </div>

@@ -4,22 +4,23 @@ import { useState, useEffect } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { UserModal } from '@/components/admin/UserModal'
+import { UserModal } from '@/components/modals/UserModal'
+import { DeleteModal } from '@/components/modals/DeleteModal'
 import { fetchUsers, updateUser, deleteUser, createUser, type FirebaseUser } from '@/lib/firebase/users'
 import { useToast } from '@/hooks/use-toast'
 import { getAuth } from 'firebase/auth'
+import { Edit2, Trash2, Plus } from 'lucide-react'
 
 export function UsersTab() {
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState<FirebaseUser[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<FirebaseUser | null>(null)
+  const [deletingUser, setDeletingUser] = useState<FirebaseUser | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
-
-  useEffect(() => {
-    loadUsers()
-  }, [])
 
   const loadUsers = async () => {
     try {
@@ -37,6 +38,88 @@ export function UsersTab() {
       setIsLoading(false)
     }
   }
+
+  const handleCreateTestUser = async () => {
+    const generateRandomString = (length: number = 5) => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+      return Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+    };
+
+    try {
+      const createdUsers = [];
+      
+      // Create 5 test users
+      for (let i = 0; i < 5; i++) {
+        const firstName = generateRandomString();
+        const lastName = generateRandomString();
+        const username = `${firstName.toLowerCase()}${lastName.toLowerCase()}`;
+        
+        const userData = {
+          email: `${username}@test.com`,
+          password: `Test123!`,
+          name: `${firstName} ${lastName}`,
+          firstName,
+          lastName,
+          username,
+          role: 'test' as const,
+        };
+
+        try {
+          const idToken = await getAuth().currentUser?.getIdToken();
+          if (!idToken) {
+            throw new Error('Not authenticated');
+          }
+
+          // Create user through the backend API
+          const response = await fetch('/api/admin/users/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify(userData)
+          });
+
+          if (!response.ok) {
+            throw new Error(await response.text());
+          }
+
+          const result = await response.json();
+          if (result.success && result.user) {
+            createdUsers.push(userData.name);
+            setUsers(prevUsers => [...prevUsers, result.user]);
+          }
+        } catch (error: any) {
+          console.error(`Failed to create user ${userData.name}:`, error);
+          toast({
+            title: "Error",
+            description: `Failed to create ${userData.name}: ${error.message}`,
+            variant: "destructive"
+          });
+        }
+      }
+
+      if (createdUsers.length > 0) {
+        toast({
+          title: "Success",
+          description: `Created ${createdUsers.length} test users`
+        });
+        // Refresh the user list to ensure we have the latest data
+        await loadUsers();
+      }
+    } catch (error: any) {
+      console.error('Error in test user creation process:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete test user creation process",
+        variant: "destructive"
+      });
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const filteredUsers = users.filter(user => {
     const username = user.username || '';
@@ -56,71 +139,18 @@ export function UsersTab() {
     setIsModalOpen(true)
   }
 
-  const handleSaveUser = async (user: FirebaseUser) => {
-    try {
-      if (editingUser) {
-        // Update existing user, preserving the original creation time
-        const updatedUser = {
-          ...user,
-          createdAt: editingUser.createdAt, // Keep original creation time
-        };
-        
-        // Then update user
-        await updateUser(user.uid, updatedUser);
-        
-        // Update local state
-        setUsers(users.map(u => u.uid === user.uid ? {
-          ...updatedUser,
-          updatedAt: new Date().toISOString()
-        } : u));
-        
-        // Show success message
-        toast({
-          title: "Success",
-          description: "User updated successfully"
-        });
-      } else {
-        // For new user creation
-        const { uid, ...userData } = user;
-        
-        // Create new user
-        const newUser = await createUser({
-          ...userData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-
-        // Add the new user to the local state
-        if (newUser) {
-          setUsers(prevUsers => [...prevUsers, newUser]);
-        }
-        
-        // Show success message
-        toast({
-          title: "Success",
-          description: `User ${userData.name || userData.username} created successfully`
-        });
-      }
-
-      // Close modal if it's open
-      if (isModalOpen) {
-        setIsModalOpen(false);
-      }
-    } catch (error: any) {
-      console.error('Error saving user:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save user",
-        variant: "destructive"
-      });
-      throw error;
-    }
+  const handleDeleteUser = async (user: FirebaseUser) => {
+    setDeletingUser(user)
+    setIsDeleteModalOpen(true)
   }
 
-  const handleDeleteUser = async (uid: string) => {
+  const handleConfirmDelete = async () => {
+    if (!deletingUser?.uid) return;
+    
     try {
-      await deleteUser(uid)
-      setUsers(users.filter(user => user.uid !== uid))
+      setIsDeleting(true)
+      await deleteUser(deletingUser.uid)
+      setUsers(users.filter(user => user.uid !== deletingUser.uid))
       toast({
         title: "Success",
         description: "User deleted successfully"
@@ -132,6 +162,10 @@ export function UsersTab() {
         description: error.message || "Failed to delete user",
         variant: "destructive"
       })
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteModalOpen(false)
+      setDeletingUser(null)
     }
   }
 
@@ -145,90 +179,18 @@ export function UsersTab() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm"
         />
-        <div className="flex gap-2">
-          <Button onClick={handleCreateUser}>Create User</Button>
+        <div className="flex gap-4 mb-4">
           <Button 
-            variant="outline" 
-            className="bg-white hover:bg-gray-100"
-            onClick={async () => {
-              const generateRandomString = (length: number = 5) => {
-                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-                return Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
-              };
-
-              try {
-                const createdUsers = [];
-                
-                // Create 5 test users
-                for (let i = 0; i < 5; i++) {
-                  const firstName = generateRandomString();
-                  const lastName = generateRandomString();
-                  const username = `${firstName.toLowerCase()}${lastName.toLowerCase()}`;
-                  
-                  const userData = {
-                    email: `${username}@test.com`,
-                    password: `Test123!`,
-                    name: `${firstName} ${lastName}`,
-                    firstName,
-                    lastName,
-                    username,
-                    role: 'test' as const,
-                  };
-
-                  try {
-                    const idToken = await getAuth().currentUser?.getIdToken();
-                    if (!idToken) {
-                      throw new Error('Not authenticated');
-                    }
-
-                    // Create user through the backend API
-                    const response = await fetch('/api/admin/users/create', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${idToken}`
-                      },
-                      body: JSON.stringify(userData)
-                    });
-
-                    if (!response.ok) {
-                      throw new Error(await response.text());
-                    }
-
-                    const result = await response.json();
-                    if (result.success && result.user) {
-                      createdUsers.push(userData.name);
-                      setUsers(prevUsers => [...prevUsers, result.user]);
-                    }
-                  } catch (error: any) {
-                    console.error(`Failed to create user ${userData.name}:`, error);
-                    toast({
-                      title: "Error",
-                      description: `Failed to create ${userData.name}: ${error.message}`,
-                      variant: "destructive"
-                    });
-                  }
-                }
-
-                if (createdUsers.length > 0) {
-                  toast({
-                    title: "Success",
-                    description: `Created ${createdUsers.length} test users`
-                  });
-                  // Refresh the user list to ensure we have the latest data
-                  await loadUsers();
-                }
-              } catch (error: any) {
-                console.error('Error in test user creation process:', error);
-                toast({
-                  title: "Error",
-                  description: "Failed to complete test user creation process",
-                  variant: "destructive"
-                });
-              }
-            }}
+            onClick={handleCreateUser}
+            className="bg-[#003c71] hover:bg-[#002855] text-white"
           >
-            Create Test Users
+            Create User
+          </Button>
+          <Button 
+            onClick={handleCreateTestUser}
+            className="bg-[#003c71] hover:bg-[#002855] text-white"
+          >
+            Create Test User
           </Button>
         </div>
       </div>
@@ -296,18 +258,18 @@ export function UsersTab() {
                   <TableCell className="text-right">
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="mr-2"
+                      size="icon"
                       onClick={() => handleEditUser(user)}
+                      className="mr-2"
                     >
-                      Edit
+                      <Edit2 className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteUser(user.uid)}
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDeleteUser(user)}
                     >
-                      Delete
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -319,9 +281,24 @@ export function UsersTab() {
 
       <UserModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveUser}
+        onClose={() => {
+          setIsModalOpen(false)
+          setEditingUser(null)
+        }}
         user={editingUser}
+        onSuccess={loadUsers}
+      />
+
+      <DeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false)
+          setDeletingUser(null)
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete User"
+        message={`Are you sure you want to delete ${deletingUser?.name || deletingUser?.username || 'this user'}? This action cannot be undone.`}
+        isDeleting={isDeleting}
       />
     </div>
   );

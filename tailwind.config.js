@@ -1,8 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: ["class"],
   content: [
-    "./client/src/**/*.{js,jsx,ts,tsx}",
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "./client/src/**/*.{js,ts,jsx,tsx}",
   ],
+  prefix: "",
   theme: {
     container: {
       center: true,
@@ -38,8 +42,48 @@ export default {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      transitionProperty: {
+        'height': 'height',
+        'spacing': 'margin, padding',
+      },
+      transitionDuration: {
+        '200': '200ms',
+      },
+      transitionTimingFunction: {
+        'ease-in-out': 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in-out forwards',
+        'scale': 'scale 0.2s ease-in-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        scale: {
+          '0%': { transform: 'scale(1)' },
+          '100%': { transform: 'scale(1.05)' },
+        },
       },
     },
   },
-  plugins: [],
+  plugins: [
+    (await import('tailwindcss-animate')).default,
+    (await import('@tailwindcss/typography')).default,
+  ],
 } 

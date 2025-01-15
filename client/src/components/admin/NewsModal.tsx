@@ -180,7 +180,7 @@ export function NewsModal({ isOpen, onClose, onSave, news }: NewsModalProps) {
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" className="bg-[#003c71] hover:bg-[#002855] text-white">
                 {news ? "Update" : "Create"}
               </Button>
             </div>

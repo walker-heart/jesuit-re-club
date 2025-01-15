@@ -302,6 +302,7 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
           <Button 
             onClick={handleSave} 
             disabled={isSubmitting}
+            className="bg-[#003c71] hover:bg-[#002855] text-white"
           >
             {isSubmitting ? 'Creating...' : user ? 'Save' : 'Create'}
           </Button>

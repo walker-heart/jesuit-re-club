@@ -188,16 +188,22 @@ export function EventModal({ isOpen, onClose, onEventCreated, event }: EventModa
               />
             </div>
           </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={onClose} size="sm">
+          <div className="flex justify-end gap-4 mt-4">
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+              className="text-[#003c71] hover:text-[#002855]"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} size="sm">
-              {isSubmitting 
-                ? (event ? "Updating..." : "Creating...") 
-                : (event ? "Update Event" : "Create Event")}
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="bg-[#003c71] hover:bg-[#002855] text-white"
+            >
+              Save
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

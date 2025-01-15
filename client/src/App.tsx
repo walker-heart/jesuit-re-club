@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Register } from '@/pages/Register';
+import ModalShowcase from '@/pages/Modal';
 
 function App() {
   const { user, loading } = useAuth();
@@ -129,6 +130,11 @@ function App() {
       <Route path="/editor">
         <Layout title="Editor Dashboard">
           <EditorDashboard />
+        </Layout>
+      </Route>
+      <Route path="/modal">
+        <Layout title="Modal Showcase">
+          <ModalShowcase />
         </Layout>
       </Route>
       <Route>

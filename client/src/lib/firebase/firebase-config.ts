@@ -15,6 +15,7 @@ import {
   serverTimestamp,
   deleteDoc
 } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import type { User } from '@/lib/types';
 
 // Check if all required environment variables are present
@@ -30,27 +31,26 @@ if (missingVars.length > 0) {
   throw new Error(`Missing required Firebase configuration: ${missingVars.join(', ')}`);
 }
 
+// Firebase configuration
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  storageBucket: "jesuitreclub-6e3df.firebasestorage.app", // Using .appspot.com for storage bucket
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
-let app;
-try {
-  app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-  console.log('Firebase initialized successfully');
-} catch (error) {
-  console.error('Error initializing Firebase:', error);
-  throw error;
-}
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
+// Get references to Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Initialize Storage with specific bucket URL
+const storageUrl = `gs://jesuitreclub-6e3df.firebasestorage.app`;
+export const storage = getStorage(app, storageUrl);
 
 // Auth functions
 export const loginWithEmail = async (email: string, password: string): Promise<User> => {

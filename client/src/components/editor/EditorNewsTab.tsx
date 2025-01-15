@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Newspaper, Edit, Trash2, Plus } from 'lucide-react'
-import { NewsModal } from '../admin/NewsModal'
+import { Newspaper, Edit2, Trash2, Plus } from 'lucide-react'
+import { NewsModal } from '@/components/modals/NewsModal'
+import { DeleteModal } from '@/components/modals/DeleteModal'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/firebase-config'
-import { fetchNews, deleteNews, createNews, updateNews } from '@/lib/firebase/news'
+import { fetchNews, deleteNews } from '@/lib/firebase/news'
 import type { FirebaseNews, UserInfo } from '@/lib/firebase/types'
 
 export function EditorNewsTab() {
@@ -14,7 +15,10 @@ export function EditorNewsTab() {
   const { toast } = useToast();
   const [news, setNews] = useState<FirebaseNews[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<FirebaseNews | null>(null);
+  const [deletingNews, setDeletingNews] = useState<FirebaseNews | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadNews = async () => {
@@ -42,7 +46,7 @@ export function EditorNewsTab() {
     }
   }, [user]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (newsItem: FirebaseNews) => {
     try {
       if (!auth.currentUser) {
         toast({
@@ -52,10 +56,6 @@ export function EditorNewsTab() {
         });
         return;
       }
-
-      // Find the news and check permissions
-      const newsItem = news.find(n => n.id === id);
-      if (!newsItem) return;
 
       // Only allow deletion of own news
       if (newsItem.userId !== auth.currentUser.uid) {
@@ -67,11 +67,24 @@ export function EditorNewsTab() {
         return;
       }
 
-      if (!window.confirm('Are you sure you want to delete this news article? This action cannot be undone.')) {
-        return;
-      }
+      setDeletingNews(newsItem);
+      setIsDeleteModalOpen(true);
+    } catch (error: any) {
+      console.error('Error initiating delete:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to initiate delete",
+        variant: "destructive"
+      });
+    }
+  };
 
-      await deleteNews(id);
+  const handleConfirmDelete = async () => {
+    try {
+      setIsDeleting(true);
+      if (!deletingNews?.id) return;
+
+      await deleteNews(deletingNews.id);
       await loadNews(); // Refresh the list after deletion
 
       toast({
@@ -85,6 +98,10 @@ export function EditorNewsTab() {
         description: error.message || "Failed to delete news",
         variant: "destructive"
       });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeletingNews(null);
     }
   };
 
@@ -142,26 +159,22 @@ export function EditorNewsTab() {
                 <div className="absolute bottom-4 right-4 space-x-2">
                   {user && newsItem.userId === auth.currentUser?.uid && (
                     <>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="icon"
                         onClick={() => {
                           setEditingNews(newsItem);
                           setIsModalOpen(true);
                         }}
-                        className="flex items-center gap-2"
                       >
-                        <Edit className="h-4 w-4" />
-                        Edit
+                        <Edit2 className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => newsItem.id && handleDelete(newsItem.id)}
-                        className="flex items-center gap-2"
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDelete(newsItem)}
                       >
                         <Trash2 className="h-4 w-4" />
-                        Delete
                       </Button>
                     </>
                   )}
@@ -179,48 +192,19 @@ export function EditorNewsTab() {
           setEditingNews(null);
         }}
         news={editingNews}
-        onSave={async (newsData) => {
-          try {
-            if (!auth.currentUser || !user) {
-              throw new Error('You must be logged in to save news');
-            }
+        onSuccess={loadNews}
+      />
 
-            if (editingNews) {
-              // Update existing news
-              await updateNews({
-                ...editingNews,
-                ...newsData,
-                updatedAt: new Date().toISOString()
-              });
-            } else {
-              // Create new news
-              const { createdBy, createdAt, updatedBy, updatedAt, ...newNewsData } = newsData;
-              await createNews({
-                ...newNewsData,
-                userId: auth.currentUser.uid,
-                isPublished: false
-              });
-            }
-
-            // Refresh the news list
-            await loadNews();
-
-            toast({
-              title: "Success",
-              description: editingNews ? "News updated successfully" : "News created successfully"
-            });
-            
-            setIsModalOpen(false);
-            setEditingNews(null);
-          } catch (error: any) {
-            console.error('Error saving news:', error);
-            toast({
-              title: "Error",
-              description: error.message || "Failed to save news",
-              variant: "destructive"
-            });
-          }
+      <DeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeletingNews(null);
         }}
+        onConfirm={handleConfirmDelete}
+        title="Delete News Article"
+        message="Are you sure you want to delete this news article? This action cannot be undone."
+        isDeleting={isDeleting}
       />
     </div>
   );

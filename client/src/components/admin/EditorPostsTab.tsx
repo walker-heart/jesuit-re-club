@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, BookOpen, Newspaper } from 'lucide-react'
+import { Calendar, BookOpen, Newspaper, Edit2, Trash2 } from 'lucide-react'
 import { EditModal } from './EditModal'
 import { fetchEvents, deleteEvent } from '@/lib/firebase/events'
 import { useToast } from "@/hooks/use-toast"
@@ -201,8 +201,24 @@ export function EditorPostsTab() {
                 <p className="text-sm text-gray-600 mb-2">Speaker: {event.speaker}</p>
                 <p className="text-sm text-gray-500 mb-2">Created by: {event.userCreated}</p>
                 <div className="absolute bottom-4 right-4 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(event, 'event')}>Edit</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(event.id, 'event')}>Delete</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleEdit(event, 'event')}
+                    className="flex items-center gap-2"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => handleDelete(event.id, 'event')}
+                    className="flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
                 </div>
               </Card>
             ))}

@@ -16,47 +16,38 @@ interface EditModalProps {
 }
 
 export function EditModal({ isOpen, onClose, onSave, item }: EditModalProps) {
-  const [editedItem, setEditedItem] = useState<FirebaseEvent>({
-    title: '',
-    date: '',
-    time: '',
-    location: '',
-    speaker: '',
-    speakerDescription: '',
-    agenda: '',
-    userCreated: '',
-    createdAt: new Date().toISOString()
-  });
+  const [editedItem, setEditedItem] = useState<FirebaseEvent | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (item) {
-      setEditedItem(item);
-    } else {
       setEditedItem({
-        title: '',
-        date: '',
-        time: '',
-        location: '',
-        speaker: '',
-        speakerDescription: '',
-        agenda: '',
-        userCreated: '',
-        createdAt: new Date().toISOString()
+        ...item,
+        title: item.title || '',
+        date: item.date || '',
+        time: item.time || '',
+        location: item.location || '',
+        speaker: item.speaker || '',
+        speakerDescription: item.speakerDescription || '',
+        agenda: item.agenda || '',
       });
+    } else {
+      setEditedItem(null);
     }
   }, [item, isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setEditedItem(prev => ({
+    setEditedItem(prev => prev ? {
       ...prev,
       [name]: value
-    }));
+    } : null);
   };
 
   const handleSave = async () => {
+    if (!editedItem) return;
+    
     setIsSubmitting(true);
     try {
       const requiredFields = ['title', 'date', 'time', 'location', 'speaker', 'speakerDescription', 'agenda'] as const;
@@ -69,33 +60,21 @@ export function EditModal({ isOpen, onClose, onSave, item }: EditModalProps) {
         throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
       }
 
-      // Prepare event data with preserved fields
-      const eventData: FirebaseEvent = {
-        ...editedItem,
-        id: item?.id, // Preserve the ID if editing
-        userCreated: item?.userCreated || editedItem.userCreated,
-        createdAt: item?.createdAt || editedItem.createdAt,
-        updatedAt: new Date().toISOString()
-      };
-
-      await onSave(eventData);
-      
-      toast({
-        title: "Success",
-        description: `Event ${item ? 'updated' : 'created'} successfully`
-      });
+      await onSave(editedItem);
       onClose();
     } catch (error: any) {
-      console.error(`Error ${item ? 'updating' : 'creating'} event:`, error);
+      console.error('Error saving event:', error);
       toast({
         title: "Error",
-        description: error.message || `Failed to ${item ? 'update' : 'create'} event`,
+        description: error.message || "Failed to save event",
         variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (!editedItem) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -181,20 +160,18 @@ export function EditModal({ isOpen, onClose, onSave, item }: EditModalProps) {
         </div>
         <DialogFooter className="mt-4">
           <Button 
-            onClick={onClose} 
             variant="outline" 
-            size="sm"
-            disabled={isSubmitting}
+            onClick={onClose}
+            className="text-[#003c71] hover:text-[#002855]"
           >
             Cancel
           </Button>
           <Button 
-            onClick={handleSave} 
-            size="sm"
+            onClick={handleSave}
             disabled={isSubmitting}
-            className="bg-[#003c71] hover:bg-[#002c51]"
+            className="bg-[#003c71] hover:bg-[#002855] text-white"
           >
-            {isSubmitting ? 'Saving...' : 'Save'}
+            Save
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -4,6 +4,22 @@ export interface UserInfo {
   email: string;
 }
 
+export type UserRole = 'admin' | 'editor' | 'user' | 'test';
+
+export interface FirebaseUser {
+  uid: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  username: string;
+  email: string;
+  password?: string;
+  role: UserRole;
+  isActive?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FirebaseEvent {
   id?: string;
   title: string;
@@ -13,6 +29,7 @@ export interface FirebaseEvent {
   speaker: string;
   speakerDescription: string;
   agenda: string;
+  url?: string;
   userId: string;
   createdBy: UserInfo;
   createdAt: string;
@@ -24,8 +41,8 @@ export interface FirebaseResource {
   id?: string;
   title: string;
   description: string;
-  numberOfTexts: number;
   textFields: string[];
+  urls?: string[];
   userId: string;
   createdBy: UserInfo;
   createdAt: string;

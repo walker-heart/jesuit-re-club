@@ -1,6 +1,7 @@
-import { collection, addDoc, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
 import { type FirebaseNews, type UserInfo } from './types';
+import { generateSlug, makeSlugUnique } from './utils';
 
 // Helper function to get user info
 const getUserInfo = async (userId: string): Promise<UserInfo> => {
@@ -38,7 +39,7 @@ const getUserInfo = async (userId: string): Promise<UserInfo> => {
   }
 };
 
-export const createNews = async (newsData: Omit<FirebaseNews, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy'>): Promise<FirebaseNews> => {
+export const createNews = async (newsData: Omit<FirebaseNews, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy' | 'slug'>): Promise<FirebaseNews> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to create news');
@@ -47,14 +48,27 @@ export const createNews = async (newsData: Omit<FirebaseNews, 'id' | 'createdAt'
     const currentUserId = auth.currentUser.uid;
     const userInfo = await getUserInfo(currentUserId);
 
+    // Generate base slug from title
+    let baseSlug = generateSlug(newsData.title);
+
+    // Get all existing news to check for slug uniqueness
+    const newsSnapshot = await getDocs(collection(db, 'news'));
+    const existingSlugs = newsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return data.slug || '';
+    });
+
+    // Make the slug unique
+    const uniqueSlug = makeSlugUnique(baseSlug, existingSlugs);
+
     const newNews = {
       ...newsData,
+      slug: uniqueSlug,
       userId: currentUserId,
       createdBy: userInfo,
       createdAt: new Date().toISOString(),
       updatedBy: userInfo,
-      updatedAt: new Date().toISOString(),
-      isPublished: false // Default to unpublished
+      updatedAt: new Date().toISOString()
     };
 
     const docRef = await addDoc(collection(db, 'news'), newNews);
@@ -62,55 +76,59 @@ export const createNews = async (newsData: Omit<FirebaseNews, 'id' | 'createdAt'
     return {
       id: docRef.id,
       ...newNews
-    };
+    } as FirebaseNews;
   } catch (error) {
     console.error('Error creating news:', error);
     throw error;
   }
 };
 
-export const updateNews = async (newsData: FirebaseNews): Promise<FirebaseNews> => {
+export const updateNews = async (newsId: string, newsData: Partial<FirebaseNews>): Promise<FirebaseNews> => {
   try {
     if (!auth.currentUser) {
       throw new Error('Authentication required to update news');
     }
 
-    if (!newsData.id) {
-      throw new Error('News ID is required for update');
-    }
-
     const currentUserId = auth.currentUser.uid;
-    const snapshot = await getDoc(doc(db, 'users', currentUserId));
-    const userData = snapshot.exists() ? snapshot.data() : null;
-    
-    const newsSnapshot = await getDoc(doc(db, 'news', newsData.id));
-    
-    if (!newsSnapshot.exists()) {
-      throw new Error('News not found');
-    }
-
-    const existingNews = newsSnapshot.data() as FirebaseNews;
-
-    // Check permissions
-    const isAdmin = userData?.role === 'admin';
-    if (!isAdmin && existingNews.userId !== currentUserId) {
-      throw new Error('You do not have permission to update this news');
-    }
-
     const userInfo = await getUserInfo(currentUserId);
 
-    const updateData = {
+    // If title is being updated, generate new slug
+    let slugUpdate = {};
+    if (newsData.title) {
+      let baseSlug = generateSlug(newsData.title);
+      
+      // Get all existing news to check for slug uniqueness
+      const newsSnapshot = await getDocs(collection(db, 'news'));
+      const existingSlugs = newsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return doc.id !== newsId ? (data.slug || '') : ''; // Exclude current news's slug
+      }).filter(Boolean);
+
+      // Make the slug unique
+      const uniqueSlug = makeSlugUnique(baseSlug, existingSlugs);
+      slugUpdate = { slug: uniqueSlug };
+    }
+
+    const updatedNews = {
       ...newsData,
+      ...slugUpdate,
       updatedBy: userInfo,
       updatedAt: new Date().toISOString()
     };
 
-    await updateDoc(doc(db, 'news', newsData.id), updateData);
-    
+    const newsRef = doc(db, 'news', newsId);
+    await updateDoc(newsRef, updatedNews);
+
+    // Get the updated document
+    const updatedDoc = await getDoc(newsRef);
+    if (!updatedDoc.exists()) {
+      throw new Error('News not found');
+    }
+
     return {
-      ...existingNews,
-      ...updateData
-    };
+      id: newsId,
+      ...updatedDoc.data()
+    } as FirebaseNews;
   } catch (error) {
     console.error('Error updating news:', error);
     throw error;

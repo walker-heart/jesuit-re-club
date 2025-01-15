@@ -7,15 +7,16 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Edit,
+  Edit2,
   Trash2,
   Plus
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { EventModal } from "@/components/admin/EventModal";
+import { EventModal } from "@/components/modals/EventModal";
+import { DeleteModal } from "@/components/modals/DeleteModal";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchEvents, deleteEvent, updateEvent, createEvent, type FirebaseEvent } from "@/lib/firebase/events";
+import { fetchEvents, deleteEvent, type FirebaseEvent } from "@/lib/firebase/events";
 
 // Use the FirebaseEvent type from firebase/events
 type Event = FirebaseEvent;
@@ -26,6 +27,9 @@ export function Events() {
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [pastPage, setPastPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const upcomingRef = useRef<HTMLDivElement | null>(null);
   const pastRef = useRef<HTMLDivElement | null>(null);
@@ -47,7 +51,7 @@ export function Events() {
   };
 
   const handleDelete = async (event: Event) => {
-    if (!event.id || !canModifyEvent(event)) {
+    if (!canModifyEvent(event)) {
       toast({
         title: "Permission Denied",
         description: "You don't have permission to delete this event",
@@ -56,12 +60,16 @@ export function Events() {
       return;
     }
 
-    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-      return;
-    }
+    setDeletingEvent(event);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingEvent?.id) return;
 
     try {
-      await deleteEvent(event.id);
+      setIsDeleting(true);
+      await deleteEvent(deletingEvent.id);
       
       // Refresh the events list
       const fetchedEvents = await fetchEvents();
@@ -78,6 +86,10 @@ export function Events() {
         description: error.message || "Failed to delete event",
         variant: "destructive"
       });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeletingEvent(null);
     }
   };
 
@@ -141,68 +153,62 @@ export function Events() {
   };
 
   const EventCard = ({ event, index }: { event: Event; index: number }) => (
-    <Card
-      className="overflow-hidden transition-all duration-300 hover:shadow-lg animate-fade-in card-hover relative"
-      style={{ animationDelay: `${index * 100}ms` }}
-    >
-      <CardContent className="p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h3 className="text-xl font-bold text-[#003c71] mb-2">
-              {event.title}
-            </h3>
-            <div className="flex flex-col sm:flex-row gap-4 text-gray-500 mb-2">
-              <div className="flex items-center">
-                <Calendar className="mr-2 h-4 w-4" />
-                <span>{event.date}</span>
+    <Link href={`/events/${event.id}`}>
+      <Card
+        className="overflow-hidden transition-all duration-300 hover:shadow-lg animate-fade-in cursor-pointer hover:scale-[1.02] relative"
+        style={{ animationDelay: `${index * 100}ms` }}
+      >
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-[#003c71] mb-2">
+                {event.title}
+              </h3>
+              <div className="flex flex-col sm:flex-row gap-4 text-gray-500 mb-2">
+                <div className="flex items-center">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  <span>{event.date}</span>
+                </div>
+                <div className="flex items-center">
+                  <Clock className="mr-2 h-4 w-4" />
+                  <span>{formatTime(event.time)}</span>
+                </div>
+                <div className="flex items-center">
+                  <MapPin className="mr-2 h-4 w-4" />
+                  <span>{event.location}</span>
+                </div>
               </div>
-              <div className="flex items-center">
-                <Clock className="mr-2 h-4 w-4" />
-                <span>{formatTime(event.time)}</span>
-              </div>
-              <div className="flex items-center">
-                <MapPin className="mr-2 h-4 w-4" />
-                <span>{event.location}</span>
-              </div>
+              <p className="text-gray-600">{event.speakerDescription}</p>
             </div>
-            <p className="text-gray-600">{event.speakerDescription}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              asChild
-              className="bg-[#003c71] hover:bg-[#002855] text-white flex items-center gap-2"
-            >
-              <Link href={`/events/${event.id}`}>View Details</Link>
-            </Button>
             {canModifyEvent(event) && (
-              <>
+              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={() => {
+                  size="icon"
+                  onClick={(e) => {
+                    e.preventDefault(); // Prevent navigation
                     setEditingEvent(event);
                     setIsDialogOpen(true);
                   }}
-                  className="flex items-center gap-2"
                 >
-                  <Edit className="h-4 w-4" />
-                  Edit
+                  <Edit2 className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDelete(event)}
-                  className="flex items-center gap-2"
+                  variant="outline"
+                  size="icon"
+                  onClick={(e) => {
+                    e.preventDefault(); // Prevent navigation
+                    handleDelete(event);
+                  }}
                 >
                   <Trash2 className="h-4 w-4" />
-                  Delete
                 </Button>
-              </>
+              </div>
             )}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Link>
   );
 
   const Pagination = ({
@@ -263,7 +269,7 @@ export function Events() {
           <div>
             <h1 className="text-3xl font-bold text-[#003c71] mb-2 animate-fade-in">Events</h1>
             <p className="text-gray-600 animate-slide-up">
-              Stay updated with our upcoming and past events
+              View upcoming and past events
             </p>
           </div>
           {user && (user.role === 'admin' || user.role === 'editor') && (
@@ -279,6 +285,28 @@ export function Events() {
             </Button>
           )}
         </div>
+
+        <EventModal
+          isOpen={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
+          event={editingEvent}
+          onSuccess={async () => {
+            const fetchedEvents = await fetchEvents();
+            setAllEvents(fetchedEvents);
+          }}
+        />
+
+        <DeleteModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setDeletingEvent(null);
+          }}
+          onConfirm={handleConfirmDelete}
+          title="Delete Event"
+          message={`Are you sure you want to delete "${deletingEvent?.title}"? This action cannot be undone.`}
+          isDeleting={isDeleting}
+        />
 
         <div className="space-y-12">
           <section ref={upcomingRef}>
@@ -321,67 +349,6 @@ export function Events() {
             )}
           </section>
         </div>
-
-        <EventModal
-          isOpen={isDialogOpen}
-          onClose={() => {
-            setIsDialogOpen(false);
-            setEditingEvent(null);
-          }}
-          event={editingEvent}
-          onEventCreated={async (eventData) => {
-            try {
-              if (!user) {
-                throw new Error('You must be logged in to manage events');
-              }
-
-              if (editingEvent) {
-                // Update existing event
-                await updateEvent({
-                  ...editingEvent,
-                  ...eventData,
-                  updatedAt: new Date().toISOString(),
-                  updatedBy: user.firstName && user.lastName 
-                    ? `${user.firstName} ${user.lastName}`
-                    : user.email || 'Unknown user'
-                });
-              } else {
-                // Create new event
-                await createEvent({
-                  ...eventData,
-                  userId: user.uid,
-                  userCreated: user.firstName && user.lastName 
-                    ? `${user.firstName} ${user.lastName}`
-                    : user.email || 'Unknown user',
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                  updatedBy: user.firstName && user.lastName 
-                    ? `${user.firstName} ${user.lastName}`
-                    : user.email || 'Unknown user'
-                });
-              }
-
-              // Refresh the events list
-              const fetchedEvents = await fetchEvents();
-              setAllEvents(fetchedEvents);
-              
-              toast({
-                title: "Success",
-                description: editingEvent ? "Event updated successfully" : "Event created successfully"
-              });
-              
-              setIsDialogOpen(false);
-              setEditingEvent(null);
-            } catch (error: any) {
-              console.error('Error saving event:', error);
-              toast({
-                title: "Error",
-                description: error.message || "Failed to save event",
-                variant: "destructive"
-              });
-            }
-          }}
-        />
       </div>
     </div>
   );

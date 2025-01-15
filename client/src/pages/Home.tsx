@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PhotoGallery } from "@/components/PhotoGallery";
+import { HomeCarousel } from "@/components/HomeCarousel";
 import { ArrowDown, ArrowRight, Calendar, Newspaper, UserPlus } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -91,7 +91,7 @@ export function Home() {
       </section>
 
       {/* What We Offer Section */}
-      <section className="w-full py-6 lg:py-12 bg-gray-0">
+      <section className="w-full py-12 bg-white">
         <div className="container px-4 md:px-6 mx-auto">
           <div className="grid gap-6 md:grid-cols-3 w-full max-w-[1200px] mx-auto">
             <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-6 animate-fade-in col-span-full">
@@ -150,12 +150,12 @@ export function Home() {
       </section>
 
       {/* Photo Gallery Section */}
-      <section className="w-full py-24 lg:py-12 bg-gray-50">
+      <section className="w-full py-12 bg-gray-50">
         <div className="container px-4 md:px-6 mx-auto">
-          <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-12 animate-fade-in">
+          <h2 className="text-3xl font-bold tracking-tighter text-[#003c71] text-center mb-8 animate-fade-in">
             Photo Gallery
           </h2>
-          <PhotoGallery />
+          <HomeCarousel />
         </div>
       </section>
 
@@ -168,7 +168,6 @@ export function Home() {
           <p className="mb-12 text-xl text-gray-300">
             Join the Real Estate Club today and take the first step towards a successful career in real estate.
           </p>
-          
         </div>
       </section>
     </div>
