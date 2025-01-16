@@ -53,7 +53,7 @@ export function Footer() {
               {aboutSections.map((section, index) => (
                 <li key={section.id}>
                   <Link href={`/about#${index + 1}`}>
-                    <a className="hover:text-[#b3a369] transition-colors">
+                    <a className="text-gray-300 hover:text-[#b3a369] transition-colors">
                       {section.title}
                     </a>
                   </Link>
@@ -61,7 +61,7 @@ export function Footer() {
               ))}
               <li>
                 <Link href="/about">
-                  <a className="hover:text-[#b3a369] transition-colors">
+                  <a className="text-gray-300 hover:text-[#b3a369] transition-colors">
                     About Us
                   </a>
                 </Link>
@@ -139,12 +139,6 @@ export function Footer() {
                 <Link href="/terms" className="hover:text-[#b3a369]">Terms of Service</Link>
               </div>
             </div>
-          </div>
-          <div className="flex justify-center space-x-6 mt-8">
-            <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#b3a369]">FB</a>
-            <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#b3a369]">TW</a>
-            <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#b3a369]">IG</a>
-            <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#b3a369]">LI</a>
           </div>
         </div>
       </div>

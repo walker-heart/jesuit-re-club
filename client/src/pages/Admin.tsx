@@ -14,6 +14,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { auth } from '@/lib/firebase/firebase-config'
 import { useToast } from "@/hooks/use-toast"
+import { fetchEvents } from "@/lib/firebase/events"
+import { fetchResources } from "@/lib/firebase/resources"
+import type { FirebaseEvent, FirebaseResource } from "@/lib/firebase/types"
 
 export function Admin() {
   const { user } = useAuth();
@@ -23,8 +26,8 @@ export function Admin() {
     const hash = window.location.hash.replace('#', '');
     return ['users', 'posts', 'files', 'gallery', 'activity'].includes(hash) ? hash : 'users';
   });
-  const [events, setEvents] = useState([]);
-  const [resources, setResources] = useState([]);
+  const [events, setEvents] = useState<FirebaseEvent[]>([]);
+  const [resources, setResources] = useState<FirebaseResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,38 +55,15 @@ export function Admin() {
       
       try {
         setLoading(true);
-        const idToken = await auth.currentUser.getIdToken();
+        // Fetch events and resources directly from Firebase
+        const [fetchedEvents, fetchedResources] = await Promise.all([
+          fetchEvents(),
+          fetchResources()
+        ]);
         
-        // Fetch events
-        const eventsResponse = await fetch('/api/events', {
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-            'Accept': 'application/json'
-          }
-        });
-        
-        // Fetch resources
-        const resourcesResponse = await fetch('/api/admin/resources', {
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-            'Accept': 'application/json'
-          }
-        });
-
-        if (!eventsResponse.ok || !resourcesResponse.ok) {
-          throw new Error('Failed to fetch data');
-        }
-
-        const eventsData = await eventsResponse.json();
-        const resourcesData = await resourcesResponse.json();
-
-        if (eventsData.success && Array.isArray(eventsData.events)) {
-          setEvents(eventsData.events);
-        }
-
-        if (resourcesData.success && Array.isArray(resourcesData.resources)) {
-          setResources(resourcesData.resources);
-        }
+        // Type assertion is safe now because we've properly transformed the data
+        setEvents(fetchedEvents);
+        setResources(fetchedResources);
       } catch (err) {
         console.error('Error fetching data:', err);
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';

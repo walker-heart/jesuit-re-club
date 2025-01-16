@@ -154,10 +154,25 @@ export const fetchEvents = async (): Promise<FirebaseEvent[]> => {
     const eventsRef = collection(db, 'events');
     const eventsSnapshot = await getDocs(eventsRef);
     
-    return eventsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as FirebaseEvent));
+    return eventsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title || '',
+        date: data.date || '',
+        time: data.time || '',
+        location: data.location || '',
+        speaker: data.speaker || '',
+        speakerDescription: data.speakerDescription || '',
+        agenda: data.agenda || '',
+        url: data.url,
+        userId: data.userId || '',
+        createdBy: data.createdBy || { firstName: '', lastName: '', email: '' },
+        createdAt: data.createdAt || new Date().toISOString(),
+        updatedBy: data.updatedBy || { firstName: '', lastName: '', email: '' },
+        updatedAt: data.updatedAt || new Date().toISOString()
+      };
+    });
   } catch (error) {
     console.error('Error fetching events:', error);
     throw error;

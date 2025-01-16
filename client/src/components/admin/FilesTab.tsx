@@ -130,7 +130,13 @@ export function FilesTab() {
     try {
       setLoading(true);
       const filesList = await listFiles(path);
-      setFiles(filesList);
+      
+      // Filter out cropped images from the main news folder view
+      if (currentFolder === 'news' && !path.includes('/cropped')) {
+        setFiles(filesList.filter(file => !file.name.startsWith('cropped_')));
+      } else {
+        setFiles(filesList);
+      }
     } catch (error: any) {
       toast({
         title: "Error",

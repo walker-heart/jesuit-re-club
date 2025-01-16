@@ -152,10 +152,21 @@ export const deleteResource = async (resourceId: string): Promise<void> => {
 export const fetchResources = async (userOnly: boolean = false): Promise<FirebaseResource[]> => {
   try {
     const resourcesSnapshot = await getDocs(collection(db, 'resources'));
-    let resources = resourcesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as FirebaseResource));
+    let resources = resourcesSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title || '',
+        description: data.description || '',
+        textFields: Array.isArray(data.textFields) ? data.textFields : [],
+        urls: Array.isArray(data.urls) ? data.urls : [],
+        userId: data.userId || '',
+        createdBy: data.createdBy || { firstName: '', lastName: '', email: '' },
+        createdAt: data.createdAt || new Date().toISOString(),
+        updatedBy: data.updatedBy || { firstName: '', lastName: '', email: '' },
+        updatedAt: data.updatedAt || new Date().toISOString()
+      };
+    });
 
     // Filter for user's resources if requested and user is authenticated
     if (userOnly && auth.currentUser) {

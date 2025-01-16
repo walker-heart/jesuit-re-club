@@ -6,16 +6,20 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
-import { auth } from '@/lib/firebase'
-import { type FirebaseUser, type UserRole } from '@/lib/firebase/types'
+import { getAuth } from 'firebase/auth'
+
+import { type FirebaseUser } from '@/lib/firebase/users';
 
 type UserFormData = {
+  uid?: string;
   firstName: string;
   lastName: string;
-  email: string;
   username: string;
+  email: string;
   password: string;
-  role: UserRole;
+  role: User['role'];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 type UserModalProps = {
@@ -70,47 +74,43 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
   };
 
   const handleSave = async () => {
+    // Check required fields
+    const requiredFields = [
+      { field: 'firstName', label: 'First Name' },
+      { field: 'lastName', label: 'Last Name' },
+      { field: 'username', label: 'Username' },
+      { field: 'email', label: 'Email' },
+    ];
+
+    // Only require password for new user creation
+    if (!user) {
+      requiredFields.push({ field: 'password', label: 'Password' });
+    }
+
+    const missingFields = requiredFields
+      .filter(({ field }) => !editedUser[field as keyof UserFormData])
+      .map(({ label }) => label);
+
+    if (missingFields.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: `Please fill in the following required fields: ${missingFields.join(', ')}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error('Not authenticated');
+      // Get the current user's ID token
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Not authenticated');
+      }
+      const token = await currentUser.getIdToken();
 
-      if (user) {
-        // Updating existing user
-        const updateData = {
-          firstName: editedUser.firstName,
-          lastName: editedUser.lastName,
-          username: editedUser.username,
-          email: editedUser.email,
-          role: editedUser.role
-        };
-
-        // Only include password if it was changed
-        if (editedUser.password) {
-          updateData.password = editedUser.password;
-        }
-
-        const response = await fetch(`/api/admin/users/${user.uid}/update`, {
-          method: 'PUT',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updateData)
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || 'Failed to update user');
-        }
-
-        // Call onSave with the updated user data
-        onSave({
-          ...user,
-          ...updateData
-        });
-      } else {
+      if (!user) {
         // Creating new user
         console.log('Sending create user request with data:', {
           firstName: editedUser.firstName,
@@ -137,20 +137,63 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
             role: editedUser.role
           })
         });
+      } else {
+        // Updating existing user
+        const updateData: any = {
+          firstName: editedUser.firstName,
+          lastName: editedUser.lastName,
+          username: editedUser.username,
+          email: editedUser.email,
+          role: editedUser.role
+        };
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || 'Failed to create user');
+        // Only include password if it was changed
+        if (editedUser.password) {
+          updateData.password = editedUser.password;
         }
 
-        const data = await response.json();
+        console.log('Sending update user request with data:', updateData);
+
+        const response = await fetch(`/api/admin/users/${user.uid}/update`, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updateData)
+        });
+
+        const responseText = await response.text();
+        console.log('Raw response:', responseText);
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log('Parsed response:', data);
+        } catch (error) {
+          console.error('Failed to parse response:', error);
+          throw new Error('Invalid server response');
+        }
+
+        if (!response.ok || !data.success) {
+          throw new Error(data?.message || 'Failed to create user');
+        }
+
+        if (!data.user) {
+          throw new Error('Invalid response format from server');
+        }
+
+        toast({
+          title: "Success",
+          description: data.message || "User created successfully",
+        });
 
         // Update the local state with the new user data
         const newUser: FirebaseUser = {
           uid: data.user.uid,
           firstName: editedUser.firstName,
           lastName: editedUser.lastName,
-          name: `${editedUser.firstName} ${editedUser.lastName}`.trim(),
           username: editedUser.username,
           email: editedUser.email,
           role: editedUser.role,
@@ -160,16 +203,11 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
         onSave(newUser);
         onClose();
       }
-
-      toast({
-        title: "Success",
-        description: user ? "User updated successfully" : "User created successfully"
-      });
     } catch (error: any) {
-      console.error('Error saving user:', error);
+      console.error('User creation error:', error);
       toast({
         title: "Error",
-        description: error.message || 'Failed to save user',
+        description: error.message || 'Failed to create user',
         variant: "destructive"
       });
     } finally {

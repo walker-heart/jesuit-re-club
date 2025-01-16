@@ -7,6 +7,8 @@ import { auth } from "@/lib/firebase/firebase-config";
 import { EventModal } from "@/components/modals/EventModal";
 import { deleteEvent as deleteEventInFirebase, type FirebaseEvent } from "@/lib/firebase/events";
 import { formatTime } from "@/lib/utils/time";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/firebase-config";
 
 interface EventDetails extends FirebaseEvent {
   id: string;
@@ -76,16 +78,19 @@ export function EventPage() {
   const fetchEvent = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/events/${slug}`, {
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch event details');
+      if (!slug) throw new Error('Event ID is required');
+      const docRef = doc(db, 'events', slug);
+      const docSnap = await getDoc(docRef);
+      
+      if (!docSnap.exists()) {
+        throw new Error('Event not found');
       }
-
-      const data = await response.json();
-      setEvent(data.event);
+      
+      const data = docSnap.data();
+      setEvent({
+        id: docSnap.id,
+        ...data
+      } as EventDetails);
     } catch (error) {
       console.error('Error fetching event:', error);
       toast({
