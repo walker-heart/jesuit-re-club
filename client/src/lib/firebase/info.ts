@@ -56,6 +56,9 @@ const convertToFirebaseUser = async (user: User, timestamp: string): Promise<Fir
   };
 };
 
+export type PageType = 'aboutus' | 'membership';
+export type SubType = 'top' | 'bottom';
+
 export async function createInfo(
   title: string,
   icon: string,
@@ -72,12 +75,31 @@ export async function createInfo(
   const now = new Date().toISOString();
   const firebaseUser = await convertToFirebaseUser(user, now);
   
+  // Get the current max order for this page/sub combination
+  let q = query(collection(db, INFO_COLLECTION));
+  if (page === 'membership' && sub) {
+    q = query(
+      collection(db, INFO_COLLECTION),
+      where('page', '==', page),
+      where('sub', '==', sub)
+    );
+  } else {
+    q = query(collection(db, INFO_COLLECTION), where('page', '==', page));
+  }
+  
+  const querySnapshot = await getDocs(q);
+  const maxOrder = querySnapshot.docs.reduce((max, doc) => {
+    const data = doc.data();
+    return Math.max(max, data.order || 0);
+  }, -1);
+  
   // Create base info data
   const baseData = {
     title,
     icon,
     text,
     page,
+    order: maxOrder + 1,
     userId: user.uid,
     createdBy: firebaseUser,
     createdAt: now,
@@ -111,47 +133,35 @@ export async function updateInfo(
     title?: string;
     icon?: string;
     text?: string;
-    page?: 'aboutus' | 'membership';
-    sub?: 'top' | 'bottom';
+    page?: PageType;
+    sub?: SubType;
     texts?: string[];
     url1Title?: string;
     url1?: string;
     url2Title?: string;
     url2?: string;
+    order?: number;
   },
   user: User
 ): Promise<void> {
+  // Validate page value
+  if (data.page && !['aboutus', 'membership'].includes(data.page)) {
+    throw new Error(`Invalid page value: ${data.page}. Must be either 'aboutus' or 'membership'`);
+  }
+
   const now = new Date().toISOString();
   const firebaseUser = await convertToFirebaseUser(user, now);
 
-  // Create base update data
-  const baseData = {
+  // If order is being updated, ensure it's a valid number
+  if (data.order !== undefined && (typeof data.order !== 'number' || isNaN(data.order))) {
+    throw new Error('Order must be a valid number');
+  }
+
+  const updateData = {
     ...data,
     updatedBy: firebaseUser,
     updatedAt: now,
   };
-
-  // If updating to membership page, ensure all membership fields have default values
-  const updateData = data.page === 'membership'
-    ? {
-        ...baseData,
-        texts: data.texts || [],
-        url1Title: data.url1Title || "",
-        url1: data.url1 || "",
-        url2Title: data.url2Title || "",
-        url2: data.url2 || ""
-      }
-    : baseData;
-
-  // If updating to about us page, remove membership-specific fields
-  if (data.page === 'aboutus') {
-    delete updateData.sub;
-    delete updateData.texts;
-    delete updateData.url1Title;
-    delete updateData.url1;
-    delete updateData.url2Title;
-    delete updateData.url2;
-  }
 
   await updateDoc(doc(db, INFO_COLLECTION, id), updateData);
 }
@@ -160,26 +170,58 @@ export async function deleteInfo(id: string): Promise<void> {
   await deleteDoc(doc(db, INFO_COLLECTION, id));
 }
 
-export async function fetchInfo(page?: 'aboutus' | 'membership', sub?: 'top' | 'bottom'): Promise<FirebaseInfo[]> {
-  let q = query(collection(db, INFO_COLLECTION));
-  
-  if (page) {
-    if (sub) {
+export async function fetchInfo(page?: PageType, sub?: SubType): Promise<FirebaseInfo[]> {
+  try {
+    let q;
+    
+    // Basic query without order first to see all documents
+    if (page === 'aboutus') {
       q = query(
-        collection(db, INFO_COLLECTION), 
-        where('page', '==', page),
+        collection(db, INFO_COLLECTION),
+        where('page', '==', 'aboutus')
+      );
+    } else if (page === 'membership' && sub) {
+      q = query(
+        collection(db, INFO_COLLECTION),
+        where('page', '==', 'membership'),
         where('sub', '==', sub)
       );
     } else {
-      q = query(collection(db, INFO_COLLECTION), where('page', '==', page));
+      q = query(collection(db, INFO_COLLECTION));
     }
+    
+    const querySnapshot = await getDocs(q);
+    
+    // Log detailed information about each document
+    console.log('All documents:', querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })));
+    
+    // Convert order to number if it's not already
+    const results = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        order: typeof data.order === 'number' ? data.order : parseInt(data.order) || 0
+      } as FirebaseInfo;
+    });
+    
+    // Sort by order in memory to ensure it works
+    results.sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    console.log('Sorted results:', results.map(r => ({
+      id: r.id,
+      title: r.title,
+      order: r.order
+    })));
+    
+    return results;
+  } catch (error) {
+    console.error('Error in fetchInfo:', error);
+    throw error;
   }
-  
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as FirebaseInfo));
 }
 
 export async function getInfo(id: string): Promise<FirebaseInfo | null> {
@@ -194,4 +236,23 @@ export async function getInfo(id: string): Promise<FirebaseInfo | null> {
     id: docSnap.id,
     ...docSnap.data()
   } as FirebaseInfo;
+}
+
+export async function updateOrder(id: string, newOrder: number, user: User): Promise<void> {
+  try {
+    const now = new Date().toISOString();
+    const firebaseUser = await convertToFirebaseUser(user, now);
+
+    const updateData = {
+      order: newOrder,
+      updatedBy: firebaseUser,
+      updatedAt: now,
+    };
+
+    await updateDoc(doc(db, INFO_COLLECTION, id), updateData);
+    console.log('Updated order for document:', { id, newOrder });
+  } catch (error) {
+    console.error('Error updating order:', error);
+    throw error;
+  }
 } 

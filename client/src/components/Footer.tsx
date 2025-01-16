@@ -3,10 +3,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { fetchEvents } from "@/lib/firebase/events";
 import type { FirebaseEvent } from "@/lib/firebase/types";
+import { fetchInfo } from "@/lib/firebase/info";
+import type { FirebaseInfo } from "@/lib/firebase/types";
 
 export function Footer() {
   const { user } = useAuth();
   const [nextEvent, setNextEvent] = useState<FirebaseEvent | null>(null);
+  const [aboutSections, setAboutSections] = useState<FirebaseInfo[]>([]);
 
   useEffect(() => {
     const loadNextEvent = async () => {
@@ -27,6 +30,19 @@ export function Footer() {
     loadNextEvent();
   }, []);
 
+  useEffect(() => {
+    const loadAboutInfo = async () => {
+      try {
+        const info = await fetchInfo('aboutus');
+        setAboutSections(info);
+      } catch (error) {
+        console.error('Error loading about info:', error);
+      }
+    };
+
+    loadAboutInfo();
+  }, []);
+
   return (
     <footer className="bg-[#003c71] text-white py-12">
       <div className="container mx-auto px-4">
@@ -34,10 +50,22 @@ export function Footer() {
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-[#b3a369]">ABOUT US</h3>
             <ul className="space-y-2">
-              <li><Link href="/about#story" className="text-gray-300 hover:text-[#b3a369]">Our Story</Link></li>
-              <li><Link href="/about#mission" className="text-gray-300 hover:text-[#b3a369]">Mission & Values</Link></li>
-              <li><Link href="/about#leadership" className="text-gray-300 hover:text-[#b3a369]">Leadership Team</Link></li>
-              <li><Link href="/contact" className="text-gray-300 hover:text-[#b3a369]">Contact Us</Link></li>
+              {aboutSections.map((section, index) => (
+                <li key={section.id}>
+                  <Link href={`/about#${index + 1}`}>
+                    <a className="hover:text-[#b3a369] transition-colors">
+                      {section.title}
+                    </a>
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link href="/about">
+                  <a className="hover:text-[#b3a369] transition-colors">
+                    About Us
+                  </a>
+                </Link>
+              </li>
             </ul>
           </div>
           <div className="space-y-4">

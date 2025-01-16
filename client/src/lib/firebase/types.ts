@@ -77,6 +77,7 @@ export interface FirebaseInfo {
   url1?: string;
   url2Title?: string;
   url2?: string;
+  order: number;
   userId: string;
   createdBy: FirebaseUser;
   createdAt: string;

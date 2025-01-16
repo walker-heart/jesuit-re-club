@@ -7,6 +7,7 @@ import { PostsTab } from '@/components/admin/PostsTab'
 import { NewsTab } from '@/components/admin/NewsTab'
 import { FilesTab } from '@/components/admin/FilesTab'
 import { PhotoGalleryTab } from '@/components/admin/PhotoGalleryTab'
+import { InfoTab } from '@/components/admin/InfoTab'
 import { useAuth } from '@/hooks/useAuth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -130,6 +131,7 @@ export function Admin() {
             <TabsTrigger value="posts">Posts</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="gallery">Photo Gallery</TabsTrigger>
+            <TabsTrigger value="info">Info</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
           <TabsContent value="users">
@@ -143,6 +145,9 @@ export function Admin() {
           </TabsContent>
           <TabsContent value="gallery">
             <PhotoGalleryTab />
+          </TabsContent>
+          <TabsContent value="info">
+            <InfoTab />
           </TabsContent>
           <TabsContent value="activity">
             <Card>

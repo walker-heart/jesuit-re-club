@@ -20,6 +20,7 @@ export function Membership() {
       try {
         const topInfo = await fetchInfo('membership', 'top');
         const bottomInfo = await fetchInfo('membership', 'bottom');
+        console.log('Membership page loaded info:', { topInfo, bottomInfo });
         setTopContent(topInfo);
         setBottomContent(bottomInfo);
       } catch (error) {
@@ -57,7 +58,7 @@ export function Membership() {
                           setEditingInfo(info);
                           setIsEditModalOpen(true);
                         }}
-                        className="ml-2 hover:bg-[#003c71] hover:text-white border-[#003c71]"
+                        className="h-8 w-8 border border-gray-200 hover:bg-[#003c71] hover:text-white"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -95,7 +96,7 @@ export function Membership() {
                           setEditingInfo(info);
                           setIsEditModalOpen(true);
                         }}
-                        className="ml-2 hover:bg-[#003c71] hover:text-white border-[#003c71]"
+                        className="h-8 w-8 border border-gray-200 hover:bg-[#003c71] hover:text-white"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
