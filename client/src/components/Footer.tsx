@@ -130,7 +130,6 @@ export function Footer() {
               <p>12345 Inwood Rd, Dallas, TX 75244</p>
             </div>
             <div className="text-sm text-gray-400 md:text-right space-y-1">
-              <p>&copy; {new Date().getFullYear()} Real Estate Club at Jesuit Dallas</p>
               <div className="space-x-4">
                 <a href={user ? "/account" : "/login"} className="hover:text-[#b3a369]">
                   {user ? "Account" : "Login"}
