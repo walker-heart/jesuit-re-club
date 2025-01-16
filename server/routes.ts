@@ -123,7 +123,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       const { uid } = req.params;
-      const { firstName, lastName, username, email, role } = req.body;
+      const { firstName, lastName, username, email, role, password } = req.body;
 
       // Validate role
       if (role && !['admin', 'editor', 'user'].includes(role)) {
@@ -142,6 +142,9 @@ export function registerRoutes(app: Express): Server {
       }
       if (email) {
         updateAuthData.email = email;
+      }
+      if (password) {
+        updateAuthData.password = password;
       }
 
       try {

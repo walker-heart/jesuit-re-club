@@ -77,35 +77,6 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
 
       if (user) {
         // Updating existing user
-        // If password was provided, update it separately first
-        if (editedUser.password) {
-          try {
-            console.log('Updating password for user:', user.uid);
-            const passwordResponse = await fetch(`/api/admin/users/${user.uid}/update-password`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ 
-                password: editedUser.password 
-              })
-            });
-
-            if (!passwordResponse.ok) {
-              const errorData = await passwordResponse.text();
-              console.error('Password update failed:', errorData);
-              throw new Error(errorData || 'Failed to update password');
-            }
-
-            console.log('Password update successful');
-          } catch (error: any) {
-            console.error('Password update error:', error);
-            throw new Error(error.message || 'Failed to update password');
-          }
-        }
-
-        // Update other user details (without password)
         const updateData = {
           firstName: editedUser.firstName,
           lastName: editedUser.lastName,
@@ -113,6 +84,11 @@ export function UserModal({ isOpen, onClose, onSave, user }: UserModalProps) {
           email: editedUser.email,
           role: editedUser.role
         };
+
+        // Only include password if it was changed
+        if (editedUser.password) {
+          updateData.password = editedUser.password;
+        }
 
         const response = await fetch(`/api/admin/users/${user.uid}/update`, {
           method: 'PUT',
