@@ -61,9 +61,9 @@ export function About() {
   };
 
   return (
-    <section className="w-full min-h-0">
+    <section className="w-full">
       <div className="container px-4 mx-auto py-8">
-        <div className="grid gap-6 md:grid-cols-3 mx-auto max-w-[1400px] place-items-start">
+        <div className="grid gap-6 md:grid-cols-3 mx-auto max-w-[1400px] place-items-center">
           {infoCards.map((info, index) => {
             const IconComponent = CARD_ICONS[info.icon as keyof typeof CARD_ICONS] || Building2;
             const isHighlighted = highlightedSection === index + 1;
