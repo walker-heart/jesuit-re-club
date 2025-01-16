@@ -115,7 +115,7 @@ export function Login() {
             </div>
             <Button 
               type="submit" 
-              className="w-full"
+              className="w-full bg-[#003c71] hover:bg-[#002855] text-white"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Signing in...' : 'Sign in'}

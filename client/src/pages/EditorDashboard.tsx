@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EditorEventsTab } from '@/components/editor/EditorEventsTab'
 import { EditorResourcesTab } from '@/components/editor/EditorResourcesTab'
 import { EditorNewsTab } from '@/components/editor/EditorNewsTab'
+import { EditorFilesTab } from '@/components/editor/EditorFilesTab'
 import { useAuth } from '@/hooks/useAuth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,6 +30,7 @@ export function EditorDashboard() {
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="resources">Resources</TabsTrigger>
           <TabsTrigger value="news">News</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
         </TabsList>
         <TabsContent value="events">
           <EditorEventsTab />
@@ -38,6 +40,9 @@ export function EditorDashboard() {
         </TabsContent>
         <TabsContent value="news">
           <EditorNewsTab />
+        </TabsContent>
+        <TabsContent value="files">
+          <EditorFilesTab />
         </TabsContent>
       </Tabs>
     </div>

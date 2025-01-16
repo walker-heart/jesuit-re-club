@@ -40,15 +40,14 @@ const getFileType = (filename: string, contentType?: string) => {
   return 'File';
 };
 
-type FolderOption = 'main' | 'news' | 'other';
+type FolderOption = 'news' | 'other';
 
 const FOLDER_OPTIONS: { value: FolderOption; label: string }[] = [
-  { value: 'main', label: 'Main' },
   { value: 'news', label: 'News' },
   { value: 'other', label: 'Other' }
 ];
 
-export function FilesTab() {
+export function EditorFilesTab() {
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
@@ -58,7 +57,7 @@ export function FilesTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUploadFiles, setSelectedUploadFiles] = useState<File[]>([]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState<FolderOption>('main');
+  const [selectedFolder, setSelectedFolder] = useState<FolderOption>('news');
   const [uploadPreviewUrls, setUploadPreviewUrls] = useState<string[]>([]);
   const [currentFolder, setCurrentFolder] = useState<FolderOption | '' | 'cropped'>('');
   const [currentPath, setCurrentPath] = useState<string>('');
@@ -73,7 +72,15 @@ export function FilesTab() {
   const getFolderFileCount = async (folder: FolderOption) => {
     try {
       const folderFiles = await listFiles(`all/${folder}`);
-      // Only count actual files, not folders, and exclude cropped files
+      // For 'other' folder, only count user's files
+      if (folder === 'other') {
+        return folderFiles.filter(file => 
+          !file.path.endsWith('/') && 
+          !file.path.includes('/cropped/') &&
+          file.uploadedBy === auth.currentUser?.uid
+        ).length;
+      }
+      // For news folder, count all files except cropped
       return folderFiles.filter(file => 
         !file.path.endsWith('/') && 
         !file.path.includes('/cropped/')
@@ -86,7 +93,6 @@ export function FilesTab() {
 
   // Track folder counts
   const [folderCounts, setFolderCounts] = useState<Record<FolderOption, number>>({
-    main: 0,
     news: 0,
     other: 0
   });
@@ -95,7 +101,6 @@ export function FilesTab() {
   useEffect(() => {
     const loadFolderCounts = async () => {
       const counts: Record<FolderOption, number> = {
-        main: 0,
         news: 0,
         other: 0
       };
@@ -118,8 +123,14 @@ export function FilesTab() {
         setCurrentPath(`all/news/${userId}/cropped`);
       }
     } else if (currentFolder) {
-      loadFiles(`all/${currentFolder}`);
-      setCurrentPath(`all/${currentFolder}`);
+      // For 'other' folder, only show user's files
+      if (currentFolder === 'other') {
+        loadFiles(`all/${currentFolder}/${auth.currentUser?.uid}`);
+        setCurrentPath(`all/${currentFolder}/${auth.currentUser?.uid}`);
+      } else {
+        loadFiles(`all/${currentFolder}`);
+        setCurrentPath(`all/${currentFolder}`);
+      }
     } else {
       loadFiles('all');
       setCurrentPath('all');
@@ -130,7 +141,14 @@ export function FilesTab() {
     try {
       setLoading(true);
       const filesList = await listFiles(path);
-      setFiles(filesList);
+      
+      // For 'other' folder, filter to only show user's files
+      if (currentFolder === 'other' && !path.includes('/cropped')) {
+        const userId = auth.currentUser?.uid;
+        setFiles(filesList.filter(file => file.uploadedBy === userId));
+      } else {
+        setFiles(filesList);
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -202,6 +220,16 @@ export function FilesTab() {
   };
 
   const handleDelete = async (file: StorageFile) => {
+    // Only allow deletion of user's own files
+    if (file.uploadedBy !== auth.currentUser?.uid) {
+      toast({
+        title: "Error",
+        description: "You can only delete your own files",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this file?')) return;
 
     try {
@@ -226,6 +254,16 @@ export function FilesTab() {
   const handleRename = async () => {
     if (!selectedFile || !newFileName.trim()) return;
 
+    // Only allow renaming of user's own files
+    if (selectedFile.uploadedBy !== auth.currentUser?.uid) {
+      toast({
+        title: "Error",
+        description: "You can only rename your own files",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       await renameFile(selectedFile.path, newFileName);
@@ -249,8 +287,17 @@ export function FilesTab() {
   };
 
   const openRenameModal = (file: StorageFile) => {
+    // Only allow renaming of user's own files
+    if (file.uploadedBy !== auth.currentUser?.uid) {
+      toast({
+        title: "Error",
+        description: "You can only rename your own files",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSelectedFile(file);
-    // Use the original name without timestamp prefix
     setNewFileName(file.name);
     setIsRenameModalOpen(true);
   };
@@ -265,6 +312,11 @@ export function FilesTab() {
     } else {
       setCurrentFolder('');
     }
+  };
+
+  // Helper function to determine if a file can be modified by the current user
+  const canModifyFile = (file: StorageFile) => {
+    return file.uploadedBy === auth.currentUser?.uid;
   };
 
   return (
@@ -498,34 +550,38 @@ export function FilesTab() {
                 </div>
 
                 <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (selectedFile) {
-                        setIsPreviewModalOpen(false);
-                        openRenameModal(selectedFile);
-                      }
-                    }}
-                  >
-                    <Edit2 className="h-4 w-4 mr-1" />
-                    Rename
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (selectedFile) {
-                        handleDelete(selectedFile);
-                        setIsPreviewModalOpen(false);
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
+                  {selectedFile && canModifyFile(selectedFile) && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (selectedFile) {
+                            setIsPreviewModalOpen(false);
+                            openRenameModal(selectedFile);
+                          }
+                        }}
+                      >
+                        <Edit2 className="h-4 w-4 mr-1" />
+                        Rename
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (selectedFile) {
+                            handleDelete(selectedFile);
+                            setIsPreviewModalOpen(false);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </>
+                  )}
                   <a
                     href={selectedFile?.downloadUrl}
                     target="_blank"

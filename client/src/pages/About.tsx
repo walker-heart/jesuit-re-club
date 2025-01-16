@@ -18,16 +18,18 @@ export function About() {
   const [infoCards, setInfoCards] = useState<FirebaseInfo[]>([]);
   const [editingInfo, setEditingInfo] = useState<FirebaseInfo | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [highlightedSection, setHighlightedSection] = useState<number | null>(null);
+  const [highlightedSection, setHighlightedSection] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     const loadInfo = async () => {
       try {
-        const info = await fetchInfo('aboutus');
-        console.log('About page loaded info:', info);
+        const info = await fetchInfo("aboutus");
+        console.log("About page loaded info:", info);
         setInfoCards(info);
       } catch (error) {
-        console.error('Error loading info:', error);
+        console.error("Error loading info:", error);
       }
     };
 
@@ -38,13 +40,13 @@ export function About() {
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
-      const sectionNumber = parseInt(hash.replace('#', ''));
+      const sectionNumber = parseInt(hash.replace("#", ""));
       if (!isNaN(sectionNumber) && sectionNumber >= 1 && sectionNumber <= 3) {
         const element = document.getElementById(`section-${sectionNumber}`);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
+          element.scrollIntoView({ behavior: "smooth" });
           setHighlightedSection(sectionNumber);
-          
+
           // Remove highlight after animation
           setTimeout(() => {
             setHighlightedSection(null);
@@ -56,27 +58,28 @@ export function About() {
 
   const handleEditSuccess = async () => {
     // Reload info after successful edit
-    const info = await fetchInfo('aboutus');
+    const info = await fetchInfo("aboutus");
     setInfoCards(info);
   };
 
   return (
     <section className="w-full">
-      <div className="container px-4 mx-auto py-8">
+      <div className="container px-100 mx-auto py-12">
         <div className="grid gap-6 md:grid-cols-3 mx-auto max-w-[1400px] place-items-center">
           {infoCards.map((info, index) => {
-            const IconComponent = CARD_ICONS[info.icon as keyof typeof CARD_ICONS] || Building2;
+            const IconComponent =
+              CARD_ICONS[info.icon as keyof typeof CARD_ICONS] || Building2;
             const isHighlighted = highlightedSection === index + 1;
-            
+
             return (
-              <Card 
+              <Card
                 key={info.id}
                 id={`section-${index + 1}`}
                 className={`flex flex-col transition-all duration-300 hover:shadow-lg animate-fade-in hover:-translate-y-1 w-full max-w-[400px] scroll-mt-20
-                  ${isHighlighted ? 'ring-4 ring-[#b3a369] ring-opacity-50 shadow-lg scale-105' : ''}`}
+                  ${isHighlighted ? "ring-4 ring-[#b3a369] ring-opacity-50 shadow-lg scale-105" : ""}`}
                 style={{
                   animationDelay: `${index * 100}ms`,
-                  transition: 'all 0.3s ease-in-out'
+                  transition: "all 0.3s ease-in-out",
                 }}
               >
                 <CardHeader className="pb-3">
@@ -85,7 +88,7 @@ export function About() {
                       <IconComponent className="h-6 w-6" />
                       {info.title}
                     </div>
-                    {user?.role === 'admin' && (
+                    {user?.role === "admin" && (
                       <Button
                         variant="outline"
                         size="icon"
@@ -101,9 +104,11 @@ export function About() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div 
+                  <div
                     className="text-gray-600"
-                    dangerouslySetInnerHTML={{ __html: info.text.replace(/\n/g, '<br>') }}
+                    dangerouslySetInnerHTML={{
+                      __html: info.text.replace(/\n/g, "<br>"),
+                    }}
                   />
                 </CardContent>
               </Card>
