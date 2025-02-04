@@ -63,6 +63,11 @@ export function Home() {
     return `${eventDate.toLocaleDateString()} | ${eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   };
 
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + '...';
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -117,7 +122,7 @@ export function Home() {
                 title: "Latest News", 
                 content: latestNews ? latestNews.title : "No news available", 
                 date: latestNews ? new Date(latestNews.createdAt).toLocaleDateString() : undefined, 
-                description: latestNews ? latestNews.content : "Check back soon for updates!", 
+                description: latestNews ? truncateText(latestNews.content, 150) : "Check back soon for updates!", 
                 link: latestNews ? `/news/${latestNews.id}` : "/news", 
                 linkText: "Read Full Story", 
                 icon: Newspaper 

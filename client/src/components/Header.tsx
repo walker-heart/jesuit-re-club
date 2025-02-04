@@ -42,7 +42,7 @@ export function Header() {
 
   return (
     <header className={headerClasses}>
-      <nav className="container mx-auto px-8 py-4 flex items-center justify-between max-w-[1400px]">
+      <nav className="container mx-auto px-8 h-[72px] flex items-center justify-between max-w-[1400px]">
         <Link href="/">
           <a className="flex items-center -ml-4">
             <img 

@@ -21,7 +21,7 @@ type FormDataType = {
   title: string;
   description: string;
   textFields: string[];
-  urls: string[];
+  urls: Array<{ title: string; url: string; }>;
 }
 
 export function ResourceModal({ isOpen, onClose, resource, onSuccess }: ResourceModalProps) {
@@ -44,7 +44,13 @@ export function ResourceModal({ isOpen, onClose, resource, onSuccess }: Resource
           title: resource.title || "",
           description: resource.description || "",
           textFields: resource.textFields || [""],
-          urls: resource.urls || []
+          urls: resource.urls ? resource.urls.map(url => {
+            if (typeof url === 'string') {
+              // Handle old format
+              return { title: 'Link', url };
+            }
+            return url;
+          }) : []
         });
       } else {
         // Creating new resource
@@ -64,9 +70,9 @@ export function ResourceModal({ isOpen, onClose, resource, onSuccess }: Resource
     setFormData({ ...formData, textFields: newFields });
   };
 
-  const handleUrlChange = (index: number, value: string) => {
+  const handleUrlChange = (index: number, field: 'title' | 'url', value: string) => {
     const newUrls = [...formData.urls];
-    newUrls[index] = value;
+    newUrls[index] = { ...newUrls[index], [field]: value };
     setFormData({ ...formData, urls: newUrls });
   };
 
@@ -86,7 +92,7 @@ export function ResourceModal({ isOpen, onClose, resource, onSuccess }: Resource
   const addUrl = () => {
     setFormData({
       ...formData,
-      urls: [...formData.urls, ""]
+      urls: [...formData.urls, { title: '', url: '' }]
     });
   };
 
@@ -138,7 +144,7 @@ export function ResourceModal({ isOpen, onClose, resource, onSuccess }: Resource
         title: formData.title,
         description: formData.description,
         textFields: formData.textFields.filter(text => text.trim() !== ''),
-        urls: formData.urls.filter(url => url.trim() !== '')
+        urls: formData.urls.filter(url => url.url.trim() !== '' && url.title.trim() !== '')
       };
 
       if (resource?.id) {
@@ -257,14 +263,22 @@ export function ResourceModal({ isOpen, onClose, resource, onSuccess }: Resource
               Add URL
             </Button>
           </div>
-          {formData.urls.map((url, index) => (
+          {formData.urls.map((urlItem, index) => (
             <div key={index} className="flex gap-2 mb-2">
-              <Input
-                value={url}
-                onChange={(e) => handleUrlChange(index, e.target.value)}
-                placeholder="Enter URL"
-                className="h-8 flex-1"
-              />
+              <div className="flex-1 flex gap-2">
+                <Input
+                  value={urlItem.title}
+                  onChange={(e) => handleUrlChange(index, 'title', e.target.value)}
+                  placeholder="Enter Link Title"
+                  className="h-8 w-1/3"
+                />
+                <Input
+                  value={urlItem.url}
+                  onChange={(e) => handleUrlChange(index, 'url', e.target.value)}
+                  placeholder="Enter URL"
+                  className="h-8 flex-1"
+                />
+              </div>
               <Button
                 type="button"
                 variant="outline"

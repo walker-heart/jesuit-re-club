@@ -12,6 +12,7 @@ interface Resource {
   description: string;
   numberOfTexts: number;
   textFields: string[];
+  urls?: Array<{ title: string; url: string; }>;
   userCreated: string;
   createdAt: any;
   updatedAt: any;
@@ -34,14 +35,15 @@ export function ResourcePage() {
       const data = docSnap.data();
       return {
         id: docSnap.id,
-        title: data.title,
-        description: data.description,
-        numberOfTexts: data.numberOfTexts,
-        textFields: data.textFields,
-        userCreated: data.userCreated,
+        title: data.title || '',
+        description: data.description || '',
+        numberOfTexts: data.textFields?.length || 0,
+        textFields: data.textFields || [],
+        urls: data.urls || [],
+        userCreated: data.createdBy?.email || '',
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
-        updatedBy: data.updatedBy
+        updatedBy: data.updatedBy?.email || ''
       } as Resource;
     },
     enabled: !!slug,
@@ -93,6 +95,32 @@ export function ResourcePage() {
               </CardContent>
             </Card>
           ))}
+
+          {resource.urls && resource.urls.length > 0 && (
+            <Card className="animate-fade-in mt-4">
+              <CardContent className="pt-6">
+                <h2 className="text-xl font-semibold text-[#003c71] mb-4">Resource Links</h2>
+                <div className="flex flex-wrap gap-2">
+                  {resource.urls.map((urlItem, index) => {
+                    // Handle both old string format and new object format
+                    const url = typeof urlItem === 'string' ? urlItem : urlItem.url;
+                    const title = typeof urlItem === 'string' ? `LINK ${index + 1}` : (urlItem.title || `LINK ${index + 1}`);
+                    
+                    return (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        className="bg-white hover:bg-[#003c71] hover:text-white"
+                        onClick={() => window.open(url, '_blank')}
+                      >
+                        {title}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
