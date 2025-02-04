@@ -194,6 +194,17 @@ export function EventPage() {
                   <p key={index} className="text-gray-600">{item}</p>
                 ))}
               </div>
+              <div className="flex justify-end mt-6">
+                {event.url && (
+                  <Button
+                    variant="outline"
+                    className="w-48 bg-white hover:bg-[#B4975A] hover:text-white border-[#B4975A] text-[#B4975A]"
+                    onClick={() => window.open(event.url, '_blank')}
+                  >
+                    View Speaker Bio
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>

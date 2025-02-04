@@ -14,6 +14,7 @@ export function Membership() {
   const [bottomContent, setBottomContent] = useState<FirebaseInfo[]>([]);
   const [editingInfo, setEditingInfo] = useState<FirebaseInfo | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
 
   useEffect(() => {
     const loadInfo = async () => {
@@ -31,6 +32,24 @@ export function Membership() {
     loadInfo();
   }, []);
 
+  // Handle anchor scrolling and highlighting
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const sectionId = hash.replace('#', '');
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+        setHighlightedSection(sectionId);
+
+        // Remove highlight after animation
+        setTimeout(() => {
+          setHighlightedSection(null);
+        }, 2000);
+      }
+    }
+  }, [topContent, bottomContent]);
+
   const handleEditSuccess = async () => {
     // Reload info after successful edit
     const topInfo = await fetchInfo('membership', 'top');
@@ -46,7 +65,12 @@ export function Membership() {
           <div className="grid gap-10 w-full max-w-[800px]">
             {/* Why Join Card */}
             {topContent.map((info) => (
-              <Card key={info.id} className="animate-fade-in card-hover">
+              <Card 
+                key={info.id} 
+                id="why-join"
+                className={`animate-fade-in card-hover scroll-mt-20 transition-all duration-300
+                  ${highlightedSection === 'why-join' ? 'ring-4 ring-[#b3a369] ring-opacity-50 shadow-lg scale-105' : ''}`}
+              >
                 <CardHeader>
                   <CardTitle className="text-2xl font-bold text-[#003c71] flex items-center justify-between">
                     {info.title}
@@ -84,7 +108,12 @@ export function Membership() {
 
             {/* How to Join Card */}
             {bottomContent.map((info) => (
-              <Card key={info.id} className="animate-fade-in card-hover">
+              <Card 
+                key={info.id} 
+                id="how-to-join"
+                className={`animate-fade-in card-hover scroll-mt-20 transition-all duration-300
+                  ${highlightedSection === 'how-to-join' ? 'ring-4 ring-[#b3a369] ring-opacity-50 shadow-lg scale-105' : ''}`}
+              >
                 <CardHeader>
                   <CardTitle className="text-2xl font-bold text-[#003c71] flex items-center justify-between">
                     {info.title}

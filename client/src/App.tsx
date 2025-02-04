@@ -18,6 +18,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Register } from '@/pages/Register';
 import ModalShowcase from '@/pages/Modal';
+import { Privacy } from '@/pages/Privacy';
+import { Terms } from '@/pages/Terms';
 
 function App() {
   const { user, loading } = useAuth();
@@ -135,6 +137,16 @@ function App() {
       <Route path="/modal">
         <Layout title="Modal Showcase">
           <ModalShowcase />
+        </Layout>
+      </Route>
+      <Route path="/privacy">
+        <Layout title="Privacy Policy">
+          <Privacy />
+        </Layout>
+      </Route>
+      <Route path="/terms">
+        <Layout title="Terms of Service">
+          <Terms />
         </Layout>
       </Route>
       <Route>
